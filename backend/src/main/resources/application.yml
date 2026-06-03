@@ -1,0 +1,31 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api/v1
+
+spring:
+  application:
+    name: pamahe-backend
+
+  datasource:
+    url: jdbc:mysql://localhost:3307/pamahe_db?useSSL=false&serverTimezone=America/Montevideo&allowPublicKeyRetrieval=true
+    username: ${DB_USER:pamahe_user}
+    password: ${DB_PASSWORD:pamahe_password}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+security:
+  jwt:
+    issuer: pamahe-api
+    expiration-minutes: 120
