@@ -1,0 +1,130 @@
+/*
+    Contenedor principal del encabezado de sección.
+
+    max-width limita el ancho del texto para que no se extienda demasiado
+    en pantallas grandes. Esto mejora la lectura.
+
+    margin-bottom separa el encabezado del contenido que viene debajo,
+    como tarjetas, listados o bloques informativos.
+*/
+.section-header {
+  max-width: 720px;
+  margin-bottom: 28px;
+}
+
+/*
+    Etiqueta superior opcional.
+
+    Esta clase se aplica al texto eyebrow, que funciona como una pequeña
+    introducción visual antes del título.
+
+    Puede usarse para textos como:
+    - Vehículos
+    - Servicios
+    - Gestión
+    - Beneficios
+*/
+.section-header__eyebrow {
+  /*
+      inline-block permite que el span respete márgenes verticales,
+      algo que normalmente un span en línea no maneja igual.
+  */
+  display: inline-block;
+
+  /*
+      Separación entre la etiqueta superior y el título.
+  */
+  margin-bottom: 10px;
+
+  /*
+      Usa el color secundario oscuro para destacar la etiqueta
+      sin competir demasiado con el título principal.
+  */
+  color: var(--color-secondary-dark);
+
+  /*
+      Texto en negrita para darle presencia visual.
+  */
+  font-weight: 800;
+
+  /*
+      Tamaño pequeño porque es un texto complementario.
+  */
+  font-size: 0.78rem;
+
+  /*
+      Aumenta el espacio entre letras.
+      Esto ayuda a que el texto en mayúsculas se vea más limpio.
+  */
+  letter-spacing: 0.08em;
+
+  /*
+      Convierte el texto a mayúsculas desde CSS.
+
+      Esto permite escribir el texto normalmente desde React,
+      pero mostrarlo visualmente como una etiqueta.
+  */
+  text-transform: uppercase;
+}
+
+/*
+    Título principal del encabezado.
+
+    Afecta al h2 que está dentro de section-header.
+*/
+.section-header h2 {
+  /*
+      Elimina el margen por defecto del h2.
+      Así el espaciado queda controlado manualmente.
+  */
+  margin: 0;
+
+  /*
+      Usa el color principal del sistema.
+  */
+  color: var(--color-primary);
+
+  /*
+      Tamaño responsive del título.
+
+      clamp(valor mínimo, valor adaptable, valor máximo)
+
+      Esto significa:
+      - nunca será menor a 1.65rem,
+      - intentará adaptarse usando 3vw,
+      - nunca será mayor a 2.25rem.
+
+      Es útil para que el título se vea bien en celulares
+      y también en pantallas grandes.
+  */
+  font-size: clamp(1.65rem, 3vw, 2.25rem);
+
+  /*
+      Controla la separación entre líneas.
+      Un valor de 1.15 deja el título compacto y prolijo.
+  */
+  line-height: 1.15;
+}
+
+/*
+    Descripción del encabezado.
+
+    Afecta al párrafo opcional que aparece debajo del título.
+*/
+.section-header p {
+  /*
+      Elimina márgenes laterales e inferiores,
+      y deja 12px de separación superior respecto al título.
+  */
+  margin: 12px 0 0;
+
+  /*
+      Usa un color más suave porque la descripción es texto secundario.
+  */
+  color: var(--color-text-muted);
+
+  /*
+      Aumenta la separación entre líneas para mejorar la lectura.
+  */
+  line-height: 1.7;
+}

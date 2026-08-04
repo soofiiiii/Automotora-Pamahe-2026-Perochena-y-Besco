@@ -1,0 +1,153 @@
+/*
+    Contenedor principal del logo.
+
+    Esta clase se aplica al <div> principal del componente AppLogo.
+
+    display: inline-flex permite que el logo se comporte como un elemento
+    en línea, pero con las ventajas de flexbox para alinear sus partes internas.
+
+    align-items: center centra verticalmente la marca "P" y el texto.
+
+    gap: 12px define la separación entre la marca visual y el texto.
+*/
+.app-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/*
+    Marca visual del logo.
+
+    Esta clase se aplica al <span> que contiene la letra "P".
+
+    Se usa como una versión simple del logotipo, sin necesidad de cargar
+    una imagen externa. Esto hace que sea liviano, fácil de mantener
+    y adaptable mediante CSS.
+*/
+.app-logo__mark {
+  /*
+      Define el ancho y alto del bloque.
+      Al tener las mismas medidas, se forma un cuadrado.
+  */
+  width: 42px;
+  height: 42px;
+
+  /*
+      display: grid y place-items: center permiten centrar la letra "P"
+      exactamente en el centro, tanto horizontal como verticalmente.
+  */
+  display: grid;
+  place-items: center;
+
+  /*
+      Redondea las esquinas del cuadrado.
+      No se usa un círculo completo, sino una forma ligeramente redondeada
+      para mantener un estilo moderno.
+  */
+  border-radius: 14px;
+
+  /*
+      Aplica un fondo con degradado diagonal.
+
+      El degradado combina el color principal y el color secundario
+      definidos en variables.css.
+
+      Esto mantiene la identidad visual del sistema y evita repetir colores
+      escritos directamente en cada archivo.
+  */
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  
+  /*
+      Color blanco para la letra "P", generando buen contraste
+      sobre el fondo oscuro/degradado.
+  */
+  color: #ffffff;
+
+  /*
+      font-weight: 800 hace que la letra tenga bastante grosor,
+      funcionando como una marca visual fuerte.
+  */
+  font-weight: 800;
+
+  /*
+      Tamaño de fuente de la letra "P".
+      rem se basa en el tamaño de fuente raíz del documento,
+      por lo que es una unidad flexible y recomendable.
+  */
+  font-size: 1.15rem;
+
+  /*
+      Aplica una sombra suave definida en variables.css.
+
+      Esto separa visualmente la marca del fondo sin recargar la interfaz.
+  */
+  box-shadow: var(--shadow-sm);
+}
+
+
+/*
+    Contenedor del texto del logo.
+
+    Esta clase se aplica al bloque que contiene:
+    - el nombre "Automotora Pamahe"
+    - el subtítulo "Gestión integral"
+
+    Este bloque solo aparece cuando el componente no está en modo compact.
+*/
+.app-logo__text {
+  /*
+      display: flex permite organizar internamente los textos.
+  */
+  display: flex;
+
+  /*
+      flex-direction: column coloca los textos uno debajo del otro.
+      Primero aparece el nombre principal y debajo el subtítulo.
+  */
+  flex-direction: column;
+
+  /*
+      Reduce la separación vertical entre líneas.
+      Esto ayuda a que el logo se vea compacto y prolijo.
+  */
+  line-height: 1.1;
+}
+
+/*
+    Estilos para el texto principal del logo.
+
+    Este selector afecta al <strong> que contiene "Automotora Pamahe".
+*/
+.app-logo__text strong {
+  /*
+      Usa el color principal del sistema para reforzar la identidad visual.
+  */
+  color: var(--color-primary);
+  
+  /*
+      Define un tamaño moderado para el nombre de la automotora.
+      No es demasiado grande porque debe convivir con el header
+      u otros elementos de navegación.
+  */
+  font-size: 0.98rem;
+}
+
+/*
+    Estilos para el texto secundario del logo.
+
+    Este selector afecta al <span> que contiene "Gestión integral".
+*/
+.app-logo__text span {
+  /*
+      Usa un color más suave porque este texto es complementario.
+      No debe competir visualmente con el nombre principal.
+  */
+  color: var(--color-text-muted);
+
+   /*
+      Tamaño menor para marcar jerarquía visual.
+      El subtítulo acompaña al logo, pero no es el elemento principal.
+  */
+  font-size: 0.78rem;
+}

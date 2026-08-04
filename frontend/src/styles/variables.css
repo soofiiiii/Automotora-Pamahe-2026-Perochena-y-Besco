@@ -1,0 +1,164 @@
+/* 
+    :root representa el nivel más alto del documento HTML.
+    Todo lo que se declare dentro de :root queda disponible de forma global
+    para el resto de los archivos CSS de la aplicación.
+
+    En este caso se usa para definir variables CSS reutilizables.
+    Una variable CSS comienza con dos guiones (--), por ejemplo: --color-primary.
+
+    ¿Para qué sirve esto?
+    Sirve para mantener una identidad visual centralizada.
+    En vez de repetir el mismo color, sombra o fuente en muchos archivos,
+    se define una sola vez acá y luego se reutiliza con var(--nombre-variable).
+
+    Ejemplo de uso en otro archivo CSS:
+    background-color: var(--color-primary);
+
+    Esto facilita los cambios futuros:
+    si se cambia --color-primary acá, se actualiza automáticamente
+    en todos los componentes que usen esa variable.
+*/
+
+:root {
+
+    /* 
+        Color principal del sistema.
+        Se usa normalmente en elementos importantes de la interfaz,
+        como encabezados, barra de navegación, botones principales
+        o secciones destacadas.
+
+        En este caso, el azul oscuro transmite formalidad y confianza,
+        algo adecuado para una automotora y para un sistema administrativo.
+    */
+    --color-primary: #1f2a44;
+    /* 
+        Variante más oscura del color principal.
+        Puede utilizarse en estados hover, fondos más intensos
+        o zonas donde se necesita mayor contraste.
+    */
+    --color-primary-dark: #111827;
+    /* 
+        Color secundario del sistema.
+        Funciona como color de acento, es decir, para destacar elementos
+        sin abusar del color principal.
+
+        Puede usarse en botones secundarios, etiquetas, detalles visuales,
+        íconos o llamadas de atención moderadas.
+    */
+    --color-secondary: #b8893b;
+    /* 
+        Variante más oscura del color secundario.
+        Es útil para efectos hover o para elementos que necesitan
+        mantener la misma identidad visual pero con mayor profundidad.
+    */
+    --color-secondary-dark: #8f6727;
+
+
+    /* 
+        Color de fondo general de la aplicación.
+        Se aplica normalmente al body o a contenedores principales.
+        Al no ser blanco puro, ayuda a separar visualmente las tarjetas
+        y secciones del sistema.
+    */
+    --color-bg: #f5f6f8;
+    /* 
+        Color de superficie principal.
+        Se usa para tarjetas, paneles, formularios o contenedores internos.
+        El blanco permite que el contenido se lea con claridad.
+    */
+    --color-surface: #ffffff;
+    /* 
+        Color de superficie suave.
+        Puede usarse para fondos secundarios dentro de tarjetas,
+        filtros, cajas internas o bloques informativos.
+    */
+    --color-surface-soft: #f9fafb;
+
+
+    /* 
+        Color principal para textos.
+        Se utiliza en títulos, párrafos importantes y contenido general.
+        No se usa negro puro para evitar un contraste demasiado fuerte.
+    */
+    --color-text: #1f2937;
+    /* 
+        Color para textos secundarios.
+        Se usa en descripciones, subtítulos, ayudas visuales,
+        fechas, etiquetas o información menos importante.
+    */
+    --color-text-muted: #6b7280;
+    /* 
+        Color de borde general.
+        Se usa en tarjetas, inputs, separadores y contenedores.
+        Ayuda a dividir contenido sin generar una interfaz pesada.
+    */
+    --color-border: #e5e7eb;
+
+     /* 
+        Color para estados positivos.
+        Puede usarse en mensajes de éxito, vehículos disponibles,
+        operaciones confirmadas o acciones completadas.
+    */
+    --color-success: #15803d;
+    /* 
+        Color para advertencias.
+        Puede aplicarse en avisos, estados pendientes,
+        alertas moderadas o información que requiere atención.
+    */
+    --color-warning: #b45309;
+    /* 
+        Color informativo.
+        Puede utilizarse para mensajes de ayuda, enlaces,
+        notificaciones informativas o datos destacados.
+    */
+    --color-info: #2563eb;
+
+
+    /* 
+        Sombra suave.
+        Sirve para dar profundidad leve a tarjetas o contenedores
+        sin que la interfaz se vea exagerada.
+    */
+    --shadow-sm: 0 6px 18px rgba(15, 23, 42, 0.08);
+    /* 
+        Sombra media.
+        Se usa en elementos más destacados, como modales,
+        tarjetas principales o bloques importantes del home.
+    */
+    --shadow-md: 0 14px 35px rgba(15, 23, 42, 0.12);
+
+
+    /* 
+        Radio de borde pequeño.
+        Se puede usar en botones, inputs o etiquetas.
+    */
+    --radius-sm: 10px;
+    /* 
+        Radio de borde medio.
+        Adecuado para tarjetas, formularios o contenedores generales.
+    */
+    --radius-md: 16px;
+    /* 
+        Radio de borde grande.
+        Útil para secciones principales, banners o tarjetas grandes.
+    */
+    --radius-lg: 24px;
+
+
+    /* 
+        Ancho máximo del contenido principal.
+        Evita que el contenido se estire demasiado en pantallas grandes.
+        Por ejemplo, el home puede ocupar como máximo 1180px
+        y quedar centrado en la pantalla.
+    */
+    --container-width: 1180px;
+    /* 
+        Fuente principal de la aplicación.
+        Se usa system-ui para tomar la fuente del sistema operativo,
+        lo que mejora la integración visual y el rendimiento.
+
+        La lista funciona como una cadena de respaldo:
+        si una fuente no está disponible, el navegador intenta usar la siguiente.
+    */
+    --font-main: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; 
+}

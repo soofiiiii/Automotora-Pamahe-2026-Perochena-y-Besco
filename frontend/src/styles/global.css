@@ -1,0 +1,221 @@
+/* 
+    Archivo de estilos globales de la aplicación.
+
+    Este CSS define reglas generales que afectan a todo el frontend:
+    - elimina estilos por defecto del navegador,
+    - aplica la fuente y colores principales,
+    - mejora el comportamiento responsive de imágenes y contenedores,
+    - crea clases reutilizables para estructurar páginas.
+
+    No contiene lógica de TypeScript ni comunicación con la API.
+    Su función es preparar una base visual estable para que los componentes
+    de React se vean de forma coherente en toda la aplicación.
+*/
+
+
+/* 
+    Se importan otros archivos CSS necesarios para la aplicación.
+
+    variables.css contiene las variables globales de diseño:
+    colores, sombras, bordes, ancho máximo y tipografía.
+
+    responsive.css contiene reglas relacionadas con la adaptación
+    de la interfaz a distintos tamaños de pantalla.
+*/
+@import "./variables.css";
+@import "./responsive.css";
+
+/* 
+    El selector universal (*) aplica esta regla a todos los elementos HTML.
+
+    box-sizing: border-box hace que el ancho y alto de los elementos
+    incluyan el contenido, el padding y el borde.
+
+    Esto facilita mucho el diseño, porque evita que los elementos
+    crezcan más de lo esperado cuando se les agrega padding o borde.
+*/
+* {
+    box-sizing: border-box;
+}
+
+/* 
+    Se aplica al elemento raíz del documento HTML.
+
+    scroll-behavior: smooth hace que los desplazamientos internos
+    de la página sean suaves.
+
+    Por ejemplo, si un enlace lleva a una sección del mismo home,
+    el navegador se desplazará de forma gradual y no de golpe.
+*/
+html {
+    scroll-behavior: smooth;
+}
+
+/* 
+    body representa el cuerpo principal de la página.
+
+    margin: 0 elimina el margen que los navegadores aplican por defecto.
+    Esto permite que el diseño comience exactamente desde los bordes
+    de la ventana.
+
+    min-width: 320px evita que la interfaz se comprima demasiado
+    en pantallas muy pequeñas.
+
+    background usa el color de fondo general definido en variables.css.
+
+    color define el color base de los textos de toda la aplicación.
+
+    font-family aplica la fuente principal del sistema, también definida
+    previamente como variable global.
+*/
+body {
+    margin: 0;
+    min-width: 320px;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-main);
+}
+
+/* 
+    Estilos base para los enlaces.
+
+    color: inherit hace que los enlaces hereden el color del texto
+    del elemento donde se encuentran.
+
+    text-decoration: none elimina el subrayado por defecto.
+
+    Esto permite que los enlaces se adapten mejor al diseño visual
+    de botones, menús o tarjetas.
+*/
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+/* 
+    Se aplica a controles de formulario y botones.
+
+    font-family: inherit hace que estos elementos usen la misma fuente
+    que el resto de la aplicación.
+
+    Esto es necesario porque algunos navegadores aplican una fuente
+    distinta por defecto a inputs, botones, selects o textareas.
+*/
+button,
+input,
+textarea,
+select {
+    font-family: inherit;
+}
+
+/* 
+    Estilos base para imágenes.
+
+    max-width: 100% evita que una imagen sea más ancha que su contenedor.
+    Esto ayuda a que el diseño sea responsive.
+
+    display: block elimina pequeños espacios inferiores que pueden aparecer
+    cuando las imágenes se comportan como elementos en línea.
+*/
+img {
+    max-width: 100%;
+    display: block;
+}
+
+/* 
+    Contenedor reutilizable para centrar y limitar el ancho del contenido.
+
+    width: min(100% - 32px, var(--container-width)) significa:
+
+    - El contenedor ocupará casi todo el ancho disponible,
+      dejando 16px de espacio a cada lado.
+    - Pero nunca superará el ancho máximo definido en --container-width.
+
+    margin: 0 auto centra el contenedor horizontalmente.
+
+    Esta clase puede usarse en secciones principales del home,
+    como el header, hero, listado de vehículos o bloques informativos.
+*/
+.page-container {
+    width: min(100% - 32px, var(--container-width));
+    margin: 0 auto;
+}
+
+/* 
+    Clase pensada para páginas temporales o vistas que todavía
+    no tienen contenido definitivo.
+
+    min-height: calc(100vh - 160px) hace que la sección ocupe
+    casi toda la altura visible de la pantalla, descontando un espacio
+    aproximado para header y footer.
+
+    display: grid junto con place-items: center centra el contenido
+    tanto vertical como horizontalmente.
+
+    padding agrega espacio interno para que el contenido no quede pegado
+    a los bordes en pantallas pequeñas.
+*/
+.placeholder-page {
+    min-height: calc(100vh - 160px);
+    display: grid;
+    place-items: center;
+    padding: 48px 16px;
+}
+
+/* 
+    Tarjeta reutilizable para mostrar contenido temporal.
+
+    width: min(100%, 620px) permite que la tarjeta ocupe todo el ancho
+    disponible en pantallas pequeñas, pero que no supere los 620px
+    en pantallas grandes.
+
+    padding agrega espacio interno.
+
+    border-radius usa una variable global para redondear las esquinas.
+
+    background usa el color de superficie definido en variables.css.
+
+    box-shadow aplica una sombra suave para separar visualmente
+    la tarjeta del fondo.
+
+    text-align: center centra el texto dentro de la tarjeta.
+*/
+.placeholder-card {
+  width: min(100%, 620px);
+  padding: 32px;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+
+/* 
+    Estilos para el título dentro de la tarjeta temporal.
+
+    margin: 0 0 12px elimina el margen superior por defecto
+    y deja 12px de separación inferior.
+
+    color usa el color principal de la aplicación para destacar el título.
+*/
+.placeholder-card h1 {
+  margin: 0 0 12px;
+  color: var(--color-primary);
+}
+
+/* 
+    Estilos para el párrafo dentro de la tarjeta temporal.
+
+    margin: 0 0 24px elimina el margen superior y deja espacio inferior,
+    útil si debajo del texto se coloca un botón o enlace.
+
+    color usa un tono más suave porque el párrafo funciona como texto
+    descriptivo o secundario.
+
+    line-height: 1.6 mejora la lectura aumentando la separación
+    entre líneas.
+*/
+.placeholder-card p {
+  margin: 0 0 24px;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}

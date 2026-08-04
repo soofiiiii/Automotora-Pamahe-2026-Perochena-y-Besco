@@ -4,10 +4,9 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class PamaheBackendApplication {
+public class PamaheApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(PamaheBackendApplication.class, args);
-	}
-
+    public static void main(String[] args) {
+        SpringApplication.run(PamaheApplication.class, args);
+    }
 }

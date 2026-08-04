@@ -1,22 +1,23 @@
 server:
   port: 8080
   servlet:
-    context-path: /api/v1
+    context-path: /api
 
 spring:
   application:
     name: pamahe-backend
 
   datasource:
-    url: jdbc:mysql://localhost:3307/pamahe_db?useSSL=false&serverTimezone=America/Montevideo&allowPublicKeyRetrieval=true
-    username: ${DB_USER:pamahe_user}
-    password: ${DB_PASSWORD:pamahe_password}
+    url: ${DB_URL:jdbc:mysql://localhost:3307/pamahe_db?useSSL=false&serverTimezone=America/Montevideo&allowPublicKeyRetrieval=true}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
     hibernate:
+      # Flyway es la única fuente de cambios del esquema; Hibernate solo verifica su coherencia.
       ddl-auto: validate
-    show-sql: true
+    show-sql: ${JPA_SHOW_SQL:false}
     properties:
       hibernate:
         format_sql: true
@@ -25,7 +26,27 @@ spring:
     enabled: true
     locations: classpath:db/migration
 
+  servlet:
+    multipart:
+      max-file-size: ${MAX_IMAGE_FILE_SIZE:12MB}
+      max-request-size: ${MAX_IMAGE_REQUEST_SIZE:13MB}
+
 security:
   jwt:
     issuer: pamahe-api
-    expiration-minutes: 120
+    secret: ${JWT_SECRET}
+    expiration-minutes: ${JWT_EXPIRATION_MINUTES:120}
+
+app:
+  cors:
+    allowed-origins: ${FRONTEND_URL:http://localhost:5173}
+
+  storage:
+    # El árbol separa recursos públicos del catálogo y archivos privados de la operativa interna.
+    root: ${STORAGE_ROOT:uploads}
+    images:
+      max-bytes: ${IMAGE_MAX_BYTES:12582912}
+      max-width: ${IMAGE_MAX_WIDTH:8000}
+      max-height: ${IMAGE_MAX_HEIGHT:8000}
+      max-pixels: ${IMAGE_MAX_PIXELS:24000000}
+      max-output-dimension: ${IMAGE_MAX_OUTPUT_DIMENSION:1920}
