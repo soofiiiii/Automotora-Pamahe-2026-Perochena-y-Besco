@@ -1,6 +1,7 @@
 package uy.edu.ctc.pamahe.modules.clientes.service;
 
 import java.util.List;
+import java.util.Locale;
 
 import org.springframework.stereotype.Service;
 
@@ -41,9 +42,15 @@ public class ClienteService {
 
     @Transactional
     public ClienteResponse crear(ClienteRequest request) {
-        if (this.clienteRepository.existsByDocumento(request.documento())) {
-            throw new BusinessException("Ya existe un cliente con ese documento.");
+
+        String documentoNormalizado = normalizarDocumento(request.documento());
+
+        if (this.clienteRepository.existsByDocumento(documentoNormalizado)) {
+            throw new BusinessException(
+                    "Ya existe un cliente con ese documento."
+            );
         }
+
         Cliente cliente = new Cliente();
         this.cargarDatos(cliente, request);
         Cliente guardado = this.clienteRepository.save(cliente);
@@ -54,6 +61,18 @@ public class ClienteService {
     @Transactional
     public ClienteResponse actualizar(Long id, ClienteRequest request) {
         Cliente cliente = this.buscarPorId(id);
+
+        String documentoNormalizado = normalizarDocumento(request.documento());
+
+        if (this.clienteRepository.existsByDocumentoAndIdNot(
+                documentoNormalizado,
+                id
+        )) {
+            throw new BusinessException(
+                    "Ya existe otro cliente con ese documento."
+            );
+        }
+
         this.cargarDatos(cliente, request);
         Cliente guardado = this.clienteRepository.save(cliente);
         this.auditoriaService.registrar("MODIFICACION", "Cliente", guardado.getId(), "Actualización de cliente");
@@ -81,15 +100,114 @@ public class ClienteService {
         return cliente;
     }
     
-    private void cargarDatos(Cliente cliente, ClienteRequest request) {
-        cliente.setNombre(request.nombre().trim());
-        cliente.setApellido(request.apellido());
-        cliente.setRazonSocial(request.razonSocial());
-        cliente.setDocumento(request.documento().trim());
-        cliente.setTelefono(request.telefono());
-        cliente.setEmail(request.email());
-        cliente.setDireccion(request.direccion());
-        cliente.setTipoCliente(request.tipoCliente());
+    /**
+     * Carga y normaliza los datos recibidos antes de persistirlos.
+     */
+    private void cargarDatos(
+            Cliente cliente,
+            ClienteRequest request
+    ) {
+        cliente.setNombre(
+                normalizarTexto(request.nombre())
+        );
+
+        cliente.setApellido(
+                normalizarTexto(request.apellido())
+        );
+
+        cliente.setRazonSocial(
+                normalizarTexto(request.razonSocial())
+        );
+
+        cliente.setDocumento(
+                normalizarDocumento(request.documento())
+        );
+
+        cliente.setTelefono(
+                normalizarTelefono(request.telefono())
+        );
+
+        cliente.setEmail(
+                normalizarEmail(request.email())
+        );
+
+        cliente.setDireccion(
+                normalizarTexto(request.direccion())
+        );
+
+        cliente.setTipoCliente(
+                request.tipoCliente()
+        );
     }
 
+    /**
+     * Elimina espacios innecesarios de los textos.
+     * Los valores vacíos se convierten en null.
+     */
+    private String normalizarTexto(String valor) {
+        if (valor == null) {
+            return null;
+        }
+
+        String resultado = valor.trim();
+
+        return resultado.isBlank() ? null : resultado;
+    }
+
+    /**
+     * Normaliza el documento eliminando puntos, guiones, espacios
+     * y cualquier otro carácter que no sea alfanumérico.
+     *
+     * Ejemplo:
+     * 5.048.641-0 -> 50486410
+     */
+    private String normalizarDocumento(String documento) {
+        if (documento == null) {
+            return null;
+        }
+
+        String resultado = documento
+                .trim()
+                .replaceAll("[^A-Za-z0-9]", "")
+                .toUpperCase(Locale.ROOT);
+
+        return resultado.isBlank() ? null : resultado;
+    }
+
+    /**
+     * Normaliza el teléfono eliminando espacios, paréntesis y guiones.
+     *
+     * Ejemplo:
+     * +598 99 111 222 -> +59899111222
+     */
+    private String normalizarTelefono(String telefono) {
+        if (telefono == null) {
+            return null;
+        }
+
+        String resultado = telefono
+                .trim()
+                .replaceAll("[\\s()-]", "");
+
+        return resultado.isBlank() ? null : resultado;
+    }
+
+    /**
+     * Normaliza el email eliminando espacios exteriores
+     * y convirtiéndolo a minúsculas.
+     */
+    private String normalizarEmail(String email) {
+        if (email == null) {
+            return null;
+        }
+
+        String resultado = email.trim();
+
+        if (resultado.isBlank()) {
+            return null;
+        }
+
+        return resultado.toLowerCase(Locale.ROOT);
+    }
 }
+

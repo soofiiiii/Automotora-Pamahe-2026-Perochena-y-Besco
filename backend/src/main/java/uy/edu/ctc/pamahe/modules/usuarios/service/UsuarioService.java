@@ -54,38 +54,57 @@ public class UsuarioService {
 
     @Transactional
     public UsuarioResponse crear(UsuarioRequest request) {
-        if (this.usuarioRepository.existsByUsername(request.username())) {
+        String usernameNormalizado = request.username().trim().toLowerCase();
+        String emailNormalizado = request.email().trim().toLowerCase();
+
+        if (this.usuarioRepository.existsByUsername(usernameNormalizado)) {
             throw new BusinessException("Ya existe un usuario con ese nombre de usuario.");
         }
-        if (this.usuarioRepository.existsByEmail(request.email())) {
+
+        if (this.usuarioRepository.existsByEmail(emailNormalizado)) {
             throw new BusinessException("Ya existe un usuario con ese correo electrónico.");
         }
 
         Usuario usuario = new Usuario();
-        usuario.setUsername(request.username().trim().toLowerCase());
+        usuario.setUsername(usernameNormalizado);
+
         // Solo se persiste el hash; la contraseña original no debe recuperarse ni registrarse.
         usuario.setPasswordHash(this.passwordEncoder.encode(request.password()));
+
         usuario.setNombre(request.nombre().trim());
-        usuario.setEmail(request.email().trim().toLowerCase());
+        usuario.setEmail(emailNormalizado);
         usuario.setTelefono(request.telefono());
         usuario.setRoles(this.obtenerRoles(request.roles()));
 
         Usuario guardado = this.usuarioRepository.save(usuario);
+
         this.auditoriaService.registrar("ALTA", "Usuario", guardado.getId(), "Creación de usuario interno");
+
         return UsuarioMapper.toResponse(guardado);
     }
 
     @Transactional
     public UsuarioResponse actualizar(Long id, UsuarioUpdateRequest request) {
         Usuario usuario = this.buscarPorId(id);
+
+        String emailNormalizado = request.email().trim().toLowerCase();
+
+        if (this.usuarioRepository.existsByEmailAndIdNot(emailNormalizado, id)) {
+            throw new BusinessException(
+                "Ya existe otro usuario con ese correo electrónico."
+            );
+        }
+
         usuario.setNombre(request.nombre().trim());
-        usuario.setEmail(request.email().trim().toLowerCase());
+        usuario.setEmail(emailNormalizado);
         usuario.setTelefono(request.telefono());
         usuario.setRoles(this.obtenerRoles(request.roles()));
         usuario.setActivo(request.activo() == null || request.activo());
-
+        
         Usuario guardado = this.usuarioRepository.save(usuario);
+        
         this.auditoriaService.registrar("MODIFICACION", "Usuario", guardado.getId(), "Actualización de usuario interno");
+        
         return UsuarioMapper.toResponse(guardado);
     }
 

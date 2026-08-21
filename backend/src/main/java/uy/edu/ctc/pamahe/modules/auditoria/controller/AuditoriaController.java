@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import uy.edu.ctc.pamahe.common.response.ApiResponse;
-import uy.edu.ctc.pamahe.modules.auditoria.model.Auditoria;
+import uy.edu.ctc.pamahe.modules.auth.dto.response.AuditoriaResponse;
 import uy.edu.ctc.pamahe.modules.auditoria.service.AuditoriaService;
 
 @RestController
@@ -21,8 +21,10 @@ public class AuditoriaController {
     }
 
     @GetMapping
-    public ApiResponse<List<Auditoria>> listarUltimas() {
-        return ApiResponse.ok("Registros de auditoria obtenidos correctamente.", this.auditoriaService.listarUltimas());
+    public ApiResponse<List<AuditoriaResponse>> listarUltimas() {
+        return ApiResponse.ok(
+                "Registros de auditoría obtenidos correctamente.",
+                this.auditoriaService.listarUltimas()
+        );
     }
-    
 }

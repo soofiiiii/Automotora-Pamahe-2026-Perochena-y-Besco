@@ -24,6 +24,8 @@ import uy.edu.ctc.pamahe.modules.usuarios.service.UsuarioActualService;
 import uy.edu.ctc.pamahe.modules.vehiculos.model.EstadoVehiculo;
 import uy.edu.ctc.pamahe.modules.vehiculos.model.Vehiculo;
 import uy.edu.ctc.pamahe.modules.vehiculos.service.VehiculoService;
+import uy.edu.ctc.pamahe.modules.compras.model.Compra;
+import uy.edu.ctc.pamahe.modules.compras.repository.CompraRepository;
 
 /**
  * Gestiona trabajos de taller y su impacto en el costo y estado operativo del vehículo.
@@ -37,17 +39,20 @@ public class RefaccionService {
     private final UsuarioRepository usuarioRepository;
     private final UsuarioActualService usuarioActualService;
     private final AuditoriaService auditoriaService;
+    private final CompraRepository compraRepository;
 
     public RefaccionService(RefaccionRepository refaccionRepository,
                             VehiculoService vehiculoService,
                             UsuarioRepository usuarioRepository,
                             UsuarioActualService usuarioActualService,
-                            AuditoriaService auditoriaService) {
+                            AuditoriaService auditoriaService,
+                            CompraRepository compraRepository) {
         this.refaccionRepository = refaccionRepository;
         this.vehiculoService = vehiculoService;
         this.usuarioRepository = usuarioRepository;
         this.usuarioActualService = usuarioActualService;
         this.auditoriaService = auditoriaService;
+        this.compraRepository = compraRepository;
     }
 
     @Transactional(readOnly = true)
@@ -88,7 +93,7 @@ public class RefaccionService {
         // El bloqueo evita que una venta o cambio de estado concurrente invalide la refacción en curso.
         Vehiculo vehiculo = this.vehiculoService.buscarActivoPorIdConBloqueo(request.vehiculoId());
         this.validarVehiculoEditable(vehiculo);
-        this.validarFecha(request.fecha());
+        this.validarFecha(vehiculo, request.fecha());
         Usuario responsable = this.buscarResponsableActivo(request.responsableOperativoId());
 
         Refaccion refaccion = new Refaccion();
@@ -130,7 +135,7 @@ public class RefaccionService {
         Refaccion refaccion = this.buscarActiva(id);
         Vehiculo vehiculo = this.vehiculoService.buscarActivoPorIdConBloqueo(refaccion.getVehiculo().getId());
         this.validarVehiculoEditable(vehiculo);
-        this.validarFecha(request.fecha());
+        this.validarFecha(vehiculo, request.fecha());
         Usuario responsable = this.buscarResponsableActivo(request.responsableOperativoId());
         String anterior = this.resumen(refaccion);
 
@@ -201,9 +206,25 @@ public class RefaccionService {
         }
     }
 
-    private void validarFecha(LocalDate fecha) {
+    private void validarFecha(Vehiculo vehiculo, LocalDate fecha) {
+        if (fecha == null) {
+            throw new BusinessException("La fecha de la refacción es obligatoria.");
+        }
         if (fecha.isAfter(LocalDate.now())) {
-            throw new BusinessException("La fecha de la refacción no puede ser futura.");
+            throw new BusinessException(
+                "La fecha de la refacción no puede ser futura."
+            );
+        }
+    
+        Compra compra = this.compraRepository.findByVehiculoAndActivoTrue(vehiculo)
+            .orElseThrow(() -> new BusinessException(
+                    "No se puede registrar una refacción porque el vehículo no tiene una compra activa."
+            ));
+
+        if (fecha.isBefore(compra.getFechaCompra())) {
+            throw new BusinessException(
+                "La fecha de la refacción no puede ser anterior a la fecha de compra del vehículo."
+            );
         }
     }
 
