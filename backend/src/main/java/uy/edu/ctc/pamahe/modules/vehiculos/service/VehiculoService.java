@@ -14,6 +14,8 @@ import uy.edu.ctc.pamahe.modules.vehiculos.dto.request.CambiarEstadoVehiculoRequ
 import uy.edu.ctc.pamahe.modules.vehiculos.dto.request.CambiarPublicacionVehiculoRequest;
 import uy.edu.ctc.pamahe.modules.vehiculos.dto.request.VehiculoRequest;
 import uy.edu.ctc.pamahe.modules.vehiculos.dto.response.VehiculoResponse;
+import uy.edu.ctc.pamahe.modules.vehiculos.dto.response.VehiculoComercialResponse;
+import uy.edu.ctc.pamahe.modules.vehiculos.dto.response.VehiculoTallerResponse;
 import uy.edu.ctc.pamahe.modules.vehiculos.repository.VehiculoRepository;
 import uy.edu.ctc.pamahe.modules.vehiculos.mapper.VehiculoMapper;
 import uy.edu.ctc.pamahe.modules.vehiculos.model.EstadoVehiculo;
@@ -58,15 +60,74 @@ public class VehiculoService {
     }
 
     @Transactional(readOnly = true)
-    public List<VehiculoResponse> listar() {
-        return this.vehiculoRepository.findByActivoTrueOrderByCreadoEnDesc().stream()
-        .map(VehiculoMapper::toResponse)
-        .toList();
+    public List<?> listar(
+            EstadoVehiculo estado,
+            String marca,
+            String modelo,
+            Integer anioDesde,
+            Integer anioHasta,
+            Boolean publicado)
+    {
+        if (anioDesde != null && anioHasta != null && anioDesde > anioHasta) {
+            throw new BusinessException(
+                "El año desde no puede ser mayor que el año hasta."
+            );
+        }
+
+        String marcaNormalizada = normalizarFiltro(marca);
+        String modeloNormalizado = normalizarFiltro(modelo);
+
+        List<Vehiculo> vehiculos = this.vehiculoRepository.buscarConFiltros(
+                estado,
+                marcaNormalizada,
+                modeloNormalizado,
+                anioDesde,
+                anioHasta,
+                publicado
+        );
+
+        if (SecurityUtils.tieneAlgunRol("ADMINISTRADOR", "DUENO")) {
+            return vehiculos.stream()
+                    .map(VehiculoMapper::toResponse)
+                    .toList();
+        }
+
+        if (SecurityUtils.tieneAlgunRol("VENDEDOR")) {
+            return vehiculos.stream()
+                    .map(VehiculoMapper::toComercialResponse)
+                    .toList();
+        }
+
+        if (SecurityUtils.tieneAlgunRol("TALLER")) {
+            return vehiculos.stream()
+                    .map(VehiculoMapper::toTallerResponse)
+                    .toList();
+        }
+
+        throw new AccessDeniedException(
+                "El rol autenticado no puede consultar vehículos."
+        );
     }
 
     @Transactional(readOnly = true)
-    public VehiculoResponse obtener(Long id) {
-        return VehiculoMapper.toResponse(this.buscarActivoPorId(id));
+    public Object obtener(Long id) {
+        Vehiculo vehiculo = this.buscarActivoPorId(id);
+
+        if (SecurityUtils.tieneAlgunRol("ADMINISTRADOR", "DUENO")) {
+            return VehiculoMapper.toResponse(vehiculo);
+        }
+
+        if (SecurityUtils.tieneAlgunRol("VENDEDOR")) {
+            return VehiculoMapper.toComercialResponse(vehiculo);
+        }
+
+        if (SecurityUtils.tieneAlgunRol("TALLER")) {
+            return VehiculoMapper.toTallerResponse(vehiculo);
+        }
+
+        throw new AccessDeniedException(
+                "El rol autenticado no puede consultar vehículos."
+        );
     }
 
     @Transactional
@@ -289,6 +350,16 @@ public class VehiculoService {
                 + ", precioVentaEstimado=" + vehiculo.getPrecioVentaEstimado()
                 + ", estado=" + vehiculo.getEstado()
                 + ", publicado=" + vehiculo.getPublicado();
+    }
+
+    private String normalizarFiltro(String valor) {
+        if (valor == null) {
+            return null;
+        }
+
+        String limpio = valor.trim();
+
+        return limpio.isEmpty() ? null : limpio;
     }
 
 }

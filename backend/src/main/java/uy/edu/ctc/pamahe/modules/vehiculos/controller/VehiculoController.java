@@ -9,10 +9,14 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import uy.edu.ctc.pamahe.common.response.ApiResponse;
 import uy.edu.ctc.pamahe.modules.vehiculos.dto.request.*;
 import uy.edu.ctc.pamahe.modules.vehiculos.dto.response.VehiculoResponse;
+import uy.edu.ctc.pamahe.modules.vehiculos.dto.response.VehiculoComercialResponse;
+import uy.edu.ctc.pamahe.modules.vehiculos.dto.response.VehiculoTallerResponse;
+import uy.edu.ctc.pamahe.modules.vehiculos.model.EstadoVehiculo;
 import uy.edu.ctc.pamahe.modules.vehiculos.service.*;
 
 import java.util.List;
@@ -28,13 +32,33 @@ public class VehiculoController {
     }
 
     @GetMapping
-    public ApiResponse<List<VehiculoResponse>> listar() {
-        return ApiResponse.ok("Vehículos obtenidos correctamente.", this.vehiculoService.listar());
+    public ApiResponse<List<?>> listar(
+            @RequestParam(required = false) EstadoVehiculo estado,
+            @RequestParam(required = false) String marca,
+            @RequestParam(required = false) String modelo,
+            @RequestParam(required = false) Integer anioDesde,
+            @RequestParam(required = false) Integer anioHasta,
+            @RequestParam(required = false) Boolean publicado
+    ) {
+        return ApiResponse.ok(
+                "Vehículos obtenidos correctamente.",
+                this.vehiculoService.listar(
+                        estado,
+                        marca,
+                        modelo,
+                        anioDesde,
+                        anioHasta,
+                        publicado
+                )
+        );
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<VehiculoResponse> obtener(@PathVariable Long id) {
-        return ApiResponse.ok("Vehículo obtenido correctamente.", this.vehiculoService.obtener(id));
+    public ApiResponse<?> obtener(@PathVariable Long id) {
+        return ApiResponse.ok(
+            "Vehículo obtenido correctamente.",
+            this.vehiculoService.obtener(id)
+        );
     }
 
     @PostMapping
