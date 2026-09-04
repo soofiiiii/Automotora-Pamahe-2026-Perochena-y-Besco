@@ -10,16 +10,14 @@
 	</parent>
 	<groupId>uy.edu.ctc</groupId>
 	<artifactId>pamahe-backend</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0.0</version>
 	<name>pamahe-backend</name>
 	<description>Backend del Sistema Integral de Gestión para Automotora Pamahe</description>
-
 	<properties>
 		<java.version>17</java.version>
 		<twelvemonkeys.version>3.13.1</twelvemonkeys.version>
 		<jacoco.version>0.8.13</jacoco.version>
 	</properties>
-
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -86,10 +84,14 @@
 			<artifactId>imageio-jpeg</artifactId>
 			<version>${twelvemonkeys.version}</version>
 		</dependency>
-
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webmvc-test</artifactId>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
@@ -118,7 +120,6 @@
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
-
 	<build>
 		<plugins>
 			<plugin>
@@ -131,12 +132,16 @@
 				<version>${jacoco.version}</version>
 				<executions>
 					<execution>
-						<goals><goal>prepare-agent</goal></goals>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
 					</execution>
 					<execution>
 						<id>report</id>
 						<phase>verify</phase>
-						<goals><goal>report</goal></goals>
+						<goals>
+							<goal>report</goal>
+						</goals>
 					</execution>
 				</executions>
 			</plugin>

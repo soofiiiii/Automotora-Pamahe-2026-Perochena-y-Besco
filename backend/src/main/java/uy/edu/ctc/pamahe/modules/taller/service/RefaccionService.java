@@ -28,8 +28,10 @@ import uy.edu.ctc.pamahe.modules.compras.model.Compra;
 import uy.edu.ctc.pamahe.modules.compras.repository.CompraRepository;
 
 /**
- * Gestiona trabajos de taller y su impacto en el costo y estado operativo del vehículo.
- * Distingue al usuario que registra del responsable que ejecuta y admite una clave idempotente
+ * Gestiona trabajos de taller y su impacto en el costo y estado operativo del
+ * vehículo.
+ * Distingue al usuario que registra del responsable que ejecuta y admite una
+ * clave idempotente
  * para que la sincronización offline no duplique refacciones al reintentar.
  */
 @Service
@@ -42,11 +44,11 @@ public class RefaccionService {
     private final CompraRepository compraRepository;
 
     public RefaccionService(RefaccionRepository refaccionRepository,
-                            VehiculoService vehiculoService,
-                            UsuarioRepository usuarioRepository,
-                            UsuarioActualService usuarioActualService,
-                            AuditoriaService auditoriaService,
-                            CompraRepository compraRepository) {
+            VehiculoService vehiculoService,
+            UsuarioRepository usuarioRepository,
+            UsuarioActualService usuarioActualService,
+            AuditoriaService auditoriaService,
+            CompraRepository compraRepository) {
         this.refaccionRepository = refaccionRepository;
         this.vehiculoService = vehiculoService;
         this.usuarioRepository = usuarioRepository;
@@ -81,7 +83,8 @@ public class RefaccionService {
     public RefaccionResponse crear(RefaccionRequest request) {
         Usuario usuarioQueRegistra = this.usuarioActualService.exigirRoles("ADMINISTRADOR", "DUENO", "TALLER");
 
-         // El cliente offline reutiliza este identificador en cada reintento de la misma operación.
+        // El cliente offline reutiliza este identificador en cada reintento de la misma
+        // operación.
         String idOffline = this.normalizarOpcional(request.idOperacionOffline());
         if (idOffline != null) {
             var existente = this.refaccionRepository.findByIdOperacionOffline(idOffline);
@@ -90,7 +93,8 @@ public class RefaccionService {
             }
         }
 
-        // El bloqueo evita que una venta o cambio de estado concurrente invalide la refacción en curso.
+        // El bloqueo evita que una venta o cambio de estado concurrente invalide la
+        // refacción en curso.
         Vehiculo vehiculo = this.vehiculoService.buscarActivoPorIdConBloqueo(request.vehiculoId());
         this.validarVehiculoEditable(vehiculo);
         this.validarFecha(vehiculo, request.fecha());
@@ -112,8 +116,7 @@ public class RefaccionService {
                 request.estadoTarea() == null ? EstadoTarea.PENDIENTE : request.estadoTarea(),
                 request.observaciones(),
                 request.registroFotograficoUrl(),
-                Boolean.TRUE.equals(request.sincronizadoDesdeOffline()) || idOffline != null
-        );
+                Boolean.TRUE.equals(request.sincronizadoDesdeOffline()) || idOffline != null);
 
         Refaccion guardada = this.refaccionRepository.save(refaccion);
         this.sincronizarEstadoVehiculoPorTarea(vehiculo, guardada);
@@ -124,8 +127,7 @@ public class RefaccionService {
                 guardada.getId(),
                 "Registro de refacción del vehículo " + vehiculo.getId(),
                 null,
-                this.resumen(guardada)
-        );
+                this.resumen(guardada));
         return RefaccionMapper.toResponse(guardada);
     }
 
@@ -151,8 +153,7 @@ public class RefaccionService {
                 request.estadoTarea(),
                 request.observaciones(),
                 request.registroFotograficoUrl(),
-                refaccion.getSincronizadoDesdeOffline()
-        );
+                refaccion.getSincronizadoDesdeOffline());
         Refaccion guardada = this.refaccionRepository.save(refaccion);
         this.sincronizarEstadoVehiculoPorTarea(vehiculo, guardada);
 
@@ -162,8 +163,7 @@ public class RefaccionService {
                 guardada.getId(),
                 "Actualización de refacción sin reasignar el vehículo",
                 anterior,
-                this.resumen(guardada)
-        );
+                this.resumen(guardada));
         return RefaccionMapper.toResponse(guardada);
     }
 
@@ -176,12 +176,11 @@ public class RefaccionService {
                 || refaccion.getEstadoTarea() == EstadoTarea.EN_CURSO;
         if (tareaAbierta
                 && (vehiculo.getEstado() == EstadoVehiculo.COMPRADO
-                || vehiculo.getEstado() == EstadoVehiculo.DISPONIBLE)) {
+                        || vehiculo.getEstado() == EstadoVehiculo.DISPONIBLE)) {
             this.vehiculoService.cambiarEstadoPorSistema(
                     vehiculo,
                     EstadoVehiculo.EN_TALLER,
-                    "Ingreso automático a taller por la refacción " + refaccion.getId()
-            );
+                    "Ingreso automático a taller por la refacción " + refaccion.getId());
         }
     }
 
@@ -196,7 +195,8 @@ public class RefaccionService {
 
     private void validarVehiculoEditable(Vehiculo vehiculo) {
         if (vehiculo.getEstado() == EstadoVehiculo.VENDIDO) {
-            throw new BusinessException("No se pueden crear ni modificar refacciones después de cerrar la venta del vehículo.");
+            throw new BusinessException(
+                    "No se pueden crear ni modificar refacciones después de cerrar la venta del vehículo.");
         }
         if (vehiculo.getEstado() == EstadoVehiculo.DADO_DE_BAJA) {
             throw new BusinessException("No se pueden crear ni modificar refacciones de un vehículo dado de baja.");
@@ -212,19 +212,16 @@ public class RefaccionService {
         }
         if (fecha.isAfter(LocalDate.now())) {
             throw new BusinessException(
-                "La fecha de la refacción no puede ser futura."
-            );
+                    "La fecha de la refacción no puede ser futura.");
         }
-    
+
         Compra compra = this.compraRepository.findByVehiculoAndActivoTrue(vehiculo)
-            .orElseThrow(() -> new BusinessException(
-                    "No se puede registrar una refacción porque el vehículo no tiene una compra activa."
-            ));
+                .orElseThrow(() -> new BusinessException(
+                        "No se puede registrar una refacción porque el vehículo no tiene una compra activa."));
 
         if (fecha.isBefore(compra.getFechaCompra())) {
             throw new BusinessException(
-                "La fecha de la refacción no puede ser anterior a la fecha de compra del vehículo."
-            );
+                    "La fecha de la refacción no puede ser anterior a la fecha de compra del vehículo.");
         }
     }
 
@@ -233,30 +230,38 @@ public class RefaccionService {
             return null;
         }
         Usuario responsable = this.usuarioRepository.findById(responsableId)
-        .orElseThrow(() -> new ResourceNotFoundException("No se encontró el responsable operativo indicado."));
+                .orElseThrow(() -> new ResourceNotFoundException("No se encontró el responsable operativo indicado."));
         if (!Boolean.TRUE.equals(responsable.getActivo())) {
             throw new BusinessException("El responsable operativo seleccionado se encuentra inactivo.");
+        }
+        boolean rolPermitido = responsable.getRoles().stream()
+                .anyMatch(rol -> rol.getNombre().equals("TALLER")
+                        || rol.getNombre().equals("ADMINISTRADOR")
+                        || rol.getNombre().equals("DUENO"));
+        if (!rolPermitido) {
+            throw new BusinessException("El responsable operativo debe tener rol taller, administrador o dueño.");
         }
         return responsable;
     }
 
-     private void cargarDatos(Refaccion refaccion,
-                              Usuario responsable,
-                              LocalDate fecha,
-                              uy.edu.ctc.pamahe.modules.taller.model.TipoTrabajo tipoTrabajo,
-                              String descripcion,
-                              BigDecimal costoRepuestos,
-                              BigDecimal costoManoObra,
-                              BigDecimal costoServiciosExternos,
-                              EstadoTarea estadoTarea,
-                              String observaciones,
-                              String registroFotograficoUrl,
-                              Boolean sincronizadoDesdeOffline) {
+    private void cargarDatos(Refaccion refaccion,
+            Usuario responsable,
+            LocalDate fecha,
+            uy.edu.ctc.pamahe.modules.taller.model.TipoTrabajo tipoTrabajo,
+            String descripcion,
+            BigDecimal costoRepuestos,
+            BigDecimal costoManoObra,
+            BigDecimal costoServiciosExternos,
+            EstadoTarea estadoTarea,
+            String observaciones,
+            String registroFotograficoUrl,
+            Boolean sincronizadoDesdeOffline) {
         refaccion.setResponsableOperativo(responsable);
         refaccion.setFecha(fecha);
         refaccion.setTipoTrabajo(tipoTrabajo);
         refaccion.setDescripcion(descripcion.trim());
-        // Los costos opcionales se normalizan a cero para que la suma monetaria nunca dependa de null.
+        // Los costos opcionales se normalizan a cero para que la suma monetaria nunca
+        // dependa de null.
         refaccion.setCostoRepuestos(costoRepuestos == null ? BigDecimal.ZERO : costoRepuestos);
         refaccion.setCostoManoObra(costoManoObra == null ? BigDecimal.ZERO : costoManoObra);
         refaccion.setCostoServiciosExternos(costoServiciosExternos == null ? BigDecimal.ZERO : costoServiciosExternos);
@@ -283,12 +288,4 @@ public class RefaccionService {
                 + ", costoTotal=" + refaccion.costoTotal();
     }
 
-
 }
-
-
-
-
-    
-
-

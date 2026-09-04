@@ -13,6 +13,7 @@ import uy.edu.ctc.pamahe.modules.vehiculos.model.Vehiculo;
 public interface ImagenVehiculoRepository extends JpaRepository<ImagenVehiculo, Long> {
     List<ImagenVehiculo> findByVehiculoAndActivoTrueOrderByPrincipalDescIdAsc(Vehiculo vehiculo);
     List<ImagenVehiculo> findByVehiculoAndActivoTrueAndPublicaTrueOrderByPrincipalDescIdAsc(Vehiculo vehiculo);
+    List<ImagenVehiculo> findByVehiculoInAndActivoTrueAndPublicaTrueOrderByPrincipalDescIdAsc(List<Vehiculo> vehiculos);
 
     // La selección de una principal desmarca las demás dentro de la misma transacción.
     @Modifying(flushAutomatically = true)

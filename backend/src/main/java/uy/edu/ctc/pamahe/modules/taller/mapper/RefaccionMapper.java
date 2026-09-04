@@ -30,6 +30,7 @@ public final class RefaccionMapper {
                 refaccion.costoTotal(),
                 refaccion.getEstadoTarea(),
                 refaccion.getObservaciones(),
+                refaccion.getRegistroFotograficoUrl(),
                 refaccion.getSincronizadoDesdeOffline(),
                 refaccion.getIdOperacionOffline()
         );

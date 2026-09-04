@@ -9,11 +9,13 @@ import org.springframework.transaction.annotation.Transactional;
 import uy.edu.ctc.pamahe.common.exception.BusinessException;
 import uy.edu.ctc.pamahe.common.exception.ResourceNotFoundException;
 import uy.edu.ctc.pamahe.common.util.PdfService;
+import uy.edu.ctc.pamahe.common.util.SecurityUtils;
 import uy.edu.ctc.pamahe.modules.auditoria.service.AuditoriaService;
 import uy.edu.ctc.pamahe.modules.clientes.model.Cliente;
 import uy.edu.ctc.pamahe.modules.clientes.model.TipoCliente;
 import uy.edu.ctc.pamahe.modules.clientes.service.ClienteService;
 import uy.edu.ctc.pamahe.modules.compras.dto.request.CompraRequest;
+import uy.edu.ctc.pamahe.modules.compras.dto.response.CompraRegistroResponse;
 import uy.edu.ctc.pamahe.modules.compras.dto.response.CompraResponse;
 import uy.edu.ctc.pamahe.modules.compras.mapper.CompraMapper;
 import uy.edu.ctc.pamahe.modules.compras.model.Compra;
@@ -27,8 +29,10 @@ import uy.edu.ctc.pamahe.modules.vehiculos.service.VehiculoService;
 
 /**
  * Registra el ingreso económico del vehículo y fija su costo inicial.
- * La operación conserva cliente vendedor, usuario autenticado y comprobante en una sola transacción
- * para que el comienzo del ciclo del vehículo quede completo o se revierta en conjunto.
+ * La operación conserva cliente vendedor, usuario autenticado y comprobante en
+ * una sola transacción
+ * para que el comienzo del ciclo del vehículo quede completo o se revierta en
+ * conjunto.
  */
 @Service
 public class CompraService {
@@ -42,12 +46,12 @@ public class CompraService {
     private final AuditoriaService auditoriaService;
 
     public CompraService(CompraRepository compraRepository,
-                         VehiculoService vehiculoService,
-                         VehiculoRepository vehiculoRepository,
-                         ClienteService clienteService,
-                         UsuarioActualService usuarioActualService,
-                         PdfService pdfService,
-                         AuditoriaService auditoriaService) {
+            VehiculoService vehiculoService,
+            VehiculoRepository vehiculoRepository,
+            ClienteService clienteService,
+            UsuarioActualService usuarioActualService,
+            PdfService pdfService,
+            AuditoriaService auditoriaService) {
         this.compraRepository = compraRepository;
         this.vehiculoService = vehiculoService;
         this.vehiculoRepository = vehiculoRepository;
@@ -70,15 +74,17 @@ public class CompraService {
     }
 
     @Transactional
-    public CompraResponse crear(CompraRequest request) {
+    public Object crear(CompraRequest request) {
         Usuario responsable = this.usuarioActualService.exigirRoles("ADMINISTRADOR", "DUENO", "VENDEDOR");
         Vehiculo vehiculo = this.vehiculoService.buscarActivoPorIdConBloqueo(request.vehiculoId());
-        // La relación uno a uno impide reconstruir el origen económico con compras contradictorias.
+        // La relación uno a uno impide reconstruir el origen económico con compras
+        // contradictorias.
         if (this.compraRepository.existsByVehiculo(vehiculo)) {
             throw new BusinessException("El vehículo ya tiene una compra registrada.");
         }
         if (vehiculo.getEstado() != EstadoVehiculo.COMPRADO) {
-            throw new BusinessException("La compra solo puede registrarse cuando el vehículo se encuentra en estado COMPRADO.");
+            throw new BusinessException(
+                    "La compra solo puede registrarse cuando el vehículo se encuentra en estado COMPRADO.");
         }
         if (request.fechaCompra().isAfter(LocalDate.now())) {
             throw new BusinessException("La fecha de compra no puede ser futura.");
@@ -107,12 +113,12 @@ public class CompraService {
         String comprobante = this.pdfService.generarComprobante("COMPRA", List.of(
                 "Compra ID: " + guardada.getId(),
                 "Vehículo: " + vehiculo.getMarca() + " " + vehiculo.getModelo() + " " + vehiculo.getAnio(),
-                "Cliente vendedor: " + clienteVendedor.getNombre() + " " + (clienteVendedor.getApellido() == null ? "" : clienteVendedor.getApellido()),
+                "Cliente vendedor: " + clienteVendedor.getNombre() + " "
+                        + (clienteVendedor.getApellido() == null ? "" : clienteVendedor.getApellido()),
                 "Documento vendedor: " + clienteVendedor.getDocumento(),
                 "Fecha de compra: " + request.fechaCompra(),
                 "Costo de adquisición: " + request.costoAdquisicion(),
-                "Registrado por: " + responsable.getNombre()
-        ));
+                "Registrado por: " + responsable.getNombre()));
         guardada.setComprobantePath(comprobante);
         guardada = this.compraRepository.save(guardada);
 
@@ -125,9 +131,23 @@ public class CompraService {
                 "vehiculoId=" + vehiculo.getId()
                         + ", clienteVendedorId=" + clienteVendedor.getId()
                         + ", costoAdquisicion=" + request.costoAdquisicion()
-                        + ", fechaCompra=" + request.fechaCompra()
-        );
-        return CompraMapper.toResponse(guardada);
+                        + ", fechaCompra=" + request.fechaCompra());
+        if (SecurityUtils.tieneAlgunRol("ADMINISTRADOR", "DUENO")) {
+            return CompraMapper.toResponse(guardada);
+        }
+
+        String vehiculoNombre = (vehiculo.getMarca() + " " + vehiculo.getModelo() + " " + vehiculo.getAnio()).trim();
+        String clienteNombre = (clienteVendedor.getNombre() + " "
+                + (clienteVendedor.getApellido() == null ? "" : clienteVendedor.getApellido())).trim();
+        return new CompraRegistroResponse(
+                guardada.getId(),
+                vehiculo.getId(),
+                vehiculoNombre,
+                clienteVendedor.getId(),
+                clienteNombre,
+                responsable.getId(),
+                responsable.getNombre(),
+                guardada.getFechaCompra());
     }
 
     @Transactional(readOnly = true)
