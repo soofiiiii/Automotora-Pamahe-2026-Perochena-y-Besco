@@ -1,13 +1,40 @@
 <!doctype html>
-<html lang="en">
+<html lang="es-UY">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    <meta name="theme-color" content="#17191d" />
+    <meta name="color-scheme" content="light" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta
+      name="description"
+      content="Automotora Pamahe - catálogo de vehículos usados y sistema interno de gestión."
+    />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <title>Automotora Pamahe</title>
   </head>
   <body>
+    <noscript>
+      <div
+        style="
+          font-family: system-ui, sans-serif;
+          text-align: center;
+          padding: 3rem 1rem;
+          background-color: #17191d;
+          color: #ffffff;
+          min-height: 100vh;
+        "
+      >
+        <h2 style="margin-bottom: 0.5rem">JavaScript desactivado</h2>
+        <p style="color: #a0aec0">
+          Necesitás habilitar JavaScript para utilizar la plataforma de
+          Automotora Pamahe.
+        </p>
+      </div>
+    </noscript>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="/src/app/main.tsx"></script>
   </body>
 </html>

@@ -96,9 +96,16 @@ public class Securityconfig {
 
                         .requestMatchers("/taller/**")
                         .hasAnyRole("ADMINISTRADOR", "DUENO", "TALLER")
+
+                        // El costo de adquisición y el comprobante de compra son información financiera sensible.
+                        .requestMatchers(HttpMethod.GET, "/compras/**")
+                        .hasAnyRole("ADMINISTRADOR", "DUENO")
+                        .requestMatchers(HttpMethod.POST, "/compras")
+                        .hasAnyRole("ADMINISTRADOR", "DUENO", "VENDEDOR")
+                        
                         .requestMatchers(HttpMethod.GET, "/ventas/*/detalle-gerencial")
                         .hasAnyRole("ADMINISTRADOR", "DUENO")
-                        .requestMatchers("/compras/**", "/ventas/**", "/clientes/**")
+                        .requestMatchers("/ventas/**", "/clientes/**")
                         .hasAnyRole("ADMINISTRADOR", "DUENO", "VENDEDOR")
 
                         .anyRequest().authenticated()

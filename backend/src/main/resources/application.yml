@@ -14,6 +14,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
+    open-in-view: false
     hibernate:
       # Flyway es la única fuente de cambios del esquema; Hibernate solo verifica su coherencia.
       ddl-auto: validate

@@ -15,6 +15,7 @@ public interface RefaccionRepository extends JpaRepository<Refaccion, Long> {
     List<Refaccion> findByVehiculoAndActivoTrueOrderByFechaDesc(Vehiculo vehiculo);
     List<Refaccion> findByVehiculoAndActivoTrueAndEstadoTareaNotOrderByFechaDesc(Vehiculo vehiculo, EstadoTarea estadoTarea);
     List<Refaccion> findByEstadoTareaAndActivoTrueOrderByFechaAsc(EstadoTarea estadoTarea);
+    boolean existsByVehiculo(Vehiculo vehiculo);
     boolean existsByVehiculoAndActivoTrueAndEstadoTareaIn(Vehiculo vehiculo, Collection<EstadoTarea> estados);
     // Permite reconocer un reintento antes de crear una segunda refacción con el mismo origen offline.
     Optional<Refaccion> findByIdOperacionOffline(String idOperacionOffline);

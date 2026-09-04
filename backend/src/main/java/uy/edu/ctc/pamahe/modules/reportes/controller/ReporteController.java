@@ -1,8 +1,8 @@
 package uy.edu.ctc.pamahe.modules.reportes.controller;
 
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import java.time.LocalDate;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.bind.annotation.*;
 
 import uy.edu.ctc.pamahe.common.response.ApiResponse;
 import uy.edu.ctc.pamahe.modules.reportes.dto.response.DashboardResponse;
@@ -12,11 +12,15 @@ import uy.edu.ctc.pamahe.modules.reportes.service.ReporteService;
 @RequestMapping("/reportes")
 public class ReporteController {
     private final ReporteService reporteService;
-    public ReporteController(ReporteService reporteService) { this.reporteService = reporteService; }
+
+    public ReporteController(ReporteService reporteService) {
+        this.reporteService = reporteService;
+    }
 
     @GetMapping("/dashboard")
-    public ApiResponse<DashboardResponse> dashboard() {
-        return ApiResponse.ok("Dashboard obtenido correctamente.", this.reporteService.dashboard());
+    public ApiResponse<DashboardResponse> dashboard(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+        return ApiResponse.ok("Dashboard obtenido correctamente.", this.reporteService.dashboard(desde, hasta));
     }
 }
-

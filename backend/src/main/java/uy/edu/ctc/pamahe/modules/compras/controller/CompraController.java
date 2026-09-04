@@ -43,7 +43,7 @@ public class CompraController {
     }
 
     @PostMapping
-    public ApiResponse<CompraResponse> crear(@Valid @RequestBody CompraRequest request) {
+    public ApiResponse<?> crear(@Valid @RequestBody CompraRequest request) {
         return ApiResponse.ok("Compra registrada correctamente.", this.compraService.crear(request));
     }
 

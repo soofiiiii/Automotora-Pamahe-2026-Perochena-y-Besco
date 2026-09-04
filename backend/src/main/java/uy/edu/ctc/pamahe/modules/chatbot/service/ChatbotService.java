@@ -12,344 +12,322 @@ import uy.edu.ctc.pamahe.modules.chatbot.model.ChatbotIntent;
 
 /**
  * Implementa asistencia básica mediante intenciones y respuestas controladas.
- * Se eligió este enfoque porque mantiene el alcance informativo del catálogo y evita que el asistente invente precios,
- * disponibilidad, condiciones comerciales o decisiones que corresponden al personal de Pamahe.
+ * Se eligió este enfoque porque mantiene el alcance informativo del catálogo y
+ * evita que el asistente invente precios,
+ * disponibilidad, condiciones comerciales o decisiones que corresponden al
+ * personal de Pamahe.
  */
 @Service
 public class ChatbotService {
-    
-    private static final Pattern DIACRITICOS = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
-    
-    private final ParametroRepository parametroRepository;
 
-    public ChatbotService(ParametroRepository parametroRepository) {
-        this.parametroRepository = parametroRepository;
-    }
+        private static final Pattern DIACRITICOS = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
 
-    public ChatbotResponse responder(ChatbotRequest request) {
-        // La normalización permite comparar expresiones equivalentes sin depender de tildes o mayúsculas.
-        String preguntaNormalizada = normalizar(request.pregunta());
-        ChatbotIntent intencion = detectarIntencion(preguntaNormalizada);
+        private final ParametroRepository parametroRepository;
 
-        return construirRespuesta(intencion);
-    }
-
-    private ChatbotIntent detectarIntencion(String pregunta) {
-        
-        if(contiene(pregunta, "gracias", "muchas gracias", "te agradezco")) {
-            return ChatbotIntent.AGRADECIMIENTO;
+        public ChatbotService(ParametroRepository parametroRepository) {
+                this.parametroRepository = parametroRepository;
         }
 
-        if (contiene(pregunta, "chau", "adios", "hasta luego", "nos vemos")) {
-            return ChatbotIntent.DESPEDIDA;
+        public ChatbotResponse responder(ChatbotRequest request) {
+                // La normalización permite comparar expresiones equivalentes sin depender de
+                // tildes o mayúsculas.
+                String preguntaNormalizada = normalizar(request.pregunta());
+                ChatbotIntent intencion = detectarIntencion(preguntaNormalizada);
+
+                return construirRespuesta(intencion);
         }
 
-        if (contiene(pregunta, "horario", "horarios", "abren", "cierran", "a que hora", "sabado", "domingo")) {
-            return ChatbotIntent.HORARIO;
-        }
+        private ChatbotIntent detectarIntencion(String pregunta) {
 
-        if (contiene(pregunta, "ubicacion", "direccion", "donde estan", "donde queda", "local", "juan lacaze", "colonia")) {
-            return ChatbotIntent.UBICACION;
-        }
-
-        if (contiene(pregunta, "contacto", "whatsapp", "telefono", "llamar", "mensaje", "correo", "email")) {
-            return ChatbotIntent.CONTACTO;
-        }
-
-        if (contiene(pregunta, "financiacion", "financiar", "cuotas", "credito", "prestamo", "entrega")) {
-            return ChatbotIntent.FINANCIACION;
-        }
-
-        if (contiene(pregunta, "disponible", "disponibles", "stock", "hay algun", "tienen algun", "queda algun")) {
-            return ChatbotIntent.DISPONIBILIDAD;
-        }
-
-        if (contiene(pregunta, "catalogo", "vehiculos", "autos", "camionetas", "unidades", "ver autos", "ver vehiculos")) {
-            return ChatbotIntent.CATALOGO;
-        }
-
-        if (contiene(pregunta, "precio", "cuanto sale", "valor", "costo", "barato", "economico")) {
-            return ChatbotIntent.PRECIO;
-        }
-
-        if (contiene(pregunta, "kilometros", "kilometraje", "marca", "modelo", "año", "ano", "motor", "estado", "caracteristicas")) {
-            return ChatbotIntent.CARACTERISTICAS;
-        }
-
-        if (contiene(pregunta, "vender mi auto", "vendo mi auto", "compran autos", "compran vehiculos", "toman vehiculos", "permuta")) {
-            return ChatbotIntent.VENDER_VEHICULO;
-        }
-
-        if (contiene(pregunta, "reservar", "reserva", "seña", "sena", "apartarlo", "se puede apartar")) {
-            return ChatbotIntent.RESERVA;
-        }
-
-        if (contiene(pregunta, "documentacion", "documentos", "comprobante", "papeles", "factura", "contrato")) {
-            return ChatbotIntent.DOCUMENTACION;
-        }
-
-        if (contiene(pregunta, "dgi", "sucive", "banco", "transferencia", "seguro", "aseguradora", "tramite legal")) {
-            return ChatbotIntent.FUERA_DE_ALCANCE;
-        }
-
-        if (contiene(pregunta, "hola", "buenas", "buen dia", "buenas tardes", "buenas noches")) {
-            return ChatbotIntent.SALUDO;
-        }
-
-        return ChatbotIntent.DESCONOCIDA;
-    }
-
-    private ChatbotResponse construirRespuesta(ChatbotIntent intencion) {
-        return switch (intencion) {
-
-            case SALUDO -> new ChatbotResponse(
-                "¡Hola! Soy el asistente virtual de Automotora Pamahe. Puedo ayudarte con consultas sobre vehículos, catálogo, ubicación, horarios y medios de contacto.",
-                intencion.name(),
-                List.of(
-                    "Ver vehículos disponibles",
-                    "Saber ubicación"
-                )
-            );
-
-            case HORARIO -> new ChatbotResponse(
-                    "Nuestro horario de atención es de lunes a viernes de 9:00 a 12:00 y de 14:30 a 19:30. Los sábados atendemos de 10:00 a 13:30. Los domingos no contamos con atención al público.",
-                    intencion.name(),
-                    List.of(
-                            "Ver medios de contacto",
-                            "Consultar ubicación",
-                            "Ver catálogo"
-                    )
-            );
-
-            case UBICACION -> new ChatbotResponse(
-                    "Automotora Pamahe se encuentra en Juan Lacaze, departamento de Colonia.",
-                    intencion.name(),
-                    List.of(
-                            "Ver medios de contacto",
-                            "Consultar horarios",
-                            "Ver vehículos disponibles"
-                    )
-            );
-
-            case CONTACTO -> {
-                String whatsapp = obtenerWhatsApp();
-                String telefono = obtenerTelefono();
-
-                String mensajeContacto;
-
-                if (!whatsapp.isBlank() && !telefono.isBlank()) {
-                    mensajeContacto =
-                            "Podés comunicarte con Automotora Pamahe por WhatsApp al "
-                                    + whatsapp
-                                    + " o por teléfono al "
-                                    + telefono
-                                    + ". Si consultás por un vehículo específico, "
-                                    + "te recomendamos mencionar la marca, modelo o "
-                                    + "publicación para que la atención sea más directa.";
-                } else if (!whatsapp.isBlank()) {
-                    mensajeContacto =
-                            "Podés comunicarte con Automotora Pamahe por WhatsApp al "
-                                    + whatsapp
-                                    + ". Si consultás por un vehículo específico, "
-                                    + "te recomendamos mencionar la marca, modelo o "
-                                    + "publicación para que la atención sea más directa.";
-                } else if (!telefono.isBlank()) {
-                    mensajeContacto =
-                            "Podés comunicarte con Automotora Pamahe por teléfono al "
-                                    + telefono
-                                    + ". Si consultás por un vehículo específico, "
-                                    + "te recomendamos mencionar la marca, modelo o "
-                                    + "publicación para que la atención sea más directa.";
-                } else {
-                    mensajeContacto =
-                            "Podés comunicarte directamente con Automotora Pamahe "
-                                    + "para realizar tu consulta.";
+                if (contiene(pregunta, "gracias", "muchas gracias", "te agradezco")) {
+                        return ChatbotIntent.AGRADECIMIENTO;
                 }
 
-                List<String> sugerencias;
-
-                if (!whatsapp.isBlank() && !telefono.isBlank()) {
-                    sugerencias = List.of(
-                            "Enviar WhatsApp al " + whatsapp,
-                            "Llamar al " + telefono,
-                            "Ver catálogo"
-                    );
-                } else if (!whatsapp.isBlank()) {
-                    sugerencias = List.of(
-                            "Enviar WhatsApp al " + whatsapp,
-                            "Ver catálogo"
-                    );
-                } else if (!telefono.isBlank()) {
-                    sugerencias = List.of(
-                            "Llamar al " + telefono,
-                            "Ver catálogo"
-                    );
-                } else {
-                    sugerencias = List.of(
-                            "Ver catálogo"
-                    );
+                if (contiene(pregunta, "chau", "adios", "hasta luego", "nos vemos")) {
+                        return ChatbotIntent.DESPEDIDA;
                 }
 
-                yield new ChatbotResponse(
-                        mensajeContacto,
-                        intencion.name(),
-                        sugerencias
-                );
-            }
+                if (contiene(pregunta, "horario", "horarios", "abren", "cierran", "a que hora", "sabado", "domingo")) {
+                        return ChatbotIntent.HORARIO;
+                }
 
-            case FINANCIACION -> new ChatbotResponse(
-                    "La automotora puede ofrecer modalidades de financiación según cada operación y el vehículo de interés. Como las condiciones pueden variar, te recomendamos consultar directamente por la unidad que te interesa.",
-                    intencion.name(),
-                    List.of(
-                            "Ver vehículos disponibles",
-                            "Consultar medios de contacto",
-                            "Preguntar por requisitos"
-                    )
-            );
+                if (contiene(pregunta, "ubicacion", "direccion", "donde estan", "donde queda", "local", "juan lacaze",
+                                "colonia")) {
+                        return ChatbotIntent.UBICACION;
+                }
 
-            case CATALOGO -> new ChatbotResponse(
-                    "Podés consultar el catálogo público para ver los vehículos disponibles. Allí se muestra la información comercial habilitada, como marca, modelo, año, precio, fotografías y medios de contacto.",
-                    intencion.name(),
-                    List.of(
-                            "Buscar por marca",
-                            "Buscar por precio",
-                            "Consultar disponibilidad"
-                    )
-            );
+                if (contiene(pregunta, "contacto", "whatsapp", "telefono", "llamar", "mensaje", "correo", "email")) {
+                        return ChatbotIntent.CONTACTO;
+                }
 
-            case DISPONIBILIDAD -> new ChatbotResponse(
-                    "Para consultar disponibilidad, revisá el catálogo público de vehículos. En esta primera versión todavía no consulto el stock en tiempo real desde el chatbot, pero puedo orientarte para que encuentres la información correcta.",
-                    intencion.name(),
-                    List.of(
-                            "Ver catálogo",
-                            "Consultar por precio",
-                            "Contactar con la automotora"
-                    )
-            );
+                if (contiene(pregunta, "financiacion", "financiar", "cuotas", "credito", "prestamo", "entrega")) {
+                        return ChatbotIntent.FINANCIACION;
+                }
 
-            case PRECIO -> new ChatbotResponse(
-                    "Los precios se consultan en la ficha de cada vehículo publicado. Si tenés una marca, modelo o rango de precio en mente, podés buscarlo desde el catálogo o comunicarte con la automotora para recibir orientación.",
-                    intencion.name(),
-                    List.of(
-                            "Ver vehículos económicos",
-                            "Contactar por un vehículo"
-                    )
-            );
+                if (contiene(pregunta, "disponible", "disponibles", "stock", "hay algun", "tienen algun",
+                                "queda algun")) {
+                        return ChatbotIntent.DISPONIBILIDAD;
+                }
 
-            case CARACTERISTICAS -> new ChatbotResponse(
-                    "En la ficha de cada vehículo se podrá consultar información comercial como marca, modelo, año, fotografías, precio y características principales. Para datos más específicos, conviene consultar directamente por la unidad de interés.",
-                    intencion.name(),
-                    List.of(
-                            "Ver ficha del vehículo",
-                            "Consultar disponibilidad",
-                            "Contactar con la automotora"
-                    )
-            );
+                if (contiene(pregunta, "catalogo", "vehiculos", "autos", "camionetas", "unidades", "ver autos",
+                                "ver vehiculos")) {
+                        return ChatbotIntent.CATALOGO;
+                }
 
-            case VENDER_VEHICULO -> new ChatbotResponse(
-                    "Si querés vender tu vehículo o consultar si la automotora lo puede tomar como parte de una operación, lo recomendable es comunicarte directamente y brindar datos básicos como marca, modelo, año, estado general y documentación disponible.",
-                    intencion.name(),
-                    List.of(
-                            "Ver medios de contacto",
-                            "Consultar documentación",
-                            "Consultar ubicación"
-                    )
-            );
+                if (contiene(pregunta, "precio", "cuanto sale", "valor", "costo", "barato", "economico")) {
+                        return ChatbotIntent.PRECIO;
+                }
 
-            case RESERVA -> new ChatbotResponse(
-                    "En esta primera versión, el sistema no realiza reservas automáticas ni pagos en línea. Si te interesa un vehículo, podés comunicarte con la automotora para consultar disponibilidad y condiciones.",
-                    intencion.name(),
-                    List.of(
-                            "Contactar con la automotora",
-                            "Ver catálogo"
-                    )
-            );
+                if (contiene(pregunta, "kilometros", "kilometraje", "marca", "modelo", "año", "ano", "motor", "estado",
+                                "caracteristicas")) {
+                        return ChatbotIntent.CARACTERISTICAS;
+                }
 
-            case DOCUMENTACION -> new ChatbotResponse(
-                    "La documentación necesaria puede variar según la operación. Para compras, ventas o consultas sobre comprobantes, te recomendamos comunicarte directamente con la automotora para recibir orientación específica.",
-                    intencion.name(),
-                    List.of(
-                            "Ver medios de contacto",
-                            "Consultar por venta de vehículo"
-                    )
-            );
+                if (contiene(pregunta, "vender mi auto", "vendo mi auto", "compran autos", "compran vehiculos",
+                                "toman vehiculos", "permuta")) {
+                        return ChatbotIntent.VENDER_VEHICULO;
+                }
 
-            case AGRADECIMIENTO -> new ChatbotResponse(
-                    "¡De nada! Si necesitás otra consulta sobre vehículos, ubicación o contacto, estoy para ayudarte.",
-                    intencion.name(),
-                    List.of(
-                            "Ver catálogo",
-                            "Consultar ubicación",
-                            "Consultar contacto"
-                    )
-            );
+                if (contiene(pregunta, "reservar", "reserva", "seña", "sena", "apartarlo", "se puede apartar")) {
+                        return ChatbotIntent.RESERVA;
+                }
 
-            case DESPEDIDA -> new ChatbotResponse(
-                    "¡Hasta luego! Cuando quieras consultar por vehículos o información de Automotora Pamahe, podés volver a escribirme.",
-                    intencion.name(),
-                    List.of(
-                            "Volver al inicio",
-                            "Ver catálogo"
-                    )
-            );
+                if (contiene(pregunta, "documentacion", "documentos", "comprobante", "papeles", "factura",
+                                "contrato")) {
+                        return ChatbotIntent.DOCUMENTACION;
+                }
 
-            case FUERA_DE_ALCANCE -> new ChatbotResponse(
-                    "Esa consulta puede depender de organismos, trámites o servicios externos. En esta versión puedo orientarte sobre información comercial básica, catálogo, ubicación y contacto de la automotora.",
-                    intencion.name(),
-                    List.of(
-                            "Consultar contacto",
-                            "Ver catálogo"
-                    )
-            );
+                if (contiene(pregunta, "dgi", "sucive", "banco", "transferencia", "seguro", "aseguradora",
+                                "tramite legal")) {
+                        return ChatbotIntent.FUERA_DE_ALCANCE;
+                }
 
-            case DESCONOCIDA -> new ChatbotResponse(
-                    "No estoy completamente seguro de haber entendido la consulta. Por ahora puedo ayudarte con vehículos disponibles, catálogo, ubicación, horarios y medios de contacto.",
-                    intencion.name(),
-                    List.of(
-                            "Ver vehículos disponibles",
-                            "Ver ubicación",
-                            "Contactar con la automotora"
-                    )
-            );
-        };
-    }
+                if (contiene(pregunta, "hola", "buenas", "buen dia", "buenas tardes", "buenas noches")) {
+                        return ChatbotIntent.SALUDO;
+                }
 
-    /**
-     * Obtiene un parámetro de contacto activo desde la tabla de parámetros.
-     * De esta manera, el chatbot no mantiene números telefónicos hardcodeados.
-     */
-    private String obtenerParametroContacto(String clave) {
-        return this.parametroRepository
-                .findByCategoriaAndClaveAndActivoTrue("CONTACTO", clave)
-                .map(parametro -> parametro.getValor())
-                .orElse("");
-    }
-
-    private String obtenerWhatsApp() {
-        return obtenerParametroContacto("WHATSAPP");
-    }
-
-    private String obtenerTelefono() {
-        return obtenerParametroContacto("TELEFONO");
-    }
-
-    private boolean contiene(String texto, String... palabrasClave) {
-        for (String palabra : palabrasClave) {
-            if (texto.contains(palabra)) {
-                return true;
-            }
+                return ChatbotIntent.DESCONOCIDA;
         }
-        return false;
-    }
 
-    private String normalizar(String texto) {
-        String textoNormalizado = Normalizer.normalize(texto, Normalizer.Form.NFD);
+        private ChatbotResponse construirRespuesta(ChatbotIntent intencion) {
+                return switch (intencion) {
 
-        return DIACRITICOS.matcher(textoNormalizado)
-                .replaceAll("")
-                .toLowerCase(Locale.ROOT)
-                .replaceAll("[^a-z0-9ñ\\s]", " ")
-                .replaceAll("\\s+", " ")
-                .trim();
-    }
+                        case SALUDO -> new ChatbotResponse(
+                                        "¡Hola! Soy el asistente virtual de Automotora Pamahe. Puedo ayudarte con consultas sobre vehículos, catálogo, ubicación, horarios y medios de contacto.",
+                                        intencion.name(),
+                                        List.of(
+                                                        "Ver vehículos disponibles",
+                                                        "Saber ubicación"));
+
+                        case HORARIO -> new ChatbotResponse(
+                                        obtenerHorario(),
+                                        intencion.name(),
+                                        List.of(
+                                                        "Ver medios de contacto",
+                                                        "Consultar ubicación",
+                                                        "Ver catálogo"));
+
+                        case UBICACION -> new ChatbotResponse(
+                                        "Automotora Pamahe se encuentra en Juan Lacaze, departamento de Colonia.",
+                                        intencion.name(),
+                                        List.of(
+                                                        "Ver medios de contacto",
+                                                        "Consultar horarios",
+                                                        "Ver vehículos disponibles"));
+
+                        case CONTACTO -> {
+                                String whatsapp = obtenerWhatsApp();
+                                String telefono = obtenerTelefono();
+
+                                String mensajeContacto;
+
+                                if (!whatsapp.isBlank() && !telefono.isBlank()) {
+                                        mensajeContacto = "Podés comunicarte con Automotora Pamahe por WhatsApp al "
+                                                        + whatsapp
+                                                        + " o por teléfono al "
+                                                        + telefono
+                                                        + ". Si consultás por un vehículo específico, "
+                                                        + "te recomendamos mencionar la marca, modelo o "
+                                                        + "publicación para que la atención sea más directa.";
+                                } else if (!whatsapp.isBlank()) {
+                                        mensajeContacto = "Podés comunicarte con Automotora Pamahe por WhatsApp al "
+                                                        + whatsapp
+                                                        + ". Si consultás por un vehículo específico, "
+                                                        + "te recomendamos mencionar la marca, modelo o "
+                                                        + "publicación para que la atención sea más directa.";
+                                } else if (!telefono.isBlank()) {
+                                        mensajeContacto = "Podés comunicarte con Automotora Pamahe por teléfono al "
+                                                        + telefono
+                                                        + ". Si consultás por un vehículo específico, "
+                                                        + "te recomendamos mencionar la marca, modelo o "
+                                                        + "publicación para que la atención sea más directa.";
+                                } else {
+                                        mensajeContacto = "Podés comunicarte directamente con Automotora Pamahe "
+                                                        + "para realizar tu consulta.";
+                                }
+
+                                List<String> sugerencias;
+
+                                if (!whatsapp.isBlank() && !telefono.isBlank()) {
+                                        sugerencias = List.of(
+                                                        "Enviar WhatsApp al " + whatsapp,
+                                                        "Llamar al " + telefono,
+                                                        "Ver catálogo");
+                                } else if (!whatsapp.isBlank()) {
+                                        sugerencias = List.of(
+                                                        "Enviar WhatsApp al " + whatsapp,
+                                                        "Ver catálogo");
+                                } else if (!telefono.isBlank()) {
+                                        sugerencias = List.of(
+                                                        "Llamar al " + telefono,
+                                                        "Ver catálogo");
+                                } else {
+                                        sugerencias = List.of(
+                                                        "Ver catálogo");
+                                }
+
+                                yield new ChatbotResponse(
+                                                mensajeContacto,
+                                                intencion.name(),
+                                                sugerencias);
+                        }
+
+                        case FINANCIACION -> new ChatbotResponse(
+                                        "La automotora puede ofrecer modalidades de financiación según cada operación y el vehículo de interés. Como las condiciones pueden variar, te recomendamos consultar directamente por la unidad que te interesa.",
+                                        intencion.name(),
+                                        List.of(
+                                                        "Ver vehículos disponibles",
+                                                        "Consultar medios de contacto",
+                                                        "Preguntar por requisitos"));
+
+                        case CATALOGO -> new ChatbotResponse(
+                                        "Podés consultar el catálogo público para ver los vehículos disponibles. Allí se muestra la información comercial habilitada, como marca, modelo, año, precio, fotografías y medios de contacto.",
+                                        intencion.name(),
+                                        List.of(
+                                                        "Buscar por marca",
+                                                        "Buscar por precio",
+                                                        "Consultar disponibilidad"));
+
+                        case DISPONIBILIDAD -> new ChatbotResponse(
+                                        "Para consultar disponibilidad, revisá el catálogo público de vehículos. En esta primera versión todavía no consulto el stock en tiempo real desde el chatbot, pero puedo orientarte para que encuentres la información correcta.",
+                                        intencion.name(),
+                                        List.of(
+                                                        "Ver catálogo",
+                                                        "Consultar por precio",
+                                                        "Contactar con la automotora"));
+
+                        case PRECIO -> new ChatbotResponse(
+                                        "Los precios se consultan en la ficha de cada vehículo publicado. Si tenés una marca, modelo o rango de precio en mente, podés buscarlo desde el catálogo o comunicarte con la automotora para recibir orientación.",
+                                        intencion.name(),
+                                        List.of(
+                                                        "Ver vehículos económicos",
+                                                        "Contactar por un vehículo"));
+
+                        case CARACTERISTICAS -> new ChatbotResponse(
+                                        "En la ficha de cada vehículo se podrá consultar información comercial como marca, modelo, año, fotografías, precio y características principales. Para datos más específicos, conviene consultar directamente por la unidad de interés.",
+                                        intencion.name(),
+                                        List.of(
+                                                        "Ver ficha del vehículo",
+                                                        "Consultar disponibilidad",
+                                                        "Contactar con la automotora"));
+
+                        case VENDER_VEHICULO -> new ChatbotResponse(
+                                        "Si querés vender tu vehículo o consultar si la automotora lo puede tomar como parte de una operación, lo recomendable es comunicarte directamente y brindar datos básicos como marca, modelo, año, estado general y documentación disponible.",
+                                        intencion.name(),
+                                        List.of(
+                                                        "Ver medios de contacto",
+                                                        "Consultar documentación",
+                                                        "Consultar ubicación"));
+
+                        case RESERVA -> new ChatbotResponse(
+                                        "En esta primera versión, el sistema no realiza reservas automáticas ni pagos en línea. Si te interesa un vehículo, podés comunicarte con la automotora para consultar disponibilidad y condiciones.",
+                                        intencion.name(),
+                                        List.of(
+                                                        "Contactar con la automotora",
+                                                        "Ver catálogo"));
+
+                        case DOCUMENTACION -> new ChatbotResponse(
+                                        "La documentación necesaria puede variar según la operación. Para compras, ventas o consultas sobre comprobantes, te recomendamos comunicarte directamente con la automotora para recibir orientación específica.",
+                                        intencion.name(),
+                                        List.of(
+                                                        "Ver medios de contacto",
+                                                        "Consultar por venta de vehículo"));
+
+                        case AGRADECIMIENTO -> new ChatbotResponse(
+                                        "¡De nada! Si necesitás otra consulta sobre vehículos, ubicación o contacto, estoy para ayudarte.",
+                                        intencion.name(),
+                                        List.of(
+                                                        "Ver catálogo",
+                                                        "Consultar ubicación",
+                                                        "Consultar contacto"));
+
+                        case DESPEDIDA -> new ChatbotResponse(
+                                        "¡Hasta luego! Cuando quieras consultar por vehículos o información de Automotora Pamahe, podés volver a escribirme.",
+                                        intencion.name(),
+                                        List.of(
+                                                        "Volver al inicio",
+                                                        "Ver catálogo"));
+
+                        case FUERA_DE_ALCANCE -> new ChatbotResponse(
+                                        "Esa consulta puede depender de organismos, trámites o servicios externos. En esta versión puedo orientarte sobre información comercial básica, catálogo, ubicación y contacto de la automotora.",
+                                        intencion.name(),
+                                        List.of(
+                                                        "Consultar contacto",
+                                                        "Ver catálogo"));
+
+                        case DESCONOCIDA -> new ChatbotResponse(
+                                        "No estoy completamente seguro de haber entendido la consulta. Por ahora puedo ayudarte con vehículos disponibles, catálogo, ubicación, horarios y medios de contacto.",
+                                        intencion.name(),
+                                        List.of(
+                                                        "Ver vehículos disponibles",
+                                                        "Ver ubicación",
+                                                        "Contactar con la automotora"));
+                };
+        }
+
+        /**
+         * Obtiene un parámetro de contacto activo desde la tabla de parámetros.
+         * De esta manera, el chatbot no mantiene números telefónicos hardcodeados.
+         */
+        private String obtenerParametroContacto(String clave) {
+                return this.parametroRepository
+                                .findByCategoriaAndClaveAndActivoTrue("CONTACTO", clave)
+                                .map(parametro -> parametro.getValor())
+                                .orElse("");
+        }
+
+        private String obtenerWhatsApp() {
+                return obtenerParametroContacto("WHATSAPP");
+        }
+
+        private String obtenerTelefono() {
+                return obtenerParametroContacto("TELEFONO");
+        }
+
+        private String obtenerHorario() {
+                String horario = obtenerParametroContacto("HORARIO");
+                return horario.isBlank()
+                ? "Consultá los horarios de atención directamente con Automotora Pamahe."
+                : horario;
+        }
+
+        private boolean contiene(String texto, String... palabrasClave) {
+                for (String palabra : palabrasClave) {
+                        if (texto.contains(palabra)) {
+                                return true;
+                        }
+                }
+                return false;
+        }
+
+        private String normalizar(String texto) {
+                String textoNormalizado = Normalizer.normalize(texto, Normalizer.Form.NFD);
+
+                return DIACRITICOS.matcher(textoNormalizado)
+                                .replaceAll("")
+                                .toLowerCase(Locale.ROOT)
+                                .replaceAll("[^a-z0-9ñ\\s]", " ")
+                                .replaceAll("\\s+", " ")
+                                .trim();
+        }
 }

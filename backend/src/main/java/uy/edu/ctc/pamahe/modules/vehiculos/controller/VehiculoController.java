@@ -13,9 +13,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import uy.edu.ctc.pamahe.common.response.ApiResponse;
 import uy.edu.ctc.pamahe.modules.vehiculos.dto.request.*;
-import uy.edu.ctc.pamahe.modules.vehiculos.dto.response.VehiculoResponse;
-import uy.edu.ctc.pamahe.modules.vehiculos.dto.response.VehiculoComercialResponse;
-import uy.edu.ctc.pamahe.modules.vehiculos.dto.response.VehiculoTallerResponse;
 import uy.edu.ctc.pamahe.modules.vehiculos.model.EstadoVehiculo;
 import uy.edu.ctc.pamahe.modules.vehiculos.service.*;
 
@@ -53,6 +50,11 @@ public class VehiculoController {
         );
     }
 
+    @GetMapping("/{id}/historial")
+    public ApiResponse<?> historial(@PathVariable Long id) {
+        return ApiResponse.ok("Historial del vehículo obtenido correctamente.", this.vehiculoService.historial(id));
+    }
+
     @GetMapping("/{id}")
     public ApiResponse<?> obtener(@PathVariable Long id) {
         return ApiResponse.ok(
@@ -62,24 +64,24 @@ public class VehiculoController {
     }
 
     @PostMapping
-    public ApiResponse<VehiculoResponse> crear(@Valid @RequestBody VehiculoRequest request) {
+    public ApiResponse<?> crear(@Valid @RequestBody VehiculoRequest request) {
         return ApiResponse.ok("Vehículo creado correctamente.", this.vehiculoService.crear(request));
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<VehiculoResponse> actualizar(@PathVariable Long id,
+    public ApiResponse<?> actualizar(@PathVariable Long id,
                                                     @Valid @RequestBody VehiculoRequest request) {
         return ApiResponse.ok("Vehículo actualizado correctamente.", this.vehiculoService.actualizar(id, request));
     }
 
     @PatchMapping("/{id}/estado")
-    public ApiResponse<VehiculoResponse> cambiarEstado(@PathVariable Long id,
+    public ApiResponse<?> cambiarEstado(@PathVariable Long id,
                                                        @Valid @RequestBody CambiarEstadoVehiculoRequest request) {
         return ApiResponse.ok("Estado del vehículo actualizado correctamente.", this.vehiculoService.cambiarEstado(id, request));
     }
 
     @PatchMapping("/{id}/publicacion")
-    public ApiResponse<VehiculoResponse> cambiarPublicacion(@PathVariable Long id,
+    public ApiResponse<?> cambiarPublicacion(@PathVariable Long id,
                                                             @Valid @RequestBody CambiarPublicacionVehiculoRequest request) {
         return ApiResponse.ok("Publicación del vehículo actualizada correctamente.", this.vehiculoService.cambiarPublicacion(id, request));
     }

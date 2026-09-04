@@ -15,9 +15,9 @@ import java.util.Date;
 import java.util.List;
 
 /**
- * Emite y verifica tokens firmados para identificar al usuario entre solicitudes sin sesión.
- * Los roles incluidos sirven al cliente como referencia; la autorización efectiva se reconstruye
- * desde la base de datos en cada petición protegida.
+ * Emite y verifica JWT firmados para la API Pamahe.
+ * Además de firma, sujeto y expiración, exige un issuer propio para evitar aceptar
+ * tokens válidamente firmados que pertenezcan a otra aplicación que reutilice la clave.
  */
 @Service
 public class JwtService {
@@ -28,6 +28,9 @@ public class JwtService {
     @Value("${security.jwt.expiration-minutes}")
     private Long expirationMinutes;
 
+    @Value("${security.jwt.issuer}")
+    private String issuer;
+
     public String generarToken(UserDetails userDetails) {
         Instant ahora = Instant.now();
         List<String> roles = userDetails.getAuthorities().stream()
@@ -35,6 +38,7 @@ public class JwtService {
                 .toList();
 
         return Jwts.builder()
+                .issuer(this.issuer)
                 .subject(userDetails.getUsername())
                 .claim("roles", roles)
                 .issuedAt(Date.from(ahora))
@@ -48,17 +52,15 @@ public class JwtService {
     }
 
     public boolean tokenValido(String token, UserDetails userDetails) {
-        String username = this.obtenerUsername(token);
-        return username.equals(userDetails.getUsername()) && !this.tokenExpirado(token);
-    }
-
-    private boolean tokenExpirado(String token) {
-        return this.obtenerClaims(token).getExpiration().before(new Date());
+        Claims claims = this.obtenerClaims(token);
+        return claims.getSubject().equals(userDetails.getUsername())
+                && !claims.getExpiration().before(new Date());
     }
 
     private Claims obtenerClaims(String token) {
         return Jwts.parser()
                 .verifyWith(this.getSigningKey())
+                .requireIssuer(this.issuer)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();

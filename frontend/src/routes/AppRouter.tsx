@@ -1,255 +1,138 @@
-/*
-    Archivo encargado de definir las rutas principales de la aplicación.
+import { Navigate, Route, Routes } from "react-router-dom";
+import {
+  COMMERCIAL_ROLES,
+  INTERNAL_ROLES,
+  MANAGEMENT_ROLES,
+  WORKSHOP_ROLES,
+} from "../config/permissions";
+import PublicLayout from "../layouts/PublicLayout/PublicLayout";
+import AuthLayout from "../layouts/AuthLayout/AuthLayout";
+import TallerLayout from "../layouts/TallerLayout/TallerLayout";
+import PrivateRoute from "./PrivateRoute";
+import PublicRoute from "./PublicRoute";
+import NotFoundPage from "./NotFoundPage";
+import HomePage from "../modules/catalogo/pages/HomePage";
+import CatalogoPage from "../modules/catalogo/pages/CatalogoPage";
+import CatalogoDetailPage from "../modules/catalogo/pages/CatalogoDetailPage";
+import ChatbotWidget from "../modules/chatbot/components/ChatbotWidget";
+import LoginPage from "../modules/auth/pages/LoginPage";
+import RoleLandingPage from "../modules/dashboard/pages/RoleLandingPage";
+import DashboardPage from "../modules/dashboard/pages/DashboardPage";
+import UsuariosPage from "../modules/usuarios/pages/UsuariosPage";
+import UsuarioFormPage from "../modules/usuarios/pages/UsuarioFormPage";
+import ClientesPage from "../modules/clientes/pages/ClientesPage";
+import ClienteFormPage from "../modules/clientes/pages/ClienteFormPage";
+import VehiculosPage from "../modules/vehiculos/pages/VehiculosPage";
+import VehiculoFormPage from "../modules/vehiculos/pages/VehiculoFormPage";
+import VehiculoDetailPage from "../modules/vehiculos/pages/VehiculoDetailPage";
+import ComprasPage from "../modules/compras/pages/ComprasPage";
+import CompraFormPage from "../modules/compras/pages/CompraFormPage";
+import VentasPage from "../modules/ventas/pages/VentasPage";
+import VentaFormPage from "../modules/ventas/pages/VentaFormPage";
+import VentaDetailPage from "../modules/ventas/pages/VentaDetailPage";
+import TallerPage from "../modules/taller/pages/TallerPage";
+import RefaccionFormPage from "../modules/taller/pages/RefaccionFormPage";
+import OfflineQueuePage from "../modules/taller/pages/OfflineQueuePage";
+import CostosPage from "../modules/costos/pages/CostosPage";
+import AuditoriaPage from "../modules/auditoria/pages/AuditoriaPage";
+import ReportesPage from "../modules/reportes/pages/ReportesPage";
+import ParametrosPage from "../modules/parametros/pages/ParametrosPage";
+import PrivacyPage from "../modules/legal/pages/PrivacyPage";
+import LegalNoticePage from "../modules/legal/pages/LegalNoticePage";
 
-    AppRouter centraliza la navegación del frontend.
 
-    Su función es indicar qué componente debe mostrarse según la URL actual
-    del navegador.
-
-    Por ejemplo:
-    - "/" muestra HomePage.
-    - "/catalogo" muestra CatalogoPage.
-    - "/vehiculos" muestra una página temporal del módulo vehículos.
-    - "/login" muestra LoginPage.
-
-    Este archivo no contiene lógica de guardado.
-    No se comunica directamente con la API.
-    Tampoco define estilos visuales propios.
-
-    Su responsabilidad es conectar rutas con páginas.
-*/
-
-import { BrowserRouter, Route, Routes } from "react-router-dom";
-
-/*
-    PublicLayout es el layout público de la aplicación.
-
-    Contiene elementos comunes como:
-    - header,
-    - navegación pública,
-    - footer,
-    - Outlet para mostrar la página correspondiente.
-
-    Las rutas que estén dentro de PublicLayout se mostrarán con esa estructura.
-*/
-import { PublicLayout } from "../layouts/PublicLayout/PublicLayout";
-
-/*
-    Página temporal de login.
-
-    Esta ruta se usa para el futuro acceso interno de usuarios del sistema.
-*/
-import { LoginPage } from "../modules/auth/pages/LoginPage";
-
-/*
-    Página temporal del catálogo público.
-
-    Más adelante mostrará vehículos disponibles, imágenes, filtros
-    y medios de contacto.
-*/
-import { CatalogoPage } from "../modules/catalogo/pages/CatalogoPage";
-
-/*
-    Página principal del frontend.
-
-    Es el Home del sistema y se muestra en la ruta "/".
-*/
-import { HomePage } from "../modules/home/pages/HomePage";
-
-/*
-    Página placeholder reutilizable.
-
-    Se usa para módulos que todavía no tienen una pantalla definitiva.
-    Permite dejar rutas preparadas sin repetir código.
-*/
-import { ModulePlaceholderPage } from "../shared/feedback/ModulePlaceholderPage";
-
-/*
-    Componente principal de rutas.
-
-    AppRouter es usado por App.tsx.
-    Desde acá se controla toda la navegación inicial del frontend.
-*/
-export function AppRouter() {
+export default function AppRouter() {
   return (
-    /*
-        BrowserRouter habilita el sistema de rutas en el navegador.
-
-        Permite que React Router lea la URL actual y muestre
-        el componente correspondiente.
-
-        También permite navegar internamente con Link, NavLink y AppButton
-        sin recargar toda la página.
-    */
-    <BrowserRouter>
-
-      {/*
-          Routes agrupa todas las rutas disponibles.
-
-          Dentro de Routes se declaran varios Route.
-          Cada Route indica qué componente se muestra para una ruta específica.
-      */}
-      <Routes>
-
-        {/*
-            Ruta contenedora que usa PublicLayout.
-
-            Esta Route no tiene path propio.
-            Su función es envolver varias rutas hijas con el layout público.
-
-            Todo lo que esté dentro de esta ruta se mostrará dentro del <Outlet />
-            definido en PublicLayout.
-
-            Es decir:
-            PublicLayout muestra header y footer,
-            y el contenido cambia según la ruta hija.
-        */}
-        <Route element={<PublicLayout />}>
-
-          {/*
-              Ruta principal del sitio.
-
-              Cuando la URL es "/", se muestra HomePage dentro de PublicLayout.
-          */}
-          <Route path="/" element={<HomePage />} />
-
-          {/*
-              Ruta del catálogo público.
-
-              Cuando la URL es "/catalogo", se muestra CatalogoPage
-              dentro de PublicLayout.
-          */}
-          <Route path="/catalogo" element={<CatalogoPage />} />
-
-          {/*
-              Ruta temporal del módulo de vehículos.
-
-              Todavía no existe el ABM real, por eso se usa
-              ModulePlaceholderPage con un título y una descripción.
-          */}
-          <Route
-            path="/vehiculos"
-            element={
-              <ModulePlaceholderPage
-                title="Vehículos e inventario"
-                description="Aquí se desarrollará el ABM de vehículos, control de estados, stock interno e historial operativo."
-              />
-            }
-          />
-
-          {/*
-              Ruta temporal del módulo de clientes.
-
-              En el futuro permitirá gestionar compradores y vendedores.
-          */}
-          <Route
-            path="/clientes"
-            element={
-              <ModulePlaceholderPage
-                title="Clientes"
-                description="Aquí se desarrollará la gestión de clientes compradores y vendedores vinculados a operaciones comerciales."
-              />
-            }
-          />
-
-          {/*
-              Ruta temporal del módulo de taller y refacciones.
-
-              En el futuro permitirá registrar trabajos, costos,
-              mano de obra, repuestos y seguimiento de tareas.
-          */}
-          <Route
-            path="/taller"
-            element={
-              <ModulePlaceholderPage
-                title="Taller y refacciones"
-                description="Aquí se desarrollará el registro de trabajos, costos, mano de obra, repuestos y seguimiento de tareas."
-              />
-            }
-          />
-
-          {/*
-              Ruta temporal del módulo de compras.
-
-              En el futuro permitirá registrar el ingreso de vehículos,
-              el cliente vendedor, el costo inicial y respaldos internos.
-          */}
-          <Route
-            path="/compras"
-            element={
-              <ModulePlaceholderPage
-                title="Compras"
-                description="Aquí se desarrollará el registro de ingreso de vehículos, cliente vendedor, costo inicial y respaldo interno."
-              />
-            }
-          />
-
-          {/*
-              Ruta temporal del módulo de ventas.
-
-              En el futuro permitirá registrar el cierre comercial,
-              cliente comprador, precio final y comprobante interno.
-          */}
-          <Route
-            path="/ventas"
-            element={
-              <ModulePlaceholderPage
-                title="Ventas"
-                description="Aquí se desarrollará el cierre comercial del vehículo, cliente comprador, precio final y comprobante interno."
-              />
-            }
-          />
-
-          {/*
-              Ruta temporal del módulo de reportes.
-
-              En el futuro mostrará indicadores de stock, costos,
-              ventas, refacciones y rentabilidad.
-          */}
-          <Route
-            path="/reportes"
-            element={
-              <ModulePlaceholderPage
-                title="Reportes"
-                description="Aquí se desarrollarán indicadores de stock, costos, ventas, refacciones y rentabilidad."
-              />
-            }
-          />
-        </Route>
-
-        {/*
-            Ruta de login.
-
-            Está fuera de PublicLayout, por lo tanto no se muestra
-            con el header y footer públicos.
-
-            Esto puede ser intencional, porque las pantallas de autenticación
-            suelen tener una presentación propia y más simple.
-        */}
-        <Route path="/login" element={<LoginPage />} />
-
-        {/*
-            Ruta comodín o wildcard.
-
-            path="*" significa:
-            cualquier ruta que no coincida con las anteriores.
-
-            Se usa para mostrar una pantalla de "Página no encontrada".
-
-            Ejemplo:
-            si el usuario entra a "/algo-que-no-existe",
-            se mostrará este placeholder.
-        */}
+    <Routes>
+      <Route element={<PublicLayout />}>
         <Route
-          path="*"
+          index
           element={
-            <ModulePlaceholderPage
-              title="Página no encontrada"
-              description="La ruta solicitada todavía no existe dentro del frontend."
-            />
+            <>
+              <HomePage />
+              <ChatbotWidget />
+            </>
           }
         />
-      </Routes>
-    </BrowserRouter>
+        <Route
+          path="catalogo"
+          element={
+            <>
+              <CatalogoPage />
+              <ChatbotWidget />
+            </>
+          }
+        />
+        <Route
+          path="catalogo/:id"
+          element={
+            <>
+              <CatalogoDetailPage />
+              <ChatbotWidget />
+            </>
+          }
+        />
+        <Route path="privacidad" element={<PrivacyPage />} />
+        <Route path="informacion-legal" element={<LegalNoticePage />} />
+      </Route>
+      <Route element={<PublicRoute />}>
+        <Route element={<AuthLayout />}>
+          <Route path="login" element={<LoginPage />} />
+        </Route>
+      </Route>
+      <Route element={<PrivateRoute roles={INTERNAL_ROLES} />}>
+        {" "}
+        <Route element={<TallerLayout />}>
+          <Route path="app" element={<RoleLandingPage />} />
+          <Route element={<PrivateRoute roles={MANAGEMENT_ROLES} />}>
+            <Route path="app/dashboard" element={<DashboardPage />} />
+            <Route path="app/usuarios" element={<UsuariosPage />} />
+            <Route path="app/usuarios/nuevo" element={<UsuarioFormPage />} />
+            <Route
+              path="app/usuarios/:id/editar"
+              element={<UsuarioFormPage />}
+            />
+            <Route path="app/costos" element={<CostosPage />} />
+            <Route path="app/auditoria" element={<AuditoriaPage />} />
+            <Route path="app/reportes" element={<ReportesPage />} />
+            <Route path="app/parametros" element={<ParametrosPage />} />
+          </Route>
+          <Route path="app/vehiculos" element={<VehiculosPage />} />
+          <Route path="app/vehiculos/:id" element={<VehiculoDetailPage />} />
+          <Route element={<PrivateRoute roles={COMMERCIAL_ROLES} />}>
+            <Route path="app/vehiculos/nuevo" element={<VehiculoFormPage />} />
+            <Route
+              path="app/vehiculos/:id/editar"
+              element={<VehiculoFormPage />}
+            />
+            <Route path="app/clientes" element={<ClientesPage />} />
+            <Route path="app/clientes/nuevo" element={<ClienteFormPage />} />
+            <Route
+              path="app/clientes/:id/editar"
+              element={<ClienteFormPage />}
+            />
+            <Route path="app/compras" element={<ComprasPage />} />
+            <Route path="app/compras/nueva" element={<CompraFormPage />} />
+            <Route path="app/ventas" element={<VentasPage />} />
+            <Route path="app/ventas/nueva" element={<VentaFormPage />} />
+            <Route path="app/ventas/:id" element={<VentaDetailPage />} />
+          </Route>
+          <Route element={<PrivateRoute roles={WORKSHOP_ROLES} />}>
+            <Route path="app/taller" element={<TallerPage />} />
+            <Route path="app/taller/nueva" element={<RefaccionFormPage />} />
+            <Route
+              path="app/taller/:id/editar"
+              element={<RefaccionFormPage />}
+            />
+            <Route path="app/taller/offline" element={<OfflineQueuePage />} />
+          </Route>
+        </Route>
+      </Route>
+      <Route
+        path="vehiculos"
+        element={<Navigate to="/app/vehiculos" replace />}
+      />
+      <Route path="*" element={<NotFoundPage />} />
+    </Routes>
   );
 }

@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import uy.edu.ctc.pamahe.modules.usuarios.model.Usuario;
 
@@ -14,5 +15,12 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     boolean existsByEmail(String email);
     boolean existsByEmailAndIdNot(String email, Long id);
     List<Usuario> findByActivoTrueOrderByNombreAsc();
+
+    @Query("""
+            select count(distinct u)
+            from Usuario u join u.roles r
+            where u.activo = true and r.nombre = 'ADMINISTRADOR'
+            """)
+    long contarAdministradoresActivos();
 }
 

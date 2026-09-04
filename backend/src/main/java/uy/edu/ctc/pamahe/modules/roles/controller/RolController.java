@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import uy.edu.ctc.pamahe.common.response.ApiResponse;
-import uy.edu.ctc.pamahe.modules.roles.model.Rol;
+import uy.edu.ctc.pamahe.modules.roles.dto.response.RolResponse;
 import uy.edu.ctc.pamahe.modules.roles.repository.RolRepository;
 
 @RestController
@@ -21,8 +21,11 @@ public class RolController {
     }
 
     @GetMapping
-    public ApiResponse<List<Rol>> listar() {
-        return ApiResponse.ok("Roles obtenidos correctamente.", this.rolRepository.findByActivoTrueOrderByNombreAsc());
+    public ApiResponse<List<RolResponse>> listar() {
+        List<RolResponse> roles = this.rolRepository.findByActivoTrueOrderByNombreAsc().stream()
+                .map(r -> new RolResponse(r.getId(), r.getNombre(), r.getDescripcion(), r.getActivo()))
+                .toList();
+        return ApiResponse.ok("Roles obtenidos correctamente.", roles);
     }
     
 }

@@ -7,16 +7,24 @@ import uy.edu.ctc.pamahe.common.exception.BusinessException;
 import uy.edu.ctc.pamahe.common.exception.ResourceNotFoundException;
 import uy.edu.ctc.pamahe.common.util.SecurityUtils;
 import uy.edu.ctc.pamahe.modules.auditoria.service.AuditoriaService;
+import uy.edu.ctc.pamahe.modules.compras.mapper.CompraMapper;
 import uy.edu.ctc.pamahe.modules.compras.repository.CompraRepository;
+import uy.edu.ctc.pamahe.modules.imagenes.mapper.ImagenVehiculoMapper;
+import uy.edu.ctc.pamahe.modules.imagenes.repository.ImagenVehiculoRepository;
+import uy.edu.ctc.pamahe.modules.taller.mapper.RefaccionMapper;
 import uy.edu.ctc.pamahe.modules.taller.model.EstadoTarea;
 import uy.edu.ctc.pamahe.modules.taller.repository.RefaccionRepository;
 import uy.edu.ctc.pamahe.modules.vehiculos.dto.request.CambiarEstadoVehiculoRequest;
 import uy.edu.ctc.pamahe.modules.vehiculos.dto.request.CambiarPublicacionVehiculoRequest;
 import uy.edu.ctc.pamahe.modules.vehiculos.dto.request.VehiculoRequest;
-import uy.edu.ctc.pamahe.modules.vehiculos.dto.response.VehiculoResponse;
-import uy.edu.ctc.pamahe.modules.vehiculos.dto.response.VehiculoComercialResponse;
-import uy.edu.ctc.pamahe.modules.vehiculos.dto.response.VehiculoTallerResponse;
+import uy.edu.ctc.pamahe.modules.vehiculos.dto.response.historial.CompraHistorialComercialResponse;
+import uy.edu.ctc.pamahe.modules.vehiculos.dto.response.historial.RefaccionHistorialComercialResponse;
+import uy.edu.ctc.pamahe.modules.vehiculos.dto.response.historial.VehiculoHistorialComercialResponse;
+import uy.edu.ctc.pamahe.modules.vehiculos.dto.response.historial.VehiculoHistorialGerencialResponse;
+import uy.edu.ctc.pamahe.modules.vehiculos.dto.response.historial.VehiculoHistorialTallerResponse;
 import uy.edu.ctc.pamahe.modules.vehiculos.repository.VehiculoRepository;
+import uy.edu.ctc.pamahe.modules.ventas.mapper.VentaMapper;
+import uy.edu.ctc.pamahe.modules.ventas.repository.VentaRepository;
 import uy.edu.ctc.pamahe.modules.vehiculos.mapper.VehiculoMapper;
 import uy.edu.ctc.pamahe.modules.vehiculos.model.EstadoVehiculo;
 import uy.edu.ctc.pamahe.modules.vehiculos.model.Vehiculo;
@@ -48,15 +56,21 @@ public class VehiculoService {
     private final CompraRepository compraRepository;
     private final RefaccionRepository refaccionRepository;
     private final AuditoriaService auditoriaService;
+    private final VentaRepository ventaRepository;
+    private final ImagenVehiculoRepository imagenVehiculoRepository;
 
     public VehiculoService(VehiculoRepository vehiculoRepository,
                            CompraRepository compraRepository,
                            RefaccionRepository refaccionRepository,
-                           AuditoriaService auditoriaService) {
+                           AuditoriaService auditoriaService,
+                           VentaRepository ventaRepository,
+                           ImagenVehiculoRepository imagenVehiculoRepository) {
         this.vehiculoRepository = vehiculoRepository;
         this.compraRepository = compraRepository;
         this.refaccionRepository = refaccionRepository;
         this.auditoriaService = auditoriaService;
+        this.ventaRepository = ventaRepository;
+        this.imagenVehiculoRepository = imagenVehiculoRepository;
     }
 
     @Transactional(readOnly = true)
@@ -131,7 +145,7 @@ public class VehiculoService {
     }
 
     @Transactional
-    public VehiculoResponse crear(VehiculoRequest request) {
+    public Object crear(VehiculoRequest request) {
         Vehiculo vehiculo = new Vehiculo();
         vehiculo.setEstado(EstadoVehiculo.COMPRADO);
         vehiculo.setPublicado(false);
@@ -145,11 +159,11 @@ public class VehiculoService {
                 null,
                 this.resumenVehiculo(guardado)
         );
-        return VehiculoMapper.toResponse(guardado);
+        return this.proyectarSegunRol(guardado);
     }
 
     @Transactional
-    public VehiculoResponse actualizar(Long id, VehiculoRequest request) {
+    public Object actualizar(Long id, VehiculoRequest request) {
         Vehiculo vehiculo = this.buscarActivoPorIdConBloqueo(id);
         String anterior = this.resumenVehiculo(vehiculo);
         this.cargarDatosEditables(vehiculo, request);
@@ -162,11 +176,11 @@ public class VehiculoService {
                 anterior,
                 this.resumenVehiculo(guardado)
         );
-        return VehiculoMapper.toResponse(guardado);
+        return this.proyectarSegunRol(guardado);
     }
 
     @Transactional
-    public VehiculoResponse cambiarEstado(Long id, CambiarEstadoVehiculoRequest request) {
+    public Object cambiarEstado(Long id, CambiarEstadoVehiculoRequest request) {
         // VENDIDO necesita una venta persistida; permitirlo manualmente rompería el cierre económico.
         if (request.estado() == EstadoVehiculo.VENDIDO) {
             throw new BusinessException("El estado VENDIDO se asigna exclusivamente al registrar una venta válida.");
@@ -174,16 +188,21 @@ public class VehiculoService {
         Vehiculo vehiculo = this.buscarActivoPorIdConBloqueo(id);
         this.validarPermisoTransicionManual(vehiculo.getEstado(), request.estado());
         this.aplicarTransicion(vehiculo, request.estado(), request.motivo(), false);
-        return VehiculoMapper.toResponse(vehiculo);
+        return this.proyectarSegunRol(vehiculo);
     }
 
      @Transactional
-    public VehiculoResponse cambiarPublicacion(Long id, CambiarPublicacionVehiculoRequest request) {
+    public Object cambiarPublicacion(Long id, CambiarPublicacionVehiculoRequest request) {
         Vehiculo vehiculo = this.buscarActivoPorIdConBloqueo(id);
         boolean anterior = Boolean.TRUE.equals(vehiculo.getPublicado());
         // La publicación es una consecuencia comercial del estado, no un estado paralelo independiente.
         if (Boolean.TRUE.equals(request.publicado()) && vehiculo.getEstado() != EstadoVehiculo.DISPONIBLE) {
             throw new BusinessException("Solo se pueden publicar vehículos en estado DISPONIBLE.");
+        }
+        if (Boolean.TRUE.equals(request.publicado())
+                && (vehiculo.getPrecioVentaEstimado() == null
+                || vehiculo.getPrecioVentaEstimado().compareTo(BigDecimal.ZERO) <= 0)) {
+            throw new BusinessException("Para publicar un vehículo debe existir un precio de venta estimado mayor que cero.");
         }
         vehiculo.setPublicado(request.publicado());
         this.vehiculoRepository.save(vehiculo);
@@ -195,7 +214,7 @@ public class VehiculoService {
                 "publicado=" + anterior,
                 "publicado=" + request.publicado()
         );
-        return VehiculoMapper.toResponse(vehiculo);
+        return this.proyectarSegunRol(vehiculo);
     }
 
     @Transactional
@@ -214,6 +233,12 @@ public class VehiculoService {
     @Transactional
     public void desactivar(Long id) {
         Vehiculo vehiculo = this.buscarActivoPorIdConBloqueo(id);
+        if (vehiculo.getEstado() == EstadoVehiculo.VENDIDO
+                || this.compraRepository.existsByVehiculo(vehiculo)
+                || this.refaccionRepository.existsByVehiculo(vehiculo)
+                || this.ventaRepository.existsByVehiculo(vehiculo)) {
+            throw new BusinessException("No se puede desactivar un vehículo que forma parte del historial de operaciones. Utilizá DADO_DE_BAJA cuando corresponda comercialmente.");
+        }
         String anterior = this.resumenVehiculo(vehiculo);
         vehiculo.setActivo(false);
         vehiculo.setPublicado(false);
@@ -227,6 +252,58 @@ public class VehiculoService {
                 "activo=false, publicado=false"
         );
     }
+
+    @Transactional(readOnly = true)
+    public Object historial(Long id) {
+        Vehiculo vehiculo = this.buscarPorId(id);
+        var compra = this.compraRepository.findByVehiculoAndActivoTrue(vehiculo).orElse(null);
+        var refacciones = this.refaccionRepository.findByVehiculoAndActivoTrueOrderByFechaDesc(vehiculo);
+        var venta = this.ventaRepository.findByVehiculoAndActivoTrue(vehiculo).orElse(null);
+        var imagenes = this.imagenVehiculoRepository.findByVehiculoAndActivoTrueOrderByPrincipalDescIdAsc(vehiculo)
+                .stream().map(ImagenVehiculoMapper::toResponse).toList();
+
+        if (SecurityUtils.tieneAlgunRol("ADMINISTRADOR", "DUENO")) {
+            return new VehiculoHistorialGerencialResponse(
+                    VehiculoMapper.toResponse(vehiculo),
+                    compra == null ? null : CompraMapper.toResponse(compra),
+                    refacciones.stream().map(RefaccionMapper::toResponse).toList(),
+                    venta == null ? null : VentaMapper.toDetalleGerencial(venta),
+                    imagenes
+            );
+        }
+
+        if (SecurityUtils.tieneAlgunRol("VENDEDOR")) {
+            CompraHistorialComercialResponse compraResumen = null;
+            if (compra != null) {
+                String cliente = (compra.getClienteVendedor().getNombre() + " "
+                        + (compra.getClienteVendedor().getApellido() == null ? "" : compra.getClienteVendedor().getApellido())).trim();
+                compraResumen = new CompraHistorialComercialResponse(
+                        compra.getId(), compra.getClienteVendedor().getId(), cliente, compra.getFechaCompra());
+            }
+            return new VehiculoHistorialComercialResponse(
+                    VehiculoMapper.toComercialResponse(vehiculo),
+                    compraResumen,
+                    refacciones.stream().map(r -> new RefaccionHistorialComercialResponse(
+                            r.getId(), r.getFecha(), r.getTipoTrabajo(), r.getDescripcion(), r.getEstadoTarea())).toList(),
+                    venta == null ? null : VentaMapper.toResponse(venta),
+                    imagenes
+            );
+        }
+
+        if (SecurityUtils.tieneAlgunRol("TALLER")) {
+            return new VehiculoHistorialTallerResponse(
+                    VehiculoMapper.toTallerResponse(vehiculo),
+                    compra == null ? null : compra.getFechaCompra(),
+                    refacciones.stream().map(RefaccionMapper::toResponse).toList(),
+                    venta == null ? null : venta.getFechaVenta(),
+                    imagenes
+            );
+        }
+
+         throw new AccessDeniedException("El rol autenticado no puede consultar el historial del vehículo.");
+    }
+
+
 
     @Transactional(readOnly = true)
     public Vehiculo buscarPorId(Long id) {
@@ -332,6 +409,26 @@ public class VehiculoService {
         vehiculo.setPrecioVentaEstimado(request.precioVentaEstimado() == null ? BigDecimal.ZERO : request.precioVentaEstimado());
         vehiculo.setDescripcionPublica(this.normalizarOpcional(request.descripcionPublica()));
         vehiculo.setObservacionesInternas(this.normalizarOpcional(request.observacionesInternas()));
+
+        String observacionesSolicitadas = this.normalizarOpcional(request.observacionesInternas());
+        if (SecurityUtils.tieneAlgunRol("ADMINISTRADOR", "DUENO")) {
+            vehiculo.setObservacionesInternas(observacionesSolicitadas);
+        } else if (observacionesSolicitadas != null) {
+            throw new AccessDeniedException("Solo ADMINISTRADOR o DUENO pueden modificar observaciones internas del vehículo.");
+        }
+    }
+
+    private Object proyectarSegunRol(Vehiculo vehiculo) {
+        if (SecurityUtils.tieneAlgunRol("ADMINISTRADOR", "DUENO")) {
+            return VehiculoMapper.toResponse(vehiculo);
+        }
+        if (SecurityUtils.tieneAlgunRol("VENDEDOR")) {
+            return VehiculoMapper.toComercialResponse(vehiculo);
+        }
+        if (SecurityUtils.tieneAlgunRol("TALLER")) {
+            return VehiculoMapper.toTallerResponse(vehiculo);
+        }
+        throw new AccessDeniedException("El rol autenticado no puede recibir información del vehículo.");
     }
 
     private String normalizarOpcional(String valor) {
