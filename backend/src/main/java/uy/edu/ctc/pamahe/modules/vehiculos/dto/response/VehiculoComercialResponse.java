@@ -6,6 +6,7 @@ public record VehiculoComercialResponse(
         Long id,
         String marca,
         String modelo,
+        String tipoVehiculo,
         Integer anio,
         String matricula,
         String numeroChasis,

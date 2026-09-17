@@ -77,6 +77,7 @@ public class UsuarioService {
         Usuario usuario = new Usuario();
         usuario.setUsername(username);
         usuario.setPasswordHash(this.passwordEncoder.encode(request.password()));
+        usuario.setDebeCambiarPassword(true);
         usuario.setNombre(request.nombre().trim());
         usuario.setEmail(email);
         usuario.setTelefono(normalizarOpcional(request.telefono()));
@@ -133,6 +134,7 @@ public class UsuarioService {
     public void restablecerPassword(Long id, RestablecerPasswordRequest request) {
         Usuario usuario = this.buscarPorId(id);
         usuario.setPasswordHash(this.passwordEncoder.encode(request.nuevaPassword()));
+        usuario.setDebeCambiarPassword(true);
         this.usuarioRepository.save(usuario);
         this.auditoriaService.registrar("RESET_PASSWORD", "Usuario", usuario.getId(),
                 "Restablecimiento administrativo de contraseña");

@@ -1,5 +1,8 @@
 package uy.edu.ctc.pamahe.modules.vehiculos.controller;
 
+import java.math.BigDecimal;
+import java.util.List;
+
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,12 +14,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import uy.edu.ctc.pamahe.common.response.ApiResponse;
-import uy.edu.ctc.pamahe.modules.vehiculos.dto.request.*;
-import uy.edu.ctc.pamahe.modules.vehiculos.model.EstadoVehiculo;
-import uy.edu.ctc.pamahe.modules.vehiculos.service.*;
 
-import java.util.List;
+import uy.edu.ctc.pamahe.common.response.ApiResponse;
+import uy.edu.ctc.pamahe.common.response.PageResponse;
+import uy.edu.ctc.pamahe.modules.vehiculos.dto.request.CambiarEstadoVehiculoRequest;
+import uy.edu.ctc.pamahe.modules.vehiculos.dto.request.CambiarPublicacionVehiculoRequest;
+import uy.edu.ctc.pamahe.modules.vehiculos.dto.request.VehiculoRequest;
+import uy.edu.ctc.pamahe.modules.vehiculos.model.EstadoVehiculo;
+import uy.edu.ctc.pamahe.modules.vehiculos.service.VehiculoService;
 
 @RestController
 @RequestMapping("/vehiculos")
@@ -33,21 +38,43 @@ public class VehiculoController {
             @RequestParam(required = false) EstadoVehiculo estado,
             @RequestParam(required = false) String marca,
             @RequestParam(required = false) String modelo,
+            @RequestParam(required = false) String tipoVehiculo,
             @RequestParam(required = false) Integer anioDesde,
             @RequestParam(required = false) Integer anioHasta,
-            @RequestParam(required = false) Boolean publicado
+            @RequestParam(required = false) BigDecimal precioMin,
+            @RequestParam(required = false) BigDecimal precioMax,
+            @RequestParam(required = false) Boolean publicado,
+            @RequestParam(required = false) Boolean disponibleComercial
     ) {
         return ApiResponse.ok(
                 "Vehículos obtenidos correctamente.",
                 this.vehiculoService.listar(
-                        estado,
-                        marca,
-                        modelo,
-                        anioDesde,
-                        anioHasta,
-                        publicado
-                )
-        );
+                       estado, marca, modelo, tipoVehiculo, anioDesde, anioHasta,
+                        precioMin, precioMax, publicado, disponibleComercial));
+    }
+
+    /**
+     * Variante paginada que no rompe el contrato histórico de GET /vehiculos.
+     */
+    @GetMapping("/paginado")
+    public ApiResponse<PageResponse<?>> listarPaginado(
+            @RequestParam(required = false) EstadoVehiculo estado,
+            @RequestParam(required = false) String marca,
+            @RequestParam(required = false) String modelo,
+            @RequestParam(required = false) String tipoVehiculo,
+            @RequestParam(required = false) Integer anioDesde,
+            @RequestParam(required = false) Integer anioHasta,
+            @RequestParam(required = false) BigDecimal precioMin,
+            @RequestParam(required = false) BigDecimal precioMax,
+            @RequestParam(required = false) Boolean publicado,
+            @RequestParam(required = false) Boolean disponibleComercial,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ApiResponse.ok(
+                "Vehículos paginados obtenidos correctamente.",
+                this.vehiculoService.listarPaginado(
+                        estado, marca, modelo, tipoVehiculo, anioDesde, anioHasta,
+                        precioMin, precioMax, publicado, disponibleComercial, page, size));
     }
 
     @GetMapping("/{id}/historial")
@@ -57,10 +84,7 @@ public class VehiculoController {
 
     @GetMapping("/{id}")
     public ApiResponse<?> obtener(@PathVariable Long id) {
-        return ApiResponse.ok(
-            "Vehículo obtenido correctamente.",
-            this.vehiculoService.obtener(id)
-        );
+        return ApiResponse.ok("Vehículo obtenido correctamente.", this.vehiculoService.obtener(id));
     }
 
     @PostMapping

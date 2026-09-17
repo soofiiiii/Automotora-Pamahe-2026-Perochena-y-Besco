@@ -1,0 +1,31 @@
+server:
+  address: ${SERVER_ADDRESS:127.0.0.1}
+  forward-headers-strategy: framework
+
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+
+security:
+  jwt:
+    issuer: ${JWT_ISSUER:pamahe-api}
+    secret: ${JWT_SECRET}
+    expiration-minutes: ${JWT_EXPIRATION_MINUTES:120}
+    renewal-mode: REAUTHENTICATE
+    refresh-enabled: false
+
+app:
+  cors:
+    allowed-origins: ${FRONTEND_URL}
+  storage:
+    root: ${STORAGE_ROOT:/var/lib/pamahe/uploads}
+  bootstrap-admin:
+    username: ${BOOTSTRAP_ADMIN_USERNAME:admin}
+    password: ${BOOTSTRAP_ADMIN_PASSWORD:}
+
+logging:
+  level:
+    root: INFO
+    uy.edu.ctc.pamahe: INFO

@@ -1,16 +1,19 @@
 package uy.edu.ctc.pamahe.modules.vehiculos.service;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uy.edu.ctc.pamahe.common.exception.BusinessException;
 import uy.edu.ctc.pamahe.common.exception.ResourceNotFoundException;
+import uy.edu.ctc.pamahe.common.response.PageResponse;
 import uy.edu.ctc.pamahe.common.util.SecurityUtils;
 import uy.edu.ctc.pamahe.modules.auditoria.service.AuditoriaService;
 import uy.edu.ctc.pamahe.modules.compras.mapper.CompraMapper;
 import uy.edu.ctc.pamahe.modules.compras.repository.CompraRepository;
 import uy.edu.ctc.pamahe.modules.imagenes.mapper.ImagenVehiculoMapper;
 import uy.edu.ctc.pamahe.modules.imagenes.repository.ImagenVehiculoRepository;
+import uy.edu.ctc.pamahe.modules.parametros.repository.ParametroRepository;
 import uy.edu.ctc.pamahe.modules.taller.mapper.RefaccionMapper;
 import uy.edu.ctc.pamahe.modules.taller.model.EstadoTarea;
 import uy.edu.ctc.pamahe.modules.taller.repository.RefaccionRepository;
@@ -58,19 +61,22 @@ public class VehiculoService {
     private final AuditoriaService auditoriaService;
     private final VentaRepository ventaRepository;
     private final ImagenVehiculoRepository imagenVehiculoRepository;
+    private final ParametroRepository parametroRepository;
 
     public VehiculoService(VehiculoRepository vehiculoRepository,
                            CompraRepository compraRepository,
                            RefaccionRepository refaccionRepository,
                            AuditoriaService auditoriaService,
                            VentaRepository ventaRepository,
-                           ImagenVehiculoRepository imagenVehiculoRepository) {
+                           ImagenVehiculoRepository imagenVehiculoRepository,
+                           ParametroRepository parametroRepository) {
         this.vehiculoRepository = vehiculoRepository;
         this.compraRepository = compraRepository;
         this.refaccionRepository = refaccionRepository;
         this.auditoriaService = auditoriaService;
         this.ventaRepository = ventaRepository;
         this.imagenVehiculoRepository = imagenVehiculoRepository;
+        this.parametroRepository = parametroRepository;
     }
 
     @Transactional(readOnly = true)
@@ -78,49 +84,52 @@ public class VehiculoService {
             EstadoVehiculo estado,
             String marca,
             String modelo,
+            String tipoVehiculo,
             Integer anioDesde,
             Integer anioHasta,
-            Boolean publicado)
-    {
-        if (anioDesde != null && anioHasta != null && anioDesde > anioHasta) {
-            throw new BusinessException(
-                "El año desde no puede ser mayor que el año hasta."
-            );
-        }
-
-        String marcaNormalizada = normalizarFiltro(marca);
-        String modeloNormalizado = normalizarFiltro(modelo);
+            BigDecimal precioMin,
+            BigDecimal precioMax,
+            Boolean publicado,
+            Boolean disponibleComercial) {
+        validarFiltrosStock(anioDesde, anioHasta, precioMin, precioMax);
 
         List<Vehiculo> vehiculos = this.vehiculoRepository.buscarConFiltros(
-                estado,
-                marcaNormalizada,
-                modeloNormalizado,
-                anioDesde,
-                anioHasta,
-                publicado
-        );
+                estado, normalizarFiltro(marca), normalizarFiltro(modelo), normalizarClave(tipoVehiculo),
+                anioDesde, anioHasta, precioMin, precioMax, publicado, disponibleComercial);
+        return proyectarListaSegunRol(vehiculos);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<?> listarPaginado(
+            EstadoVehiculo estado,
+            String marca,
+            String modelo,
+            String tipoVehiculo,
+            Integer anioDesde,
+            Integer anioHasta,
+            BigDecimal precioMin,
+            BigDecimal precioMax,
+            Boolean publicado,
+            Boolean disponibleComercial,
+            int page,
+            int size) {
+        validarFiltrosStock(anioDesde, anioHasta, precioMin, precioMax);
+        validarPaginacion(page, size);
+        var resultado = this.vehiculoRepository.buscarConFiltrosPaginado(
+                estado, normalizarFiltro(marca), normalizarFiltro(modelo), normalizarClave(tipoVehiculo),
+                anioDesde, anioHasta, precioMin, precioMax, publicado, disponibleComercial,
+                PageRequest.of(page, size));
 
         if (SecurityUtils.tieneAlgunRol("ADMINISTRADOR", "DUENO")) {
-            return vehiculos.stream()
-                    .map(VehiculoMapper::toResponse)
-                    .toList();
+            return PageResponse.from(resultado, VehiculoMapper::toResponse);
         }
-
         if (SecurityUtils.tieneAlgunRol("VENDEDOR")) {
-            return vehiculos.stream()
-                    .map(VehiculoMapper::toComercialResponse)
-                    .toList();
+            return PageResponse.from(resultado, VehiculoMapper::toComercialResponse);
         }
-
         if (SecurityUtils.tieneAlgunRol("TALLER")) {
-            return vehiculos.stream()
-                    .map(VehiculoMapper::toTallerResponse)
-                    .toList();
+            return PageResponse.from(resultado, VehiculoMapper::toTallerResponse);
         }
-
-        throw new AccessDeniedException(
-                "El rol autenticado no puede consultar vehículos."
-        );
+        throw new AccessDeniedException("El rol autenticado no puede consultar vehículos.");
     }
 
     @Transactional(readOnly = true)
@@ -401,6 +410,7 @@ public class VehiculoService {
     private void cargarDatosEditables(Vehiculo vehiculo, VehiculoRequest request) {
         vehiculo.setMarca(request.marca().trim());
         vehiculo.setModelo(request.modelo().trim());
+        vehiculo.setTipoVehiculo(validarTipoVehiculo(request.tipoVehiculo()));
         vehiculo.setAnio(request.anio());
         vehiculo.setMatricula(this.normalizarOpcional(request.matricula()));
         vehiculo.setNumeroChasis(this.normalizarOpcional(request.numeroChasis()));
@@ -408,7 +418,6 @@ public class VehiculoService {
         vehiculo.setKilometraje(request.kilometraje());
         vehiculo.setPrecioVentaEstimado(request.precioVentaEstimado() == null ? BigDecimal.ZERO : request.precioVentaEstimado());
         vehiculo.setDescripcionPublica(this.normalizarOpcional(request.descripcionPublica()));
-        vehiculo.setObservacionesInternas(this.normalizarOpcional(request.observacionesInternas()));
 
         String observacionesSolicitadas = this.normalizarOpcional(request.observacionesInternas());
         if (SecurityUtils.tieneAlgunRol("ADMINISTRADOR", "DUENO")) {
@@ -437,6 +446,57 @@ public class VehiculoService {
         }
         String limpio = valor.trim();
         return limpio.isEmpty() ? null : limpio;
+    }
+
+    private List<?> proyectarListaSegunRol(List<Vehiculo> vehiculos) {
+        if (SecurityUtils.tieneAlgunRol("ADMINISTRADOR", "DUENO")) {
+            return vehiculos.stream().map(VehiculoMapper::toResponse).toList();
+        }
+        if (SecurityUtils.tieneAlgunRol("VENDEDOR")) {
+            return vehiculos.stream().map(VehiculoMapper::toComercialResponse).toList();
+        }
+        if (SecurityUtils.tieneAlgunRol("TALLER")) {
+            return vehiculos.stream().map(VehiculoMapper::toTallerResponse).toList();
+        }
+        throw new AccessDeniedException("El rol autenticado no puede consultar vehículos.");
+    }
+
+    private void validarFiltrosStock(Integer anioDesde, Integer anioHasta, BigDecimal precioMin, BigDecimal precioMax) {
+        if (anioDesde != null && anioHasta != null && anioDesde > anioHasta) {
+            throw new BusinessException("El año desde no puede ser mayor que el año hasta.");
+        }
+        if (precioMin != null && precioMin.compareTo(BigDecimal.ZERO) < 0
+                || precioMax != null && precioMax.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BusinessException("Los filtros de precio no pueden ser negativos.");
+        }
+        if (precioMin != null && precioMax != null && precioMin.compareTo(precioMax) > 0) {
+            throw new BusinessException("El precio mínimo no puede ser mayor que el precio máximo.");
+        }
+    }
+
+    private void validarPaginacion(int page, int size) {
+        if (page < 0) {
+            throw new BusinessException("La página no puede ser negativa.");
+        }
+        if (size < 1 || size > 100) {
+            throw new BusinessException("El tamaño de página debe estar entre 1 y 100.");
+        }
+    }
+
+    private String validarTipoVehiculo(String tipoVehiculo) {
+        String clave = normalizarClave(tipoVehiculo);
+        if (clave == null) {
+            return null;
+        }
+        if (this.parametroRepository.findByCategoriaAndClaveAndActivoTrue("TIPO_VEHICULO", clave).isEmpty()) {
+            throw new BusinessException("El tipo de vehículo indicado no está habilitado en parámetros.");
+        }
+        return clave;
+    }
+
+    private String normalizarClave(String valor) {
+        String limpio = normalizarFiltro(valor);
+        return limpio == null ? null : limpio.toUpperCase(java.util.Locale.ROOT);
     }
 
     private String resumenVehiculo(Vehiculo vehiculo) {

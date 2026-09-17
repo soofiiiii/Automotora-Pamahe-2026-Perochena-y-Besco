@@ -3,11 +3,13 @@ package uy.edu.ctc.pamahe.modules.compras.service;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import org.springframework.transaction.annotation.Transactional;
 import uy.edu.ctc.pamahe.common.exception.BusinessException;
 import uy.edu.ctc.pamahe.common.exception.ResourceNotFoundException;
+import uy.edu.ctc.pamahe.common.response.PageResponse;
 import uy.edu.ctc.pamahe.common.util.PdfService;
 import uy.edu.ctc.pamahe.common.util.SecurityUtils;
 import uy.edu.ctc.pamahe.modules.auditoria.service.AuditoriaService;
@@ -66,6 +68,14 @@ public class CompraService {
         return this.compraRepository.findByActivoTrueOrderByFechaCompraDesc().stream()
                 .map(CompraMapper::toResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<CompraResponse> listarPaginado(int page, int size) {
+        validarPaginacion(page, size);
+        return PageResponse.from(
+                this.compraRepository.findByActivoTrueOrderByFechaCompraDesc(PageRequest.of(page, size)),
+                CompraMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -169,5 +179,14 @@ public class CompraService {
             throw new ResourceNotFoundException("No se encontró una compra activa con el identificador solicitado.");
         }
         return compra;
+    }
+
+    private void validarPaginacion(int page, int size) {
+        if (page < 0) {
+            throw new BusinessException("La página no puede ser negativa.");
+        }
+        if (size < 1 || size > 100) {
+            throw new BusinessException("El tamaño de página debe estar entre 1 y 100.");
+        }
     }
 }

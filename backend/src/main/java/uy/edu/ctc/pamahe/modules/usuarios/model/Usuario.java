@@ -25,6 +25,9 @@ public class Usuario extends BaseEntity {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
+    @Column(name = "debe_cambiar_password", nullable = false)
+    private Boolean debeCambiarPassword = false;
+
     @Column(nullable = false, length = 120)
     private String nombre;
 
@@ -57,6 +60,14 @@ public class Usuario extends BaseEntity {
 
     public void setPasswordHash(String passwordHash) {
         this.passwordHash = passwordHash;
+    }
+
+    public Boolean getDebeCambiarPassword() {
+        return this.debeCambiarPassword;
+    }
+
+    public void setDebeCambiarPassword(Boolean debeCambiarPassword) {
+        this.debeCambiarPassword = debeCambiarPassword;
     }
 
     public String getNombre() {

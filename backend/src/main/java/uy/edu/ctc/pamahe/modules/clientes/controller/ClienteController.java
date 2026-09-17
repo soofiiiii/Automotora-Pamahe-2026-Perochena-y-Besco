@@ -9,10 +9,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
 import uy.edu.ctc.pamahe.common.response.ApiResponse;
+import uy.edu.ctc.pamahe.common.response.PageResponse;
 import uy.edu.ctc.pamahe.modules.clientes.dto.request.ClienteRequest;
 import uy.edu.ctc.pamahe.modules.clientes.dto.response.ClienteResponse;
 import uy.edu.ctc.pamahe.modules.clientes.service.ClienteService;
@@ -30,6 +32,13 @@ public class ClienteController {
     @GetMapping
     public ApiResponse<List<ClienteResponse>> listar() {
         return ApiResponse.ok("Clientes obtenidos correctamente.", this.clienteService.listar());
+    }
+
+    @GetMapping("/paginado")
+    public ApiResponse<PageResponse<ClienteResponse>> listarPaginado(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ApiResponse.ok("Clientes paginados obtenidos correctamente.", this.clienteService.listarPaginado(page, size));
     }
 
     @GetMapping("/{id}")

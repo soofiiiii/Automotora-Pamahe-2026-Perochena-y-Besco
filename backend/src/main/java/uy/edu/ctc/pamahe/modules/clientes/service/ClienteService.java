@@ -3,11 +3,12 @@ package uy.edu.ctc.pamahe.modules.clientes.service;
 import java.util.List;
 import java.util.Locale;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import uy.edu.ctc.pamahe.common.exception.BusinessException;
 import uy.edu.ctc.pamahe.common.exception.ResourceNotFoundException;
+import uy.edu.ctc.pamahe.common.response.PageResponse;
 import uy.edu.ctc.pamahe.modules.auditoria.service.AuditoriaService;
 import uy.edu.ctc.pamahe.modules.clientes.dto.request.ClienteRequest;
 import uy.edu.ctc.pamahe.modules.clientes.dto.response.ClienteResponse;
@@ -34,6 +35,14 @@ public class ClienteService {
         return this.clienteRepository.findByActivoTrueOrderByNombreAsc().stream()
                 .map(ClienteMapper::toResponse)
                 .toList();
+    }
+
+    @Transactional (readOnly = true)
+    public PageResponse<ClienteResponse> listarPaginado(int page, int size) {
+        validarPaginacion(page, size);
+        return PageResponse.from(
+                this.clienteRepository.findByActivoTrueOrderByNombreAsc(PageRequest.of(page, size)),
+                ClienteMapper::toResponse);
     }
 
     public ClienteResponse obtener(Long id) {
@@ -99,10 +108,7 @@ public class ClienteService {
         }
         return cliente;
     }
-    
-    /**
-     * Carga y normaliza los datos recibidos antes de persistirlos.
-     */
+  
     private void cargarDatos(
             Cliente cliente,
             ClienteRequest request
@@ -140,10 +146,6 @@ public class ClienteService {
         );
     }
 
-    /**
-     * Elimina espacios innecesarios de los textos.
-     * Los valores vacíos se convierten en null.
-     */
     private String normalizarTexto(String valor) {
         if (valor == null) {
             return null;
@@ -154,13 +156,6 @@ public class ClienteService {
         return resultado.isBlank() ? null : resultado;
     }
 
-    /**
-     * Normaliza el documento eliminando puntos, guiones, espacios
-     * y cualquier otro carácter que no sea alfanumérico.
-     *
-     * Ejemplo:
-     * 5.048.641-0 -> 50486410
-     */
     private String normalizarDocumento(String documento) {
         if (documento == null) {
             return null;
@@ -174,12 +169,6 @@ public class ClienteService {
         return resultado.isBlank() ? null : resultado;
     }
 
-    /**
-     * Normaliza el teléfono eliminando espacios, paréntesis y guiones.
-     *
-     * Ejemplo:
-     * +598 99 111 222 -> +59899111222
-     */
     private String normalizarTelefono(String telefono) {
         if (telefono == null) {
             return null;
@@ -192,10 +181,6 @@ public class ClienteService {
         return resultado.isBlank() ? null : resultado;
     }
 
-    /**
-     * Normaliza el email eliminando espacios exteriores
-     * y convirtiéndolo a minúsculas.
-     */
     private String normalizarEmail(String email) {
         if (email == null) {
             return null;
@@ -209,5 +194,13 @@ public class ClienteService {
 
         return resultado.toLowerCase(Locale.ROOT);
     }
-}
 
+    private void validarPaginacion(int page, int size) {
+        if (page < 0) {
+            throw new BusinessException("La página no puede ser negativa.");
+        }
+        if (size < 1 || size > 100) {
+            throw new BusinessException("El tamaño de página debe estar entre 1 y 100.");
+        }
+    }
+}

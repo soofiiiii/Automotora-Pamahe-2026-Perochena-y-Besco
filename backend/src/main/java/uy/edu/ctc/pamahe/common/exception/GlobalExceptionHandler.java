@@ -48,6 +48,21 @@ public class GlobalExceptionHandler {
                                 false);
         }
 
+        @ExceptionHandler(RateLimitExceededException.class)
+        public ResponseEntity<ApiErrorResponse> handleRateLimit(RateLimitExceededException exception,
+                        HttpServletRequest request) {
+                String incidenteId = org.slf4j.MDC.get(uy.edu.ctc.pamahe.common.filter.CorrelationIdFilter.MDC_KEY);
+                if (incidenteId == null || incidenteId.isBlank()) {
+                        incidenteId = UUID.randomUUID().toString();
+                }
+                LOGGER.warn("Incidente {} - límite temporal de login en {}", incidenteId, request.getRequestURI());
+                return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                                .header("Retry-After", String.valueOf(exception.getRetryAfterSeconds()))
+                                .body(ApiErrorResponse.of("LOGIN_RATE_LIMIT", exception.getMessage(),
+                                                request.getRequestURI(), incidenteId,
+                                                Map.of("retryAfterSeconds", exception.getRetryAfterSeconds())));
+        }
+
         @ExceptionHandler(AuthenticationException.class)
         public ResponseEntity<ApiErrorResponse> handleAuthentication(AuthenticationException exception,
                         HttpServletRequest request) {
@@ -128,6 +143,13 @@ public class GlobalExceptionHandler {
                                 false);
         }
 
+        @ExceptionHandler(IdempotencyConflictException.class)
+        public ResponseEntity<ApiErrorResponse> handleIdempotencyConflict(IdempotencyConflictException exception,
+                        HttpServletRequest request) {
+                return this.response(HttpStatus.CONFLICT, "IDEMPOTENCY_CONFLICT", exception.getMessage(),
+                                request, null, exception, false);
+        }
+
         @ExceptionHandler(DataIntegrityViolationException.class)
         public ResponseEntity<ApiErrorResponse> handleDataIntegrity(DataIntegrityViolationException exception,
                         HttpServletRequest request) {
@@ -159,7 +181,10 @@ public class GlobalExceptionHandler {
                         Throwable exception,
                         boolean includeStackTrace) {
                 // El mismo identificador aparece en la respuesta y en el log para facilitar el diagnóstico. 
-                String incidenteId = UUID.randomUUID().toString();
+                String incidenteId = org.slf4j.MDC.get(uy.edu.ctc.pamahe.common.filter.CorrelationIdFilter.MDC_KEY);
+                if (incidenteId == null || incidenteId.isBlank()) {
+                        incidenteId = UUID.randomUUID().toString();
+                }
                 if (includeStackTrace) {
                         LOGGER.error("Incidente {} - {} {} - {}", incidenteId, request.getMethod(),
                                         request.getRequestURI(), mensaje, exception);

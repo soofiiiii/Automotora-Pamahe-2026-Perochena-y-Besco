@@ -9,6 +9,7 @@ public record UsuarioResponse(
         String email,
         String telefono,
         Boolean activo,
+        Boolean debeCambiarPassword,
         Set<String> roles
 ) {
 }

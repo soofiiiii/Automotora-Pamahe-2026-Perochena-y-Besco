@@ -1,6 +1,7 @@
 package uy.edu.ctc.pamahe.modules.reportes.service;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.math.BigDecimal;
@@ -12,7 +13,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import uy.edu.ctc.pamahe.modules.auditoria.repository.AuditoriaRepository;
 import uy.edu.ctc.pamahe.modules.clientes.repository.ClienteRepository;
+import uy.edu.ctc.pamahe.modules.compras.repository.CompraRepository;
 import uy.edu.ctc.pamahe.modules.taller.repository.RefaccionRepository;
 import uy.edu.ctc.pamahe.modules.vehiculos.repository.VehiculoRepository;
 import uy.edu.ctc.pamahe.modules.ventas.model.Venta;
@@ -28,6 +31,10 @@ class ReporteServiceTest {
     VentaRepository ventas;
     @Mock
     RefaccionRepository refacciones;
+    @Mock
+    CompraRepository compras;
+    @Mock
+    AuditoriaRepository auditoria;
 
     @Test
     void vendidosSeCuentanDesdeVentasHistoricasAunqueNoEstanEnStockActivo() {
@@ -40,7 +47,7 @@ class ReporteServiceTest {
                 any(LocalDate.class))).thenReturn(List.of(v));
         when(clientes.findByActivoTrueOrderByNombreAsc()).thenReturn(List.of());
         when(refacciones.findByActivoTrueOrderByFechaDesc()).thenReturn(List.of());
-        var result = new ReporteService(vehiculos, clientes, ventas, refacciones).dashboard(null, null);
+        var result = new ReporteService(vehiculos, clientes, ventas, compras, refacciones, auditoria).dashboard(null, null);
         assertEquals(1, result.vehiculosVendidos());
         assertEquals(new BigDecimal("3000"), result.rentabilidadAcumulada());
     }

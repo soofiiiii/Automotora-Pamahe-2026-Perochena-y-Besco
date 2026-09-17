@@ -6,5 +6,6 @@ public record LoginResponse(
         String token,
         String username,
         String nombre,
-        Set<String> roles) {
+        Set<String> roles,
+        Boolean debeCambiarPassword) {
 }
