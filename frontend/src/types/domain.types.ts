@@ -142,6 +142,12 @@ export interface DashboardData {
   ingresosVentas: number;
   rentabilidadAcumulada: number;
   vehiculosPorEstado: Record<string, number>;
+  periodoDesde?: string | null;
+  periodoHasta?: string | null;
+  ventasPeriodo: number;
+  ingresosPeriodo: number;
+  rentabilidadPeriodo: number;
+  inversionActualRefacciones: number;
 }
 
 export interface Auditoria {
@@ -168,10 +174,17 @@ export interface ImagenVehiculo {
 }
 
 export interface Parametro {
-  id?: number;
-  categoria?: string;
-  clave?: string;
-  valor?: string;
+  id: number;
+  categoria: string;
+  clave: string;
+  valor: string;
+  descripcion?: string | null;
+  activo: boolean;
+}
+
+export interface ParametroRequest {
+  categoria: string;
+  clave: string;
+  valor: string;
   descripcion?: string;
-  activo?: boolean;
 }

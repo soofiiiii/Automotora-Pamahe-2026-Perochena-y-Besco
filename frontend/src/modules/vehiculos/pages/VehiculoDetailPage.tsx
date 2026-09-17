@@ -8,13 +8,12 @@ import {
   hasAnyRole,
 } from "../../../config/permissions";
 import { useAuth } from "../../../hooks/useAuth";
-import {
-  costoService,
-  tallerService,
-  vehiculoService,
-} from "../../../services/api";
-import type { CostosVehiculo, Refaccion } from "../../../types/domain.types";
-import type { EstadoVehiculo, Vehiculo } from "../../../types/vehiculo.types";
+import { vehiculoService } from "../../../services/api";
+import type {
+  EstadoVehiculo,
+  Vehiculo,
+  VehiculoHistorial,
+} from "../../../types/vehiculo.types";
 import { LoadingState } from "../../../shared/feedback/LoadingState";
 import { ErrorState } from "../../../shared/feedback/ErrorState";
 import { PageHeader } from "../../../shared/ui/PageHeader";
@@ -34,399 +33,1302 @@ const globalTransitions: Record<EstadoVehiculo, EstadoVehiculo[]> = {
   DADO_DE_BAJA: [],
 };
 
+interface RefaccionHistorialView {
+  id: number;
+  fecha: string;
+  tipoTrabajo: string;
+  descripcion: string;
+  estadoTarea: string;
+}
+
+interface CompraHistorialView {
+  fechaCompra?: string;
+  clienteVendedor?: string;
+}
+
+interface VentaHistorialView {
+  fechaVenta?: string;
+  clienteComprador?: string;
+  precioFinal?: number;
+  costoCompraAlVender?: number;
+  costoRefaccionesAlVender?: number;
+  costoTotalAlVender?: number;
+  rentabilidadCalculada?: number;
+}
+
+
+/* =========================================================
+   COMPONENTE PRINCIPAL
+   ========================================================= */
+
 export default function VehiculoDetailPage() {
   const id = Number(useParams().id);
+
   const validId = Number.isInteger(id) && id > 0;
 
   const { session } = useAuth();
 
-  const roles = useMemo(() => session?.roles ?? [], [session?.roles]);
+  const roles = useMemo(
+    () => session?.roles ?? [],
+    [session?.roles]
+  );
 
-  const management = hasAnyRole(roles, MANAGEMENT_ROLES);
-  const commercial = hasAnyRole(roles, COMMERCIAL_ROLES);
-  const workshop = hasAnyRole(roles, WORKSHOP_ROLES);
+  const management = hasAnyRole(
+    roles,
+    MANAGEMENT_ROLES
+  );
 
-  const [vehicle, setVehicle] = useState<Vehiculo | null>(null);
-  const [costs, setCosts] = useState<CostosVehiculo | null>(null);
-  const [repairs, setRepairs] = useState<Refaccion[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
+  const commercial = hasAnyRole(
+    roles,
+    COMMERCIAL_ROLES
+  );
+
+  const workshop = hasAnyRole(
+    roles,
+    WORKSHOP_ROLES
+  );
+
+
+  /* =========================================================
+     ESTADOS
+     ========================================================= */
+
+  const [vehicle, setVehicle] =
+    useState<Vehiculo | null>(null);
+
+  const [history, setHistory] =
+    useState<VehiculoHistorial | null>(null);
+
+  const [busy, setBusy] =
+    useState(false);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [loadError, setLoadError] =
+    useState("");
+
 
   const { show } = useToast();
+
+
+  /* =========================================================
+     CARGAR HISTORIAL COMPLETO
+     ========================================================= */
 
   const load = async () => {
     if (!validId) return;
 
-    setLoading(true);
-    setLoadError("");
-
     try {
-      const vehicleData = await vehiculoService.get(id);
-      setVehicle(vehicleData);
+      setLoading(true);
+      setLoadError("");
 
-      if (management) {
-        costoService
-          .get(id)
-          .then(setCosts)
-          .catch(() => setCosts(null));
-      }
+      const data =
+        await vehiculoService.historial(id);
 
-      if (workshop) {
-        tallerService
-          .byVehicle(id)
-          .then(setRepairs)
-          .catch(() => setRepairs([]));
-      }
-    } catch (e) {
-      setLoadError(errorMessage(e));
+      setHistory(data);
+
+      /*
+       * El backend devuelve versiones diferentes
+       * del vehículo según el rol.
+       *
+       * Lo convertimos a Vehiculo para mantener
+       * la compatibilidad con las acciones
+       * existentes de esta pantalla.
+       */
+      setVehicle(data.vehiculo as Vehiculo);
+
+    } catch (error) {
+      setLoadError(
+        errorMessage(error)
+      );
+
+      setHistory(null);
       setVehicle(null);
+
     } finally {
       setLoading(false);
     }
   };
 
+
   useEffect(() => {
     if (!validId) return;
 
-    let cancelled = false;
+    void load();
 
-    vehiculoService
-      .get(id)
-      .then((data) => {
-        if (!cancelled) {
-          setVehicle(data);
-        }
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          setLoadError(errorMessage(error));
-          setVehicle(null);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, validId]);
 
-  useEffect(() => {
-    if (!validId || !management) return;
 
-    let cancelled = false;
-
-    costoService
-      .get(id)
-      .then((data) => {
-        if (!cancelled) {
-          setCosts(data);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setCosts(null);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [id, validId, management]);
-
-  useEffect(() => {
-    if (!validId || !workshop) return;
-
-    let cancelled = false;
-
-    tallerService
-      .byVehicle(id)
-      .then((data) => {
-        if (!cancelled) {
-          setRepairs(data);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setRepairs([]);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [id, validId, workshop]);
+  /* =========================================================
+     TRANSICIONES DE ESTADO
+     ========================================================= */
 
   const allowed = useMemo(() => {
-    if (!vehicle) return [] as EstadoVehiculo[];
+    if (!vehicle) {
+      return [] as EstadoVehiculo[];
+    }
+
 
     if (management) {
-      return globalTransitions[vehicle.estado];
+      return globalTransitions[
+        vehicle.estado
+      ];
     }
 
-    if (hasAnyRole(roles, ["VENDEDOR"])) {
-      const map: Partial<Record<EstadoVehiculo, EstadoVehiculo[]>> = {
-        COMPRADO: ["DISPONIBLE"],
-        DISPONIBLE: ["RESERVADO", "EN_TALLER"],
-        RESERVADO: ["DISPONIBLE"],
+
+    if (
+      hasAnyRole(
+        roles,
+        ["VENDEDOR"]
+      )
+    ) {
+      const map:
+        Partial<
+          Record<
+            EstadoVehiculo,
+            EstadoVehiculo[]
+          >
+        > = {
+
+        COMPRADO: [
+          "DISPONIBLE"
+        ],
+
+        DISPONIBLE: [
+          "RESERVADO",
+          "EN_TALLER",
+        ],
+
+        RESERVADO: [
+          "DISPONIBLE"
+        ],
       };
 
-      return map[vehicle.estado] ?? [];
+      return (
+        map[vehicle.estado] ?? []
+      );
     }
 
-    if (hasAnyRole(roles, ["TALLER"])) {
-      const map: Partial<Record<EstadoVehiculo, EstadoVehiculo[]>> = {
-        COMPRADO: ["EN_TALLER"],
-        EN_TALLER: ["DISPONIBLE"],
-        DISPONIBLE: ["EN_TALLER"],
+
+    if (
+      hasAnyRole(
+        roles,
+        ["TALLER"]
+      )
+    ) {
+      const map:
+        Partial<
+          Record<
+            EstadoVehiculo,
+            EstadoVehiculo[]
+          >
+        > = {
+
+        COMPRADO: [
+          "EN_TALLER"
+        ],
+
+        EN_TALLER: [
+          "DISPONIBLE"
+        ],
+
+        DISPONIBLE: [
+          "EN_TALLER"
+        ],
       };
 
-      return map[vehicle.estado] ?? [];
+      return (
+        map[vehicle.estado] ?? []
+      );
     }
+
 
     return [];
-  }, [vehicle, management, roles]);
 
-  if (loading) return <LoadingState label="Cargando vehículo…" />;
-  if (loadError || !vehicle)
+  }, [
+    vehicle,
+    management,
+    roles,
+  ]);
+
+
+  /* =========================================================
+     LOADING Y ERROR
+     ========================================================= */
+
+  if (loading) {
+    return (
+      <LoadingState
+        label="Cargando vehículo…"
+      />
+    );
+  }
+
+
+  if (loadError || !vehicle) {
     return (
       <ErrorState
         title="No pudimos abrir el vehículo"
-        description={loadError || "El vehículo no está disponible."}
+        description={
+          loadError ||
+          "El vehículo no está disponible."
+        }
         onRetry={() => void load()}
       />
     );
+  }
 
-  const changeState = async (state: EstadoVehiculo) => {
+
+  /* =========================================================
+     CAMBIAR ESTADO
+     ========================================================= */
+
+  const changeState = async (
+    state: EstadoVehiculo
+  ) => {
+
     setBusy(true);
+
     try {
-      setVehicle(await vehiculoService.state(id, state));
-      show("Estado actualizado.", "success");
-    } catch (e) {
-      show(errorMessage(e), "error");
+
+      const updatedVehicle =
+        await vehiculoService.state(
+          id,
+          state
+        );
+
+      setVehicle(updatedVehicle);
+
+      setHistory((current) => {
+
+        if (!current) {
+          return null;
+        }
+
+        return {
+          ...current,
+          vehiculo: updatedVehicle,
+        } as VehiculoHistorial;
+
+      });
+
+
+      show(
+        "Estado actualizado.",
+        "success"
+      );
+
+    } catch (error) {
+
+      show(
+        errorMessage(error),
+        "error"
+      );
+
     } finally {
+
       setBusy(false);
+
     }
   };
 
+
+  /* =========================================================
+     DATOS DEL HISTORIAL
+     ========================================================= */
+
+  const refacciones:
+    RefaccionHistorialView[] =
+    history
+      ? history.refacciones as RefaccionHistorialView[]
+      : [];
+
+
+  /*
+   * Para ADMINISTRADOR / DUENO / VENDEDOR
+   */
+  const compra =
+    history && "compra" in history
+      ? history.compra as CompraHistorialView | null
+      : null;
+
+
+  const venta =
+    history && "venta" in history
+      ? history.venta as VentaHistorialView | null
+      : null;
+
+
+  /*
+   * Para TALLER
+   */
+  const fechaCompra =
+    history && "fechaCompra" in history
+      ? history.fechaCompra
+      : null;
+
+
+  const fechaVenta =
+    history && "fechaVenta" in history
+      ? history.fechaVenta
+      : null;
+
+
+  /*
+   * Determina si la venta contiene
+   * información económica gerencial.
+   */
+  const tieneResumenEconomico =
+    management &&
+    venta &&
+    (
+      venta.costoCompraAlVender !== undefined ||
+      venta.costoRefaccionesAlVender !== undefined ||
+      venta.costoTotalAlVender !== undefined ||
+      venta.rentabilidadCalculada !== undefined
+    );
+
+
   return (
     <>
+
       <PageHeader
         title={`${vehicle.marca} ${vehicle.modelo}`}
         description={`${vehicle.anio} · ${vehicle.matricula}`}
+
         actions={
           <>
-            <Link className="button button--secondary" to="/app/vehiculos">
+            <Link
+              className="button button--secondary"
+              to="/app/vehiculos"
+            >
               <ArrowLeft size={17} />
               Volver
             </Link>
+
+
             {commercial && (
-              <Link className="button" to={`/app/vehiculos/${id}/editar`}>
+              <Link
+                className="button"
+                to={`/app/vehiculos/${id}/editar`}
+              >
                 <Pencil size={17} />
                 Editar
               </Link>
             )}
+
           </>
         }
       />
+
+
       <div className="split">
+
+        {/* =====================================================
+            COLUMNA PRINCIPAL
+           ===================================================== */}
+
         <div className="grid">
+
+
+          {/* DATOS GENERALES */}
+
           <section className="card">
+
             <div className="section-title">
-              <h2>Datos generales</h2>
-              <StatusBadge value={vehicle.estado} />
+
+              <h2>
+                Datos generales
+              </h2>
+
+              <StatusBadge
+                value={vehicle.estado}
+              />
+
             </div>
+
+
             <div className="detail-list">
-              <Detail label="Color" value={vehicle.color} />
+
+              <Detail
+                label="Color"
+                value={vehicle.color}
+              />
+
+
               <Detail
                 label="Kilometraje"
                 value={
                   vehicle.kilometraje
-                    ? `${Intl.NumberFormat("es-UY").format(vehicle.kilometraje)} km`
+                    ? `${Intl.NumberFormat(
+                        "es-UY"
+                      ).format(
+                        vehicle.kilometraje
+                      )} km`
                     : "—"
                 }
               />
-              <Detail label="Chasis" value={vehicle.numeroChasis} />
+
+
+              <Detail
+                label="Chasis"
+                value={
+                  vehicle.numeroChasis
+                }
+              />
+
+
               {commercial && (
                 <Detail
                   label="Precio estimado"
-                  value={formatCurrency(vehicle.precioVentaEstimado)}
+                  value={formatCurrency(
+                    vehicle.precioVentaEstimado
+                  )}
                 />
               )}
+
+
               <Detail
                 label="Catálogo"
-                value={vehicle.publicado ? "Publicado" : "No publicado"}
+                value={
+                  vehicle.publicado
+                    ? "Publicado"
+                    : "No publicado"
+                }
               />
-              <Detail label="Activo" value={vehicle.activo ? "Sí" : "No"} />
+
+
+              <Detail
+                label="Activo"
+                value={
+                  vehicle.activo
+                    ? "Sí"
+                    : "No"
+                }
+              />
+
             </div>
+
+
             {vehicle.descripcionPublica && (
-              <div style={{ marginTop: 16 }}>
-                <strong>Descripción pública</strong>
-                <p className="muted">{vehicle.descripcionPublica}</p>
-              </div>
-            )}
-            {management && vehicle.observacionesInternas && (
-              <div>
-                <strong>Observaciones internas</strong>
-                <p className="muted">{vehicle.observacionesInternas}</p>
-              </div>
-            )}
-          </section>
-          <VehicleImages vehicleId={id} />
-          {workshop && (
-            <section className="card">
-              <h2>Trabajos de taller</h2>
-              {repairs.length ? (
-                repairs.slice(0, 8).map((r) => (
-                  <div className="timeline-row" key={r.id}>
-                    <StatusBadge value={r.estadoTarea} />
-                    <div>
-                      <strong>{r.tipoTrabajo}</strong>
-                      <p>{r.descripcion}</p>
-                      <small>{formatDate(r.fecha)}</small>
-                    </div>
-                  </div>
-                ))
-              ) : (
+
+              <div
+                style={{
+                  marginTop: 16,
+                }}
+              >
+
+                <strong>
+                  Descripción pública
+                </strong>
+
                 <p className="muted">
-                  No hay refacciones registradas para esta unidad.
+                  {
+                    vehicle.descripcionPublica
+                  }
                 </p>
+
+              </div>
+
+            )}
+
+
+            {management &&
+              vehicle.observacionesInternas && (
+
+              <div>
+
+                <strong>
+                  Observaciones internas
+                </strong>
+
+                <p className="muted">
+                  {
+                    vehicle.observacionesInternas
+                  }
+                </p>
+
+              </div>
+
+            )}
+
+          </section>
+
+
+          {/* IMÁGENES */}
+
+          <VehicleImages
+            vehicleId={id}
+          />
+
+
+          {/* =====================================================
+              HISTORIAL DEL VEHÍCULO
+             ===================================================== */}
+
+          {history && (
+
+            <section className="card">
+
+              <h2>
+                Historial del vehículo
+              </h2>
+
+
+              {/* ==========================
+                  COMPRA
+                 ========================== */}
+
+              {compra && (
+
+                <div
+                  className="timeline-row"
+                  style={{
+                    marginTop: 16,
+                  }}
+                >
+
+                  <div>
+
+                    <strong>
+                      Compra
+                    </strong>
+
+
+                    {compra.fechaCompra && (
+
+                      <p>
+
+                        Fecha:{" "}
+
+                        {
+                          formatDate(
+                            compra.fechaCompra
+                          )
+                        }
+
+                      </p>
+
+                    )}
+
+
+                    {compra.clienteVendedor && (
+
+                      <p>
+
+                        Vendedor:{" "}
+
+                        {
+                          compra.clienteVendedor
+                        }
+
+                      </p>
+
+                    )}
+
+                  </div>
+
+                </div>
+
               )}
+
+
+              {/* ==========================
+                  COMPRA TALLER
+                 ========================== */}
+
+              {fechaCompra && (
+
+                <div
+                  className="timeline-row"
+                  style={{
+                    marginTop: 16,
+                  }}
+                >
+
+                  <div>
+
+                    <strong>
+                      Compra
+                    </strong>
+
+                    <p>
+
+                      Fecha:{" "}
+
+                      {
+                        formatDate(
+                          fechaCompra
+                        )
+                      }
+
+                    </p>
+
+                  </div>
+
+                </div>
+
+              )}
+
+
+              {/* ==========================
+                  REFACCIONES
+                 ========================== */}
+
+              <div
+                style={{
+                  marginTop: 20,
+                }}
+              >
+
+                <strong>
+                  Refacciones y trabajos
+                </strong>
+
+
+                {refacciones.length ? (
+
+                  <div
+                    style={{
+                      marginTop: 12,
+                    }}
+                  >
+
+                    {refacciones.map(
+                      (repair) => (
+
+                        <div
+                          className="timeline-row"
+                          key={repair.id}
+                        >
+
+                          <StatusBadge
+                            value={
+                              repair.estadoTarea
+                            }
+                          />
+
+
+                          <div>
+
+                            <strong>
+                              {
+                                repair.tipoTrabajo
+                              }
+                            </strong>
+
+
+                            <p>
+                              {
+                                repair.descripcion
+                              }
+                            </p>
+
+
+                            <small>
+
+                              {
+                                formatDate(
+                                  repair.fecha
+                                )
+                              }
+
+                            </small>
+
+                          </div>
+
+                        </div>
+
+                      )
+                    )}
+
+                  </div>
+
+                ) : (
+
+                  <p className="muted">
+
+                    No hay refacciones registradas
+                    para esta unidad.
+
+                  </p>
+
+                )}
+
+              </div>
+
+
+              {/* ==========================
+                  VENTA
+                 ========================== */}
+
+              {venta && (
+
+                <div
+                  className="timeline-row"
+                  style={{
+                    marginTop: 20,
+                  }}
+                >
+
+                  <div>
+
+                    <strong>
+                      Venta
+                    </strong>
+
+
+                    {venta.fechaVenta && (
+
+                      <p>
+
+                        Fecha:{" "}
+
+                        {
+                          formatDate(
+                            venta.fechaVenta
+                          )
+                        }
+
+                      </p>
+
+                    )}
+
+
+                    {venta.clienteComprador && (
+
+                      <p>
+
+                        Cliente:{" "}
+
+                        {
+                          venta.clienteComprador
+                        }
+
+                      </p>
+
+                    )}
+
+
+                    {venta.precioFinal !== undefined && (
+
+                      <p>
+
+                        Precio final:{" "}
+
+                        {
+                          formatCurrency(
+                            venta.precioFinal
+                          )
+                        }
+
+                      </p>
+
+                    )}
+
+                  </div>
+
+                </div>
+
+              )}
+
+
+              {/* ==========================
+                  VENTA TALLER
+                 ========================== */}
+
+              {fechaVenta && (
+
+                <div
+                  className="timeline-row"
+                  style={{
+                    marginTop: 20,
+                  }}
+                >
+
+                  <div>
+
+                    <strong>
+                      Venta
+                    </strong>
+
+                    <p>
+
+                      Fecha:{" "}
+
+                      {
+                        formatDate(
+                          fechaVenta
+                        )
+                      }
+
+                    </p>
+
+                  </div>
+
+                </div>
+
+              )}
+
             </section>
+
           )}
+
+
+          {/* =====================================================
+              TRABAJOS DE TALLER
+             ===================================================== */}
+
+          {workshop && (
+
+            <section className="card">
+
+              <h2>
+                Trabajos de taller
+              </h2>
+
+
+              {refacciones.length ? (
+
+                refacciones
+                  .slice(0, 8)
+                  .map((r) => (
+
+                    <div
+                      className="timeline-row"
+                      key={r.id}
+                    >
+
+                      <StatusBadge
+                        value={
+                          r.estadoTarea
+                        }
+                      />
+
+
+                      <div>
+
+                        <strong>
+                          {
+                            r.tipoTrabajo
+                          }
+                        </strong>
+
+                        <p>
+                          {
+                            r.descripcion
+                          }
+                        </p>
+
+                        <small>
+                          {
+                            formatDate(
+                              r.fecha
+                            )
+                          }
+                        </small>
+
+                      </div>
+
+                    </div>
+
+                  ))
+
+              ) : (
+
+                <p className="muted">
+
+                  No hay refacciones registradas
+                  para esta unidad.
+
+                </p>
+
+              )}
+
+            </section>
+
+          )}
+
         </div>
+
+
+        {/* =====================================================
+            COLUMNA LATERAL
+           ===================================================== */}
+
         <aside className="grid">
+
+
+          {/* CAMBIAR ESTADO */}
+
           <section className="card">
-            <h2>Cambiar estado</h2>
+
+            <h2>
+              Cambiar estado
+            </h2>
+
+
             <p className="muted">
-              Solo se muestran transiciones generales; el backend valida además
-              el rol y las reglas de negocio.
+
+              Solo se muestran transiciones generales;
+              el backend valida además el rol y las
+              reglas de negocio.
+
             </p>
+
+
             <div className="grid">
+
               {allowed
-                .filter((s) => !(s === "DADO_DE_BAJA" && !management))
-                .map((s) => (
+                .filter(
+                  (state) =>
+                    !(
+                      state === "DADO_DE_BAJA" &&
+                      !management
+                    )
+                )
+                .map((state) => (
+
                   <button
                     className="button button--secondary"
                     disabled={busy}
                     type="button"
-                    onClick={() => changeState(s)}
-                    key={s}
+                    onClick={() =>
+                      void changeState(state)
+                    }
+                    key={state}
                   >
-                    {s.replaceAll("_", " ")}
+
+                    {
+                      state.replaceAll(
+                        "_",
+                        " "
+                      )
+                    }
+
                   </button>
+
                 ))}
+
+
               {!allowed.length && (
+
                 <p className="muted">
-                  No hay transiciones manuales disponibles.
+
+                  No hay transiciones manuales
+                  disponibles.
+
                 </p>
+
               )}
+
             </div>
+
           </section>
-          {commercial && vehicle.estado === "DISPONIBLE" && (
+
+
+          {/* PUBLICACIÓN */}
+
+          {commercial &&
+            vehicle.estado === "DISPONIBLE" && (
+
             <section className="card">
-              <h2>Publicación</h2>
+
+              <h2>
+                Publicación
+              </h2>
+
+
               <p className="muted">
-                La publicación pública depende también de las validaciones del
-                backend.
+
+                La publicación pública depende también
+                de las validaciones del backend.
+
               </p>
+
+
               <button
                 className="button button--accent"
                 type="button"
+                disabled={busy}
+
                 onClick={async () => {
+
                   setBusy(true);
+
                   try {
+
+                    const updatedVehicle =
+                      await vehiculoService.publication(
+                        id,
+                        !vehicle.publicado
+                      );
+
                     setVehicle(
-                      await vehiculoService.publication(id, !vehicle.publicado),
+                      updatedVehicle
                     );
-                    show("Publicación actualizada.", "success");
-                  } catch (e) {
-                    show(errorMessage(e), "error");
+
+
+                    setHistory((current) => {
+
+                      if (!current) {
+                        return null;
+                      }
+
+                      return {
+                        ...current,
+                        vehiculo: updatedVehicle,
+                      } as VehiculoHistorial;
+
+                    });
+
+
+                    show(
+                      "Publicación actualizada.",
+                      "success"
+                    );
+
+                  } catch (error) {
+
+                    show(
+                      errorMessage(error),
+                      "error"
+                    );
+
                   } finally {
+
                     setBusy(false);
+
                   }
+
                 }}
               >
+
                 {vehicle.publicado
                   ? "Retirar del catálogo"
                   : "Publicar en catálogo"}
+
               </button>
+
             </section>
+
           )}
-          {management && vehicle.activo && vehicle.estado !== "VENDIDO" && (
+
+
+          {/* ADMINISTRACIÓN */}
+
+          {management &&
+            vehicle.activo &&
+            vehicle.estado !== "VENDIDO" && (
+
             <section className="card">
-              <h2>Administración</h2>
+
+              <h2>
+                Administración
+              </h2>
+
+
               <p className="muted">
-                La baja es lógica y conserva el historial.
+
+                La baja es lógica y conserva
+                el historial.
+
               </p>
+
+
               <button
                 className="button button--danger"
                 type="button"
+                disabled={busy}
+
                 onClick={async () => {
-                  if (!confirm("¿Dar de baja este vehículo?")) return;
-                  try {
-                    await vehiculoService.deactivate(id);
-                    show("Vehículo desactivado.", "success");
-                    setVehicle({ ...vehicle, activo: false });
-                  } catch (e) {
-                    show(errorMessage(e), "error");
+
+                  if (
+                    !confirm(
+                      "¿Dar de baja este vehículo?"
+                    )
+                  ) {
+                    return;
                   }
+
+
+                  setBusy(true);
+
+                  try {
+
+                    await vehiculoService.deactivate(
+                      id
+                    );
+
+                    show(
+                      "Vehículo desactivado.",
+                      "success"
+                    );
+
+
+                    const updatedVehicle = {
+                      ...vehicle,
+                      activo: false,
+                    };
+
+
+                    setVehicle(
+                      updatedVehicle
+                    );
+
+
+                    setHistory((current) => {
+
+                      if (!current) {
+                        return null;
+                      }
+
+                      return {
+                        ...current,
+                        vehiculo: updatedVehicle,
+                      } as VehiculoHistorial;
+
+                    });
+
+                  } catch (error) {
+
+                    show(
+                      errorMessage(error),
+                      "error"
+                    );
+
+                  } finally {
+
+                    setBusy(false);
+
+                  }
+
                 }}
               >
+
                 Dar de baja
+
               </button>
+
             </section>
+
           )}
+
+
+          {/* RESUMEN ECONÓMICO */}
+
           {management && (
+
             <section className="card">
-              <h2>Resumen económico</h2>
-              {costs ? (
+
+              <h2>
+                Resumen económico
+              </h2>
+
+
+              {tieneResumenEconomico && venta ? (
+
                 <div className="grid">
+
                   <Detail
                     label="Costo compra"
-                    value={formatCurrency(Number(costs.costoCompra ?? 0))}
+                    value={formatCurrency(
+                      Number(
+                        venta.costoCompraAlVender ?? 0
+                      )
+                    )}
                   />
+
+
                   <Detail
                     label="Refacciones"
-                    value={formatCurrency(Number(costs.costoRefacciones ?? 0))}
+                    value={formatCurrency(
+                      Number(
+                        venta.costoRefaccionesAlVender ?? 0
+                      )
+                    )}
                   />
+
+
                   <Detail
                     label="Costo total"
-                    value={formatCurrency(Number(costs.costoTotal ?? 0))}
+                    value={formatCurrency(
+                      Number(
+                        venta.costoTotalAlVender ?? 0
+                      )
+                    )}
                   />
-                  {costs.rentabilidad !== undefined && (
-                    <Detail
-                      label="Rentabilidad"
-                      value={formatCurrency(Number(costs.rentabilidad ?? 0))}
-                    />
-                  )}
+
+
+                  <Detail
+                    label="Rentabilidad"
+                    value={formatCurrency(
+                      Number(
+                        venta.rentabilidadCalculada ?? 0
+                      )
+                    )}
+                  />
+
                 </div>
+
               ) : (
+
                 <p className="muted">
-                  El backend todavía no devolvió un resumen económico para esta
-                  unidad.
+
+                  El historial económico definitivo
+                  estará disponible cuando exista una
+                  venta con información económica.
+
                 </p>
+
               )}
+
             </section>
+
           )}
+
         </aside>
+
       </div>
+
     </>
   );
 }
-function Detail({ label, value }: { label: string; value: unknown }) {
+
+
+/* =========================================================
+   COMPONENTE DETAIL
+   ========================================================= */
+
+function Detail({
+  label,
+  value,
+}: {
+  label: string;
+  value: unknown;
+}) {
+
   return (
     <div className="detail-item">
-      <small>{label}</small>
+
+      <small>
+        {label}
+      </small>
+
       <strong>
-        {value === null || value === undefined || value === ""
-          ? "—"
-          : String(value)}
+
+        {
+          value === null ||
+          value === undefined ||
+          value === ""
+            ? "—"
+            : String(value)
+        }
+
       </strong>
+
     </div>
   );
 }

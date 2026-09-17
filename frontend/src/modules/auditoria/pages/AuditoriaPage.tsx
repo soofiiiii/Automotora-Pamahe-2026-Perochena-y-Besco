@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { auditoriaService } from "../../../services/api";
+import { useEffect, useState } from "react";
+import { auditoriaService, type AuditoriaFilters } from "../../../services/api";
 import type { Auditoria } from "../../../types/domain.types";
 import { PageHeader } from "../../../shared/ui/PageHeader";
 import { LoadingState } from "../../../shared/feedback/LoadingState";
@@ -16,26 +16,45 @@ export default function AuditoriaPage() {
   const [date, setDate] = useState("");
   const [loading, setLoading] = useState(true);
   const { show } = useToast();
+  const loadAuditoria = (filters?: AuditoriaFilters) => {
+    setLoading(true);
 
-  useEffect(() => {
     auditoriaService
-      .list()
+      .list(filters)
       .then(setRows)
       .catch((e) => show(errorMessage(e), "error"))
       .finally(() => setLoading(false));
-  }, [show]);
+  };
 
-  const filtered = useMemo(
-    () =>
-      rows.filter(
-        (r) =>
-          (!user || r.usuario.toLowerCase().includes(user.toLowerCase())) &&
-          (!action || r.accion.toLowerCase().includes(action.toLowerCase())) &&
-          (!entity || r.entidad.toLowerCase().includes(entity.toLowerCase())) &&
-          (!date || (r.creadoEn ?? "").startsWith(date)),
-      ),
-    [rows, user, action, entity, date],
-  );
+  useEffect(() => {
+    loadAuditoria();
+  }, []);
+
+  const handleSearch = () => {
+    const filters: AuditoriaFilters = {};
+    if (user.trim()) {
+      filters.usuario = user.trim();
+    }
+    if (action.trim()) {
+      filters.accion = action.trim();
+    }
+    if (entity.trim()) {
+      filters.entidad = entity.trim();
+    }
+    if (date) {
+      filters.desde = date;
+      filters.hasta = date;
+    }
+    loadAuditoria(filters);
+  };
+
+  const handleClear = () => {
+    setUser("");
+    setAction("");
+    setEntity("");
+    setDate("");
+    loadAuditoria();
+  };
 
   const cols: Column<Auditoria>[] = [
     {
@@ -43,19 +62,34 @@ export default function AuditoriaPage() {
       header: "Fecha",
       cell: (r) => String(r.creadoEn ?? "—").replace("T", " "),
     },
-    { key: "user", header: "Usuario", cell: (r) => r.usuario },
-    { key: "action", header: "Acción", cell: (r) => r.accion },
+
+    {
+      key: "user",
+      header: "Usuario",
+      cell: (r) => r.usuario,
+    },
+
+    {
+      key: "action",
+      header: "Acción",
+      cell: (r) => r.accion,
+    },
+
     {
       key: "entity",
       header: "Entidad",
       cell: (r) => `${r.entidad} ${r.entidadId ?? ""}`,
     },
-    { key: "detail", header: "Detalle", cell: (r) => r.detalle ?? "—" },
+
+    {
+      key: "detail",
+      header: "Detalle",
+      cell: (r) => r.detalle ?? "—",
+    },
   ];
 
   return (
     <>
-      {/*Cuando se agreguen los filtros desde la API hay que actualizarlos desde la vista, para que se manden en las peticiones*/}
       <PageHeader
         title="Auditoría"
         description="Consulta de acciones críticas."
@@ -63,15 +97,24 @@ export default function AuditoriaPage() {
       <div className="toolbar">
         <label className="field">
           <span>Usuario</span>
-          <input value={user} onChange={(e) => setUser(e.target.value)} />
+          <input
+            value={user}
+            onChange={(e) => setUser(e.target.value)}
+          />
         </label>
         <label className="field">
           <span>Acción</span>
-          <input value={action} onChange={(e) => setAction(e.target.value)} />
+          <input
+            value={action}
+            onChange={(e) => setAction(e.target.value)}
+          />
         </label>
         <label className="field">
           <span>Entidad</span>
-          <input value={entity} onChange={(e) => setEntity(e.target.value)} />
+          <input
+            value={entity}
+            onChange={(e) => setEntity(e.target.value)}
+          />
         </label>
         <label className="field">
           <span>Fecha</span>
@@ -81,11 +124,32 @@ export default function AuditoriaPage() {
             onChange={(e) => setDate(e.target.value)}
           />
         </label>
+        <button
+          type="button"
+          className="button"
+          onClick={handleSearch}
+          disabled={loading}
+        >
+          Buscar
+        </button>
+        <button
+          type="button"
+          className="button button--secondary"
+          onClick={handleClear}
+          disabled={loading}
+        >
+          Limpiar
+        </button>
       </div>
+
       {loading ? (
         <LoadingState />
-      ) : filtered.length ? (
-        <DataTable rows={filtered} columns={cols} keyOf={(r) => r.id} />
+      ) : rows.length ? (
+        <DataTable
+          rows={rows}
+          columns={cols}
+          keyOf={(r) => r.id}
+        />
       ) : (
         <EmptyState title="No hay registros con esos filtros" />
       )}

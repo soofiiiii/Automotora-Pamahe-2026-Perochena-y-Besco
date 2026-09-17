@@ -1,7 +1,7 @@
 import { Eye, EyeOff, Star, Trash2, Upload } from "lucide-react";
 import { useEffect, useState, type ChangeEvent, type ReactNode } from "react";
 import { apiAssetUrl } from "../../../config/apiConfig";
-import { COMMERCIAL_ROLES, hasAnyRole } from "../../../config/permissions";
+import { COMMERCIAL_ROLES, IMAGE_DELETE_ROLES, hasAnyRole } from "../../../config/permissions";
 import { useAuth } from "../../../hooks/useAuth";
 import { imagenService } from "../../../services/api";
 import type { ImagenVehiculo } from "../../../types/domain.types";
@@ -53,6 +53,7 @@ function ImagePreview({ image }: { image: ImagenVehiculo }) {
 export default function VehicleImages({ vehicleId }: { vehicleId: number }) {
   const { session } = useAuth();
   const commercial = hasAnyRole(session?.roles ?? [], COMMERCIAL_ROLES);
+  const canDeleteImage = hasAnyRole(session?.roles ?? [], IMAGE_DELETE_ROLES);
   const [images, setImages] = useState<ImagenVehiculo[]>([]);
   const { show } = useToast();
 
@@ -156,21 +157,23 @@ export default function VehicleImages({ vehicleId }: { vehicleId: number }) {
                   {img.publica ? "Ocultar" : "Publicar"}
                 </button>
               )}
-              <button
-                type="button"
-                className="button button--danger"
-                onClick={async () => {
-                  if (!confirm("¿Eliminar esta imagen?")) return;
-                  try {
-                    await imagenService.remove(img.id);
-                    load();
-                  } catch (e) {
-                    show(errorMessage(e), "error");
-                  }
-                }}
-              >
-                <Trash2 size={16} />
-              </button>
+              {canDeleteImage && (
+                <button
+                  type="button"
+                  className="button button--danger"
+                  onClick={async () => {
+                    if (!confirm("¿Eliminar esta imagen?")) return;
+                    try {
+                      await imagenService.remove(img.id);
+                      load();
+                    } catch (e) {
+                      show(errorMessage(e), "error");
+                    }
+                  }}
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
             </div>
           </article>
         ))}

@@ -12,6 +12,7 @@ import type {
   VehiculoRequest,
   CatalogoVehiculo,
   EstadoVehiculo,
+  VehiculoHistorial,
 } from "../types/vehiculo.types";
 import type {
   Cliente,
@@ -28,6 +29,7 @@ import type {
   Auditoria,
   ImagenVehiculo,
   Parametro,
+  ParametroRequest,
 } from "../types/domain.types";
 
 export const authService = {
@@ -63,6 +65,7 @@ export const clienteService = {
 export const vehiculoService = {
   list: async () => asArray<Vehiculo>((await apiClient.get("/vehiculos")).data),
   get: async (id: number) => (await apiClient.get<Vehiculo>(`/vehiculos/${id}`)).data,
+  historial: async (id: number) => (await apiClient.get<VehiculoHistorial>(`/vehiculos/${id}/historial`)).data,
   create: async (body: VehiculoRequest) =>
     (await apiClient.post<Vehiculo>("/vehiculos", body)).data,
   update: async (id: number, body: VehiculoRequest) =>
@@ -115,15 +118,65 @@ export const costoService = {
 };
 
 export const dashboardService = {
-  get: async () => (await apiClient.get<DashboardData>("/reportes/dashboard")).data,
+  get: async (desde?: string, hasta?: string) =>
+    (
+      await apiClient.get<DashboardData>("/reportes/dashboard", {
+        params: {
+          ...(desde ? { desde } : {}),
+          ...(hasta ? { hasta } : {}),
+        },
+      })
+    ).data,
 };
 
+export interface AuditoriaFilters {
+  usuario?: string;
+  accion?: string;
+  entidad?: string;
+  entidadId?: number;
+  desde?: string;
+  hasta?: string;
+}
+
 export const auditoriaService = {
-  list: async () => asArray<Auditoria>((await apiClient.get("/auditoria")).data),
+  list: async (filters?: AuditoriaFilters) =>
+    asArray<Auditoria>(
+      (
+        await apiClient.get("/auditoria", {
+          params: filters,
+        })
+      ).data,
+    ),
 };
 
 export const parametroService = {
-  list: async () => asArray<Parametro>((await apiClient.get("/parametros")).data),
+  list: async () =>
+    asArray<Parametro>(
+      (await apiClient.get("/parametros")).data
+    ),
+
+  create: async (body: ParametroRequest) =>
+    (
+      await apiClient.post<Parametro>(
+        "/parametros",
+        body
+      )
+    ).data,
+
+  update: async (
+    id: number,
+    body: ParametroRequest
+  ) =>
+    (
+      await apiClient.put<Parametro>(
+        `/parametros/${id}`,
+        body
+      )
+    ).data,
+
+  deactivate: async (id: number) => {
+    await apiClient.delete(`/parametros/${id}`);
+  },
 };
 
 export const catalogoService = {

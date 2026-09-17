@@ -96,9 +96,8 @@ export default function ComprasPage() {
       />
       {!management ? (
         <div className="notice">
-          Por seguridad financiera, el listado de costos de compra no se muestra
-          al perfil VENDEDOR aunque el backend actual todavía permita consultar
-          ese endpoint.
+          Por seguridad financiera, el listado de costos de compra no está
+          disponible para el perfil VENDEDOR.
         </div>
       ) : loading ? (
         <LoadingState />

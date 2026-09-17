@@ -4,6 +4,8 @@ import { useForm } from "react-hook-form";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 import { vehiculoService } from "../../../services/api";
+import { INTERNAL_OBSERVATIONS_ROLES, hasAnyRole } from "../../../config/permissions";
+import { useAuth } from "../../../hooks/useAuth";
 import { FormField } from "../../../shared/forms/FormField";
 import { PageHeader } from "../../../shared/ui/PageHeader";
 import { useToast } from "../../../shared/feedback/useToast";
@@ -30,6 +32,11 @@ export default function VehiculoFormPage() {
   const { id } = useParams();
   const nav = useNavigate();
   const { show } = useToast();
+  const { session } = useAuth();
+  const canEditInternalObservations = hasAnyRole(
+    session?.roles ?? [],
+    INTERNAL_OBSERVATIONS_ROLES,
+  );
   const {
     register,
     handleSubmit,
@@ -81,15 +88,21 @@ export default function VehiculoFormPage() {
         className="card"
         onSubmit={handleSubmit(async (v) => {
           try {
+            const { observacionesInternas, ...vehicleValues } = v;
             const body = {
-              ...v,
+              ...vehicleValues,
               marca: v.marca.trim(),
               modelo: v.modelo.trim(),
               matricula: v.matricula.trim().toUpperCase(),
               numeroChasis: v.numeroChasis?.trim().toUpperCase() || undefined,
               color: v.color?.trim() || undefined,
               descripcionPublica: v.descripcionPublica?.trim() || undefined,
-              observacionesInternas: v.observacionesInternas?.trim() || undefined,
+              ...(canEditInternalObservations
+                ? {
+                    observacionesInternas:
+                      observacionesInternas?.trim() || undefined,
+                  }
+                : {}),
             };
             if (id) await vehiculoService.update(Number(id), body);
             else await vehiculoService.create(body);
@@ -147,9 +160,11 @@ export default function VehiculoFormPage() {
           <FormField label="Descripción pública">
             <textarea {...register("descripcionPublica")} />
           </FormField>
-          <FormField label="Observaciones internas">
-            <textarea {...register("observacionesInternas")} />
-          </FormField>
+          {canEditInternalObservations && (
+            <FormField label="Observaciones internas">
+              <textarea {...register("observacionesInternas")} />
+            </FormField>
+          )}
         </div>
         <div className="form-actions">
           <Link className="button button--secondary" to="/app/vehiculos">

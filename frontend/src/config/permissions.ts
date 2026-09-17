@@ -1,6 +1,8 @@
 export type AppRole = "ADMINISTRADOR" | "DUENO" | "VENDEDOR" | "TALLER";
 
 export const MANAGEMENT_ROLES: AppRole[] = ["ADMINISTRADOR", "DUENO"];
+export const IMAGE_DELETE_ROLES: AppRole[] = ["ADMINISTRADOR", "DUENO"];
+export const INTERNAL_OBSERVATIONS_ROLES: AppRole[] = ["ADMINISTRADOR", "DUENO"];
 export const COMMERCIAL_ROLES: AppRole[] = ["ADMINISTRADOR", "DUENO", "VENDEDOR"];
 export const WORKSHOP_ROLES: AppRole[] = ["ADMINISTRADOR", "DUENO", "TALLER"];
 export const INTERNAL_ROLES: AppRole[] = ["ADMINISTRADOR", "DUENO", "VENDEDOR", "TALLER"];
