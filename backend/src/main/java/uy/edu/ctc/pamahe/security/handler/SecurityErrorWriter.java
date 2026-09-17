@@ -36,7 +36,10 @@ public class SecurityErrorWriter {
                       String codigo,
                       String mensaje,
                       Throwable exception) throws IOException {
-        String incidenteId = UUID.randomUUID().toString();
+        String incidenteId = org.slf4j.MDC.get(uy.edu.ctc.pamahe.common.filter.CorrelationIdFilter.MDC_KEY);
+        if (incidenteId == null || incidenteId.isBlank()) {
+            incidenteId = UUID.randomUUID().toString();
+        }
         LOGGER.warn("Incidente de seguridad {} - {} {} - {}", incidenteId, request.getMethod(), request.getRequestURI(), mensaje, exception);
 
         response.setStatus(status);

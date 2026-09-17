@@ -1,11 +1,14 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
   servlet:
     context-path: /api
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:native}
 
 spring:
   application:
     name: pamahe-backend
+  profiles:
+    default: dev
 
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3307/pamahe_db?useSSL=false&serverTimezone=America/Montevideo&allowPublicKeyRetrieval=true}
@@ -16,7 +19,6 @@ spring:
   jpa:
     open-in-view: false
     hibernate:
-      # Flyway es la única fuente de cambios del esquema; Hibernate solo verifica su coherencia.
       ddl-auto: validate
     show-sql: ${JPA_SHOW_SQL:false}
     properties:
@@ -34,16 +36,17 @@ spring:
 
 security:
   jwt:
-    issuer: pamahe-api
+    issuer: ${JWT_ISSUER:pamahe-api}
     secret: ${JWT_SECRET}
     expiration-minutes: ${JWT_EXPIRATION_MINUTES:120}
+    renewal-mode: REAUTHENTICATE
+    refresh-enabled: false
 
 app:
   cors:
     allowed-origins: ${FRONTEND_URL:http://localhost:5173}
 
   storage:
-    # El árbol separa recursos públicos del catálogo y archivos privados de la operativa interna.
     root: ${STORAGE_ROOT:uploads}
     images:
       max-bytes: ${IMAGE_MAX_BYTES:12582912}
@@ -51,3 +54,39 @@ app:
       max-height: ${IMAGE_MAX_HEIGHT:8000}
       max-pixels: ${IMAGE_MAX_PIXELS:24000000}
       max-output-dimension: ${IMAGE_MAX_OUTPUT_DIMENSION:1920}
+
+  security:
+    login-rate-limit:
+      max-attempts-user: ${LOGIN_MAX_ATTEMPTS_USER:5}
+      max-attempts-ip: ${LOGIN_MAX_ATTEMPTS_IP:20}
+      window-seconds: ${LOGIN_WINDOW_SECONDS:300}
+      block-seconds: ${LOGIN_BLOCK_SECONDS:900}
+
+  bootstrap-admin:
+    username: ${BOOTSTRAP_ADMIN_USERNAME:admin}
+    password: ${BOOTSTRAP_ADMIN_PASSWORD:}
+
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: never
+  health:
+    defaults:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+info:
+  app:
+    name: ${spring.application.name}
+    version: ${APP_VERSION:dev}
+
+logging:
+  file:
+    name: ${LOG_FILE:logs/pamahe-backend.log}

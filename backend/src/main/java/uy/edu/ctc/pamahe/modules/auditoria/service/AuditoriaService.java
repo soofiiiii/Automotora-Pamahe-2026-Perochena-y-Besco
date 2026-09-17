@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import uy.edu.ctc.pamahe.common.exception.BusinessException;
+import uy.edu.ctc.pamahe.common.response.PageResponse;
 import uy.edu.ctc.pamahe.common.util.SecurityUtils;
 import uy.edu.ctc.pamahe.modules.auditoria.model.Auditoria;
 import uy.edu.ctc.pamahe.modules.auditoria.repository.AuditoriaRepository;
@@ -63,6 +64,21 @@ public class AuditoriaService {
                 .stream().map(this::toResponse).toList();
     }
 
+    @Transactional(readOnly = true)
+    public PageResponse<AuditoriaResponse> listarPaginado(
+            String usuario, String accion, String entidad, Long entidadId,
+            LocalDate desde, LocalDate hasta, int page, int size) {
+        validarFechas(desde, hasta);
+        validarPaginacion(page, size);
+        LocalDateTime desdeHora = desde == null ? null : desde.atStartOfDay();
+        LocalDateTime hastaExclusivo = hasta == null ? null : hasta.plusDays(1).atStartOfDay();
+        return PageResponse.from(
+                this.auditoriaRepository.buscarPaginado(
+                        normalizar(usuario), normalizar(accion), normalizar(entidad), entidadId,
+                        desdeHora, hastaExclusivo, PageRequest.of(page, size)),
+                this::toResponse);
+    }
+
     private String normalizar(String value) {
         if (value == null)
             return null;
@@ -73,5 +89,20 @@ public class AuditoriaService {
     private AuditoriaResponse toResponse(Auditoria a) {
         return new AuditoriaResponse(a.getId(), a.getUsuario(), a.getAccion(), a.getEntidad(), a.getEntidadId(),
                 a.getDetalle(), a.getValoresAnteriores(), a.getValoresNuevos(), a.getCreadoEn());
+    }
+
+    private void validarFechas(LocalDate desde, LocalDate hasta) {
+        if (desde != null && hasta != null && desde.isAfter(hasta)) {
+            throw new BusinessException("La fecha desde no puede ser posterior a la fecha hasta.");
+        }
+    }
+
+    private void validarPaginacion(int page, int size) {
+        if (page < 0) {
+            throw new BusinessException("La página no puede ser negativa.");
+        }
+        if (size < 1 || size > 200) {
+            throw new BusinessException("El tamaño de página debe estar entre 1 y 200.");
+        }
     }
 }

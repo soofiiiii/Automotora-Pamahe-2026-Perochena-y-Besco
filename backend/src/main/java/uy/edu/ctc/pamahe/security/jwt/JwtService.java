@@ -47,6 +47,10 @@ public class JwtService {
                 .compact();
     }
 
+    public long getExpirationMinutes() {
+        return this.expirationMinutes;
+    }
+    
     public String obtenerUsername(String token) {
         return this.obtenerClaims(token).getSubject();
     }

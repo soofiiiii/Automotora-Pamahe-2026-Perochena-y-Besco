@@ -1,8 +1,13 @@
 package uy.edu.ctc.pamahe.modules.taller.service;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
+import java.util.HexFormat;
 import java.util.List;
+import java.util.Objects;
 
 import org.springframework.stereotype.Service;
 
@@ -10,10 +15,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import uy.edu.ctc.pamahe.common.exception.BusinessException;
 import uy.edu.ctc.pamahe.common.exception.ResourceNotFoundException;
+import uy.edu.ctc.pamahe.common.exception.IdempotencyConflictException;
 import uy.edu.ctc.pamahe.modules.auditoria.service.AuditoriaService;
 import uy.edu.ctc.pamahe.modules.taller.dto.request.RefaccionRequest;
 import uy.edu.ctc.pamahe.modules.taller.dto.request.RefaccionUpdateRequest;
 import uy.edu.ctc.pamahe.modules.taller.dto.response.RefaccionResponse;
+import uy.edu.ctc.pamahe.modules.taller.idempotency.RefaccionOperacionOffline;
+import uy.edu.ctc.pamahe.modules.taller.idempotency.RefaccionOperacionOfflineRepository;
 import uy.edu.ctc.pamahe.modules.taller.mapper.RefaccionMapper;
 import uy.edu.ctc.pamahe.modules.taller.model.EstadoTarea;
 import uy.edu.ctc.pamahe.modules.taller.model.Refaccion;
@@ -28,15 +36,14 @@ import uy.edu.ctc.pamahe.modules.compras.model.Compra;
 import uy.edu.ctc.pamahe.modules.compras.repository.CompraRepository;
 
 /**
- * Gestiona trabajos de taller y su impacto en el costo y estado operativo del
- * vehículo.
- * Distingue al usuario que registra del responsable que ejecuta y admite una
- * clave idempotente
+ * Gestiona trabajos de taller y su impacto en el costo y estado operativo del vehículo.
+ * Distingue al usuario que registra del responsable que ejecuta y admite una clave idempotente
  * para que la sincronización offline no duplique refacciones al reintentar.
  */
 @Service
 public class RefaccionService {
     private final RefaccionRepository refaccionRepository;
+    private final RefaccionOperacionOfflineRepository operacionOfflineRepository;
     private final VehiculoService vehiculoService;
     private final UsuarioRepository usuarioRepository;
     private final UsuarioActualService usuarioActualService;
@@ -44,12 +51,14 @@ public class RefaccionService {
     private final CompraRepository compraRepository;
 
     public RefaccionService(RefaccionRepository refaccionRepository,
+            RefaccionOperacionOfflineRepository operacionOfflineRepository,
             VehiculoService vehiculoService,
             UsuarioRepository usuarioRepository,
             UsuarioActualService usuarioActualService,
             AuditoriaService auditoriaService,
             CompraRepository compraRepository) {
         this.refaccionRepository = refaccionRepository;
+        this.operacionOfflineRepository = operacionOfflineRepository;
         this.vehiculoService = vehiculoService;
         this.usuarioRepository = usuarioRepository;
         this.usuarioActualService = usuarioActualService;
@@ -82,19 +91,25 @@ public class RefaccionService {
     @Transactional
     public RefaccionResponse crear(RefaccionRequest request) {
         Usuario usuarioQueRegistra = this.usuarioActualService.exigirRoles("ADMINISTRADOR", "DUENO", "TALLER");
-
-        // El cliente offline reutiliza este identificador en cada reintento de la misma
-        // operación.
         String idOffline = this.normalizarOpcional(request.idOperacionOffline());
+
         if (idOffline != null) {
             var existente = this.refaccionRepository.findByIdOperacionOffline(idOffline);
             if (existente.isPresent()) {
+                validarMismoPayload(existente.get(), request);
                 return RefaccionMapper.toResponse(existente.get());
             }
         }
 
-        // El bloqueo evita que una venta o cambio de estado concurrente invalide la
-        // refacción en curso.
+        RefaccionOperacionOffline reserva = idOffline == null ? null : reservarOperacion(idOffline, request);
+        if (reserva != null && reserva.getRefaccionId() != null) {
+            Refaccion existente = this.refaccionRepository.findByIdConBloqueoLectura(reserva.getRefaccionId())
+                    .orElseThrow(() -> new IllegalStateException(
+                            "La reserva idempotente referencia una refacción inexistente. Revisar integridad de la base."));
+            validarMismoPayload(existente, request);
+            return RefaccionMapper.toResponse(existente);
+        }
+
         Vehiculo vehiculo = this.vehiculoService.buscarActivoPorIdConBloqueo(request.vehiculoId());
         this.validarVehiculoEditable(vehiculo);
         this.validarFecha(vehiculo, request.fecha());
@@ -119,6 +134,10 @@ public class RefaccionService {
                 Boolean.TRUE.equals(request.sincronizadoDesdeOffline()) || idOffline != null);
 
         Refaccion guardada = this.refaccionRepository.save(refaccion);
+        if (reserva != null) {
+            reserva.setRefaccionId(guardada.getId());
+            this.operacionOfflineRepository.save(reserva);
+        }
         this.sincronizarEstadoVehiculoPorTarea(vehiculo, guardada);
 
         this.auditoriaService.registrar(
@@ -167,10 +186,26 @@ public class RefaccionService {
         return RefaccionMapper.toResponse(guardada);
     }
 
-    /**
-     * Una tarea abierta debe reflejarse en inventario para que ventas y catálogo
-     * no traten la unidad como disponible.
-     */
+    private RefaccionOperacionOffline reservarOperacion(String idOffline, RefaccionRequest request) {
+        String requestHash = hashOperacion(request);
+        this.operacionOfflineRepository.reservarSiAusente(idOffline, requestHash);
+        RefaccionOperacionOffline reserva = this.operacionOfflineRepository.bloquearPorId(idOffline)
+                .orElseThrow(() -> new IllegalStateException(
+                        "No fue posible adquirir la reserva idempotente para la operación offline."));
+        if (!Objects.equals(reserva.getRequestHash(), requestHash)) {
+            throw new IdempotencyConflictException(
+                    "El identificador de operación offline ya fue utilizado con datos diferentes.");
+        }
+        return reserva;
+    }
+
+    private void validarMismoPayload(Refaccion existente, RefaccionRequest request) {
+        if (!mismaOperacionOffline(existente, request)) {
+            throw new IdempotencyConflictException(
+                    "El identificador de operación offline ya fue utilizado con datos diferentes.");
+        }
+    }
+
     private void sincronizarEstadoVehiculoPorTarea(Vehiculo vehiculo, Refaccion refaccion) {
         boolean tareaAbierta = refaccion.getEstadoTarea() == EstadoTarea.PENDIENTE
                 || refaccion.getEstadoTarea() == EstadoTarea.EN_CURSO;
@@ -260,8 +295,6 @@ public class RefaccionService {
         refaccion.setFecha(fecha);
         refaccion.setTipoTrabajo(tipoTrabajo);
         refaccion.setDescripcion(descripcion.trim());
-        // Los costos opcionales se normalizan a cero para que la suma monetaria nunca
-        // dependa de null.
         refaccion.setCostoRepuestos(costoRepuestos == null ? BigDecimal.ZERO : costoRepuestos);
         refaccion.setCostoManoObra(costoManoObra == null ? BigDecimal.ZERO : costoManoObra);
         refaccion.setCostoServiciosExternos(costoServiciosExternos == null ? BigDecimal.ZERO : costoServiciosExternos);
@@ -288,4 +321,64 @@ public class RefaccionService {
                 + ", costoTotal=" + refaccion.costoTotal();
     }
 
+    private boolean mismaOperacionOffline(Refaccion existente, RefaccionRequest request) {
+        EstadoTarea estadoSolicitado = request.estadoTarea() == null ? EstadoTarea.PENDIENTE : request.estadoTarea();
+        return existente.getVehiculo().getId().equals(request.vehiculoId())
+                && Objects.equals(
+                        existente.getResponsableOperativo() == null ? null : existente.getResponsableOperativo().getId(),
+                        request.responsableOperativoId())
+                && Objects.equals(existente.getFecha(), request.fecha())
+                && Objects.equals(existente.getTipoTrabajo(), request.tipoTrabajo())
+                && Objects.equals(existente.getDescripcion(), normalizarRequerido(request.descripcion()))
+                && compararMoneda(existente.getCostoRepuestos(), costo(request.costoRepuestos()))
+                && compararMoneda(existente.getCostoManoObra(), costo(request.costoManoObra()))
+                && compararMoneda(existente.getCostoServiciosExternos(), costo(request.costoServiciosExternos()))
+                && Objects.equals(existente.getEstadoTarea(), estadoSolicitado)
+                && Objects.equals(existente.getObservaciones(), normalizarOpcional(request.observaciones()))
+                && Objects.equals(existente.getRegistroFotograficoUrl(), normalizarOpcional(request.registroFotograficoUrl()));
+    }
+
+    private String hashOperacion(RefaccionRequest request) {
+        String canonical = String.join("|",
+                value(request.vehiculoId()),
+                value(request.responsableOperativoId()),
+                value(request.fecha()),
+                value(request.tipoTrabajo()),
+                value(normalizarRequerido(request.descripcion())),
+                value(normalizarMoneda(costo(request.costoRepuestos()))),
+                value(normalizarMoneda(costo(request.costoManoObra()))),
+                value(normalizarMoneda(costo(request.costoServiciosExternos()))),
+                value(request.estadoTarea() == null ? EstadoTarea.PENDIENTE : request.estadoTarea()),
+                value(normalizarOpcional(request.observaciones())),
+                value(normalizarOpcional(request.registroFotograficoUrl())));
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(digest.digest(canonical.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 no está disponible en la JVM.", exception);
+        }
+    }
+
+    private String value(Object value) {
+        return value == null ? "<null>" : value.toString();
+    }
+
+    private String normalizarRequerido(String value) {
+        return value == null ? null : value.trim();
+    }
+
+    private BigDecimal costo(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
+    }
+
+    private BigDecimal normalizarMoneda(BigDecimal value) {
+        return value.stripTrailingZeros();
+    }
+
+    private boolean compararMoneda(BigDecimal left, BigDecimal right) {
+        if (left == null || right == null) {
+            return left == right;
+        }
+        return left.compareTo(right) == 0;
+    }
 }

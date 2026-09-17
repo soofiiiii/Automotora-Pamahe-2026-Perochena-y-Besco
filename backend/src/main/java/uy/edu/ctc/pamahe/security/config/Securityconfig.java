@@ -18,6 +18,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import uy.edu.ctc.pamahe.security.filter.JwtAuthenticationFilter;
+import uy.edu.ctc.pamahe.security.filter.PasswordRotationFilter;
 import uy.edu.ctc.pamahe.security.handler.RestAccessDeniedHandler;
 import uy.edu.ctc.pamahe.security.handler.RestAuthenticationEntryPoint;
 
@@ -35,43 +36,46 @@ public class Securityconfig {
     private final UserDetailsService userDetailsService;
     private final RestAuthenticationEntryPoint authenticationEntryPoint;
     private final RestAccessDeniedHandler accessDeniedHandler;
+    private final PasswordRotationFilter passwordRotationFilter;
 
     public Securityconfig(JwtAuthenticationFilter jwtAuthenticationFilter,
                           UserDetailsService userDetailsService,
                           RestAuthenticationEntryPoint authenticationEntryPoint,
-                          RestAccessDeniedHandler accessDeniedHandler) {
+                          RestAccessDeniedHandler accessDeniedHandler,
+                          PasswordRotationFilter passwordRotationFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.userDetailsService = userDetailsService;
         this.authenticationEntryPoint = authenticationEntryPoint;
         this.accessDeniedHandler = accessDeniedHandler;
+        this.passwordRotationFilter = passwordRotationFilter;
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-         // La API no mantiene sesión de servidor; cada solicitud privada debe acreditar su JWT.
         http.csrf(csrf -> csrf.disable())
                 .cors(cors -> { })
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(this.authenticationEntryPoint)
-                        .accessDeniedHandler(this.accessDeniedHandler)
-                )
+                        .accessDeniedHandler(this.accessDeniedHandler))
                 .authenticationProvider(this.authenticationProvider())
                 .authorizeHttpRequests(auth -> auth
-                        // Solo se liberan las superficies necesarias para operación pública y monitoreo.
-                        .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                        .requestMatchers("/actuator/info", "/actuator/metrics", "/actuator/metrics/**")
+                        .hasAnyRole("ADMINISTRADOR", "DUENO")
+                        .requestMatchers("/actuator/**").denyAll()
+                        
                         .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/auth/session-policy").permitAll()
                         .requestMatchers(HttpMethod.GET, "/catalogo/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/chatbot/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/uploads/public/**").permitAll()
 
-                        // Administración, auditoría, costos y reportes contienen información interna sensible.
                         .requestMatchers("/usuarios/**", "/roles/**", "/auditoria/**", "/parametros/**")
                         .hasAnyRole("ADMINISTRADOR", "DUENO")
                         .requestMatchers("/reportes/**", "/costos/**", "/exportaciones/**")
                         .hasAnyRole("ADMINISTRADOR", "DUENO")
 
-                        // Los permisos de vehículos se separan por operación para respetar responsabilidades reales.
                         .requestMatchers(HttpMethod.GET, "/vehiculos/**")
                         .hasAnyRole("ADMINISTRADOR", "DUENO", "VENDEDOR", "TALLER")
                         .requestMatchers(HttpMethod.PATCH, "/vehiculos/*/estado")
@@ -97,7 +101,6 @@ public class Securityconfig {
                         .requestMatchers("/taller/**")
                         .hasAnyRole("ADMINISTRADOR", "DUENO", "TALLER")
 
-                        // El costo de adquisición y el comprobante de compra son información financiera sensible.
                         .requestMatchers(HttpMethod.GET, "/compras/**")
                         .hasAnyRole("ADMINISTRADOR", "DUENO")
                         .requestMatchers(HttpMethod.POST, "/compras")
@@ -108,10 +111,9 @@ public class Securityconfig {
                         .requestMatchers("/ventas/**", "/clientes/**")
                         .hasAnyRole("ADMINISTRADOR", "DUENO", "VENDEDOR")
 
-                        .anyRequest().authenticated()
-                )
-                // El JWT debe poblar el contexto antes de que Spring evalúe las reglas anteriores.
-                .addFilterBefore(this.jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                        .anyRequest().authenticated())
+                .addFilterBefore(this.jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(this.passwordRotationFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }
@@ -132,7 +134,4 @@ public class Securityconfig {
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
         return configuration.getAuthenticationManager();
     }
-
-
-    
 }

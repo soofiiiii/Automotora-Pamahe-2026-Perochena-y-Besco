@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 public record VehiculoRequest(
         @NotBlank @Size(max = 80) String marca,
         @NotBlank @Size(max = 80) String modelo,
+        @Size(max = 50) String tipoVehiculo,
         @NotNull @Min(1900) @Max(2100) Integer anio,
         @Size(max = 30) String matricula,
         @Size(max = 80) String numeroChasis,

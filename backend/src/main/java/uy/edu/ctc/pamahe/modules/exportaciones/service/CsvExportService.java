@@ -2,6 +2,7 @@ package uy.edu.ctc.pamahe.modules.exportaciones.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import uy.edu.ctc.pamahe.modules.clientes.repository.ClienteRepository;
 import uy.edu.ctc.pamahe.modules.compras.repository.CompraRepository;
 import uy.edu.ctc.pamahe.modules.costos.service.CostoService;
@@ -11,6 +12,7 @@ import uy.edu.ctc.pamahe.modules.ventas.repository.VentaRepository;
 
 @Service
 public class CsvExportService {
+
     private final VehiculoRepository vehiculos;
     private final ClienteRepository clientes;
     private final VentaRepository ventas;
@@ -30,9 +32,9 @@ public class CsvExportService {
 
     @Transactional(readOnly = true)
     public String vehiculos() {
-        StringBuilder b = header("id", "marca", "modelo", "anio", "estado", "precioVentaEstimado", "publicado");
+        StringBuilder b = header("id", "marca", "modelo", "tipoVehiculo", "anio", "estado", "precioVentaEstimado", "publicado");
         vehiculos.findByActivoTrueOrderByCreadoEnDesc().forEach(v -> row(b, v.getId(), v.getMarca(), v.getModelo(),
-                v.getAnio(), v.getEstado(), v.getPrecioVentaEstimado(), v.getPublicado()));
+                v.getTipoVehiculo(), v.getAnio(), v.getEstado(), v.getPrecioVentaEstimado(), v.getPublicado()));
         return b.toString();
     }
 

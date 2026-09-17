@@ -4,6 +4,8 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import uy.edu.ctc.pamahe.modules.vehiculos.model.Vehiculo;
@@ -15,5 +17,7 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
     Optional<Venta> findByVehiculo(Vehiculo vehiculo);
     Optional<Venta> findByVehiculoAndActivoTrue(Vehiculo vehiculo);
     List<Venta> findByActivoTrueOrderByFechaVentaDesc();
+    Page<Venta> findByActivoTrueOrderByFechaVentaDesc(Pageable pageable);
     List<Venta> findByActivoTrueAndFechaVentaBetweenOrderByFechaVentaDesc(LocalDate desde, LocalDate hasta);
+    List<Venta> findByActivoTrueAndFechaVentaLessThanEqualOrderByFechaVentaDesc(LocalDate hasta);
 }

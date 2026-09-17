@@ -20,6 +20,9 @@ public class Vehiculo extends BaseEntity {
     @Column(nullable = false, length = 80)
     private String modelo;
 
+    @Column(name = "tipo_vehiculo", length = 50)
+    private String tipoVehiculo;
+
     @Column(nullable = false)
     private Integer anio;
 
@@ -68,6 +71,14 @@ public class Vehiculo extends BaseEntity {
 
     public void setModelo(String modelo) {
         this.modelo = modelo;
+    }
+
+    public String getTipoVehiculo() {
+        return this.tipoVehiculo;
+    }
+
+    public void setTipoVehiculo(String tipoVehiculo) {
+        this.tipoVehiculo = tipoVehiculo;
     }
 
     public Integer getAnio() {

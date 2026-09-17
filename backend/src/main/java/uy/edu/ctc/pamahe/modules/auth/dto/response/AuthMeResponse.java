@@ -6,6 +6,7 @@ public record AuthMeResponse(
         Long id,
         String username,
         String nombre,
-        Set<String> roles
+        Set<String> roles,
+        Boolean debeCambiarPassword
 ) {
 }

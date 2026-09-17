@@ -11,10 +11,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
 import uy.edu.ctc.pamahe.common.response.ApiResponse;
+import uy.edu.ctc.pamahe.common.response.PageResponse;
 import uy.edu.ctc.pamahe.common.util.PdfService;
 import uy.edu.ctc.pamahe.modules.compras.dto.request.CompraRequest;
 import uy.edu.ctc.pamahe.modules.compras.dto.response.CompraResponse;
@@ -35,6 +37,14 @@ public class CompraController {
     @GetMapping
     public ApiResponse<List<CompraResponse>> listar() {
         return ApiResponse.ok("Compras obtenidas correctamente.", this.compraService.listar());
+    }
+
+    @GetMapping("/paginado")
+    public ApiResponse<PageResponse<CompraResponse>> listarPaginado(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ApiResponse.ok("Compras paginadas obtenidas correctamente.",
+                this.compraService.listarPaginado(page, size));
     }
 
     @GetMapping("/{id}")

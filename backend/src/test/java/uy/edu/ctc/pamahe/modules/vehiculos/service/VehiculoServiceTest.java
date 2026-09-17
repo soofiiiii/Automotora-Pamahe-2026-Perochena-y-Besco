@@ -20,6 +20,7 @@ import uy.edu.ctc.pamahe.common.exception.BusinessException;
 import uy.edu.ctc.pamahe.modules.auditoria.service.AuditoriaService;
 import uy.edu.ctc.pamahe.modules.compras.repository.CompraRepository;
 import uy.edu.ctc.pamahe.modules.imagenes.repository.ImagenVehiculoRepository;
+import uy.edu.ctc.pamahe.modules.parametros.repository.ParametroRepository;
 import uy.edu.ctc.pamahe.modules.taller.repository.RefaccionRepository;
 import uy.edu.ctc.pamahe.modules.vehiculos.dto.request.CambiarEstadoVehiculoRequest;
 import uy.edu.ctc.pamahe.modules.vehiculos.dto.request.CambiarPublicacionVehiculoRequest;
@@ -43,12 +44,14 @@ class VehiculoServiceTest {
     VentaRepository ventaRepository;
     @Mock
     ImagenVehiculoRepository imagenRepository;
+    @Mock 
+    ParametroRepository parametroRepository;
     private VehiculoService service;
 
     @BeforeEach
     void setUp() {
         service = new VehiculoService(vehiculoRepository, compraRepository, refaccionRepository, auditoriaService,
-                ventaRepository, imagenRepository);
+                ventaRepository, imagenRepository, parametroRepository);
     }
 
     @AfterEach

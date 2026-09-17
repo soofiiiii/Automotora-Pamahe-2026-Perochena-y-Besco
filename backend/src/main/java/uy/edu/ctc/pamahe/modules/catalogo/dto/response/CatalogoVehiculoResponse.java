@@ -7,6 +7,7 @@ public record CatalogoVehiculoResponse(
         Long id,
         String marca,
         String modelo,
+        String tipoVehiculo,
         Integer anio,
         String color,
         Integer kilometraje,

@@ -17,6 +17,7 @@ public final class UsuarioMapper {
                 usuario.getEmail(),
                 usuario.getTelefono(),
                 usuario.getActivo(),
+                usuario.getDebeCambiarPassword(),
                 usuario.getRoles().stream().map(rol -> rol.getNombre()).collect(Collectors.toSet())
         );
     }

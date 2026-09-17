@@ -1,0 +1,5 @@
+# Backup diario 02:30. Las variables sensibles deben cargarse desde un EnvironmentFile del sistema.
+30 2 * * * /opt/pamahe/backend/ops/backup/mysql-backup.sh >> /var/log/pamahe-backup.log 2>&1
+
+# Verificación semanal del backup más reciente, domingo a las 04:00.
+0 4 * * 0 /bin/bash -lc 'latest=$(ls -1t /var/backups/pamahe/mysql/*.sql.gz 2>/dev/null | head -n1); test -n "$latest" && /opt/pamahe/backend/ops/backup/mysql-backup-verify.sh "$latest"' >> /var/log/pamahe-backup-verify.log 2>&1
