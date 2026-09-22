@@ -10,7 +10,8 @@ import java.util.List;
 import java.util.Objects;
 
 import org.springframework.stereotype.Service;
-
+import org.springframework.data.domain.PageRequest;
+import uy.edu.ctc.pamahe.common.response.PageResponse;
 import org.springframework.transaction.annotation.Transactional;
 
 import uy.edu.ctc.pamahe.common.exception.BusinessException;
@@ -71,6 +72,29 @@ public class RefaccionService {
         return this.refaccionRepository.findByActivoTrueOrderByFechaDesc().stream()
                 .map(RefaccionMapper::toResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<RefaccionResponse> listarPaginado(
+            EstadoTarea estado,
+            int page,
+            int size) {
+
+        validarPaginacion(page, size);
+
+        var pageable = PageRequest.of(page, size);
+
+        if (estado != null) {
+            var resultado = this.refaccionRepository
+                    .findByEstadoTareaAndActivoTrueOrderByFechaAsc(estado, pageable);
+
+            return PageResponse.from(resultado, RefaccionMapper::toResponse);
+        }
+
+        var resultado = this.refaccionRepository
+                .findByActivoTrueOrderByFechaDesc(pageable);
+
+        return PageResponse.from(resultado, RefaccionMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -380,5 +404,15 @@ public class RefaccionService {
             return left == right;
         }
         return left.compareTo(right) == 0;
+    }
+
+    private void validarPaginacion(int page, int size) {
+        if (page < 0) {
+            throw new BusinessException("La página no puede ser negativa.");
+        }
+
+        if (size < 1 || size > 100) {
+            throw new BusinessException("El tamaño de página debe estar entre 1 y 100.");
+        }
     }
 }

@@ -24,12 +24,7 @@ public interface CompraRepository extends JpaRepository<Compra, Long> {
     List<Compra> findByActivoTrueAndFechaCompraBetweenOrderByFechaCompraDesc(LocalDate desde, LocalDate hasta);
     List<Compra> findByActivoTrueAndFechaCompraLessThanEqualOrderByFechaCompraDesc(LocalDate hasta);
 
-    /**
-     * Obtiene las unidades que formaban parte del inventario al cierre indicado:
-     * ya habían sido compradas y todavía no tenían una venta activa registrada a esa fecha.
-     * La consulta no depende del estado actual del vehículo, evitando eliminar retrospectivamente
-     * una unidad de un reporte histórico solo porque fue vendida después del período consultado.
-     */
+   
     @Query("""
             select c
             from Compra c
@@ -47,5 +42,15 @@ public interface CompraRepository extends JpaRepository<Compra, Long> {
             order by c.fechaCompra desc
             """)
     List<Compra> findStockAlCierre(@Param("hasta") LocalDate hasta);
+
+    @Query("""
+        select c
+        from Compra c
+        where c.activo = true
+          and (:desde is null or c.fechaCompra >= :desde)
+          and (:hasta is null or c.fechaCompra <= :hasta)
+        order by c.fechaCompra desc
+        """)
+    List<Compra> findByActivoTrueAndPeriodo(@Param("desde") LocalDate desde, @Param("hasta") LocalDate hasta);
 
 }

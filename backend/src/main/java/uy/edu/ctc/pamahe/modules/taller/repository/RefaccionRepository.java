@@ -26,10 +26,11 @@ public interface RefaccionRepository extends JpaRepository<Refaccion, Long> {
 
     List<Refaccion> findByVehiculoAndActivoTrueOrderByFechaDesc(Vehiculo vehiculo);
 
-    List<Refaccion> findByVehiculoAndActivoTrueAndEstadoTareaNotOrderByFechaDesc(Vehiculo vehiculo,
-            EstadoTarea estadoTarea);
+    List<Refaccion> findByVehiculoAndActivoTrueAndEstadoTareaNotOrderByFechaDesc(Vehiculo vehiculo, EstadoTarea estadoTarea);
 
     List<Refaccion> findByEstadoTareaAndActivoTrueOrderByFechaAsc(EstadoTarea estadoTarea);
+
+    Page<Refaccion> findByEstadoTareaAndActivoTrueOrderByFechaAsc(EstadoTarea estadoTarea, Pageable pageable);
 
     boolean existsByVehiculo(Vehiculo vehiculo);
 
@@ -41,4 +42,15 @@ public interface RefaccionRepository extends JpaRepository<Refaccion, Long> {
     @Lock(LockModeType.PESSIMISTIC_READ)
     @Query("select r from Refaccion r where r.id = :id")
     Optional<Refaccion> findByIdConBloqueoLectura(@Param("id") Long id);
+
+    @Query("""
+        select r
+        from Refaccion r
+        where r.activo = true
+          and (:desde is null or r.fecha >= :desde)
+          and (:hasta is null or r.fecha <= :hasta)
+        order by r.fecha desc
+        """)
+    List<Refaccion> findByActivoTrueAndPeriodo(@Param("desde") LocalDate desde, @Param("hasta") LocalDate hasta);
+
 }

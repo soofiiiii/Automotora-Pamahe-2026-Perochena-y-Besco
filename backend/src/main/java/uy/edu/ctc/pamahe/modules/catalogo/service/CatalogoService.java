@@ -192,17 +192,17 @@ public class CatalogoService {
                         String whatsapp,
                         String telefono) {
                 return new CatalogoVehiculoResponse(
-                                vehiculo.getId(),
-                                vehiculo.getMarca(),
-                                vehiculo.getModelo(),
-                                vehiculo.getTipoVehiculo(),
-                                vehiculo.getAnio(),
-                                vehiculo.getColor(),
-                                vehiculo.getKilometraje(),
-                                vehiculo.getPrecioVentaEstimado(),
-                                vehiculo.getDescripcionPublica(),
-                                imagenes,
-                                whatsapp,
-                                telefono);
+                        vehiculo.getId(),
+                        vehiculo.getMarca(),
+                        vehiculo.getModelo(),
+                        vehiculo.getTipoVehiculo(),
+                        vehiculo.getAnio(),
+                        vehiculo.getColor(),
+                        vehiculo.getKilometraje(),
+                        vehiculo.getPrecioVentaEstimado(),
+                        vehiculo.getDescripcionPublica(),
+                        imagenes,
+                        whatsapp,
+                        telefono);
         }
 }

@@ -1,5 +1,6 @@
 package uy.edu.ctc.pamahe.modules.exportaciones.controller;
 
+import java.time.LocalDate;
 import java.nio.charset.StandardCharsets;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -25,18 +26,27 @@ public class ExportacionController {
     }
 
     @GetMapping("/ventas.csv")
-    public ResponseEntity<byte[]> ventas() {
-        return csv("ventas.csv", service.ventas());
+    public ResponseEntity<byte[]> ventas(
+            @RequestParam(required = false) LocalDate desde,
+            @RequestParam(required = false) LocalDate hasta) {
+
+        return csv("ventas.csv", service.ventas(desde, hasta));
     }
 
     @GetMapping("/compras.csv")
-    public ResponseEntity<byte[]> compras() {
-        return csv("compras.csv", service.compras());
+    public ResponseEntity<byte[]> compras(
+            @RequestParam(required = false) LocalDate desde,
+            @RequestParam(required = false) LocalDate hasta) {
+
+        return csv("compras.csv", service.compras(desde, hasta));
     }
 
     @GetMapping("/refacciones.csv")
-    public ResponseEntity<byte[]> refacciones() {
-        return csv("refacciones.csv", service.refacciones());
+    public ResponseEntity<byte[]> refacciones(
+            @RequestParam(required = false) LocalDate desde,
+            @RequestParam(required = false) LocalDate hasta) {
+
+        return csv("refacciones.csv", service.refacciones(desde, hasta));
     }
 
     @GetMapping("/costos-vehiculos.csv")

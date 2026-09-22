@@ -2,7 +2,8 @@ package uy.edu.ctc.pamahe.modules.exportaciones.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import java.time.LocalDate;
+import uy.edu.ctc.pamahe.common.exception.BusinessException;
 import uy.edu.ctc.pamahe.modules.clientes.repository.ClienteRepository;
 import uy.edu.ctc.pamahe.modules.compras.repository.CompraRepository;
 import uy.edu.ctc.pamahe.modules.costos.service.CostoService;
@@ -47,29 +48,81 @@ public class CsvExportService {
     }
 
     @Transactional(readOnly = true)
-    public String ventas() {
-        StringBuilder b = header("id", "vehiculoId", "clienteCompradorId", "fechaVenta", "precioFinal", "rentabilidad");
-        ventas.findByActivoTrueOrderByFechaVentaDesc().forEach(v -> row(b, v.getId(), v.getVehiculo().getId(),
-                v.getClienteComprador().getId(), v.getFechaVenta(), v.getPrecioFinal(), v.getRentabilidadCalculada()));
+    public String ventas(LocalDate desde, LocalDate hasta) {
+        validarPeriodo(desde, hasta);
+
+        StringBuilder b = header(
+                "id",
+                "vehiculoId",
+                "clienteCompradorId",
+                "fechaVenta",
+                "precioFinal",
+                "rentabilidad");
+
+        ventas.findByActivoTrueAndPeriodo(desde, hasta)
+                .forEach(v -> row(
+                        b,
+                        v.getId(),
+                        v.getVehiculo().getId(),
+                        v.getClienteComprador().getId(),
+                        v.getFechaVenta(),
+                        v.getPrecioFinal(),
+                        v.getRentabilidadCalculada()));
+
         return b.toString();
     }
 
     @Transactional(readOnly = true)
-    public String compras() {
-        StringBuilder b = header("id", "vehiculoId", "clienteVendedorId", "fechaCompra", "costoAdquisicion");
-        compras.findByActivoTrueOrderByFechaCompraDesc().forEach(c -> row(b, c.getId(), c.getVehiculo().getId(),
-                c.getClienteVendedor().getId(), c.getFechaCompra(), c.getCostoAdquisicion()));
+    public String compras(LocalDate desde, LocalDate hasta) {
+        validarPeriodo(desde, hasta);
+
+        StringBuilder b = header(
+                "id",
+                "vehiculoId",
+                "clienteVendedorId",
+                "fechaCompra",
+                "costoAdquisicion");
+
+        compras.findByActivoTrueAndPeriodo(desde, hasta)
+                .forEach(c -> row(
+                        b,
+                        c.getId(),
+                        c.getVehiculo().getId(),
+                        c.getClienteVendedor().getId(),
+                        c.getFechaCompra(),
+                        c.getCostoAdquisicion()));
+
         return b.toString();
     }
 
     @Transactional(readOnly = true)
-    public String refacciones() {
-        StringBuilder b = header("id", "vehiculoId", "fecha", "tipoTrabajo", "estadoTarea", "costoRepuestos",
-                "costoManoObra", "costoServiciosExternos", "costoTotal");
-        refacciones.findByActivoTrueOrderByFechaDesc()
-                .forEach(r -> row(b, r.getId(), r.getVehiculo().getId(), r.getFecha(), r.getTipoTrabajo(),
-                        r.getEstadoTarea(), r.getCostoRepuestos(), r.getCostoManoObra(), r.getCostoServiciosExternos(),
+    public String refacciones(LocalDate desde, LocalDate hasta) {
+        validarPeriodo(desde, hasta);
+
+        StringBuilder b = header(
+                "id",
+                "vehiculoId",
+                "fecha",
+                "tipoTrabajo",
+                "estadoTarea",
+                "costoRepuestos",
+                "costoManoObra",
+                "costoServiciosExternos",
+                "costoTotal");
+
+        refacciones.findByActivoTrueAndPeriodo(desde, hasta)
+                .forEach(r -> row(
+                        b,
+                        r.getId(),
+                        r.getVehiculo().getId(),
+                        r.getFecha(),
+                        r.getTipoTrabajo(),
+                        r.getEstadoTarea(),
+                        r.getCostoRepuestos(),
+                        r.getCostoManoObra(),
+                        r.getCostoServiciosExternos(),
                         r.costoTotal()));
+
         return b.toString();
     }
 
@@ -89,6 +142,12 @@ public class CsvExportService {
                     c.rentabilidad());
         });
         return b.toString();
+    }
+
+    private void validarPeriodo(LocalDate desde, LocalDate hasta) {
+        if (desde != null && hasta != null && desde.isAfter(hasta)) {
+            throw new BusinessException("La fecha desde no puede ser posterior a la fecha hasta.");
+        }
     }
 
     private StringBuilder header(Object... values) {

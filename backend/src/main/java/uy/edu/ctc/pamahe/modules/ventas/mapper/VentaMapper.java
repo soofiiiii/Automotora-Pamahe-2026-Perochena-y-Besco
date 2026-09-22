@@ -59,3 +59,4 @@ public final class VentaMapper {
         return venta.getComprobantePath() == null ? null : "/api/ventas/" + venta.getId() + "/comprobante";
     }
 }
+

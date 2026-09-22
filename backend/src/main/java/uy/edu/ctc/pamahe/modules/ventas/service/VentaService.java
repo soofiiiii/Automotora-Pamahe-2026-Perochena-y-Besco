@@ -5,7 +5,8 @@ import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
-
+import org.springframework.data.domain.PageRequest;
+import uy.edu.ctc.pamahe.common.response.PageResponse;
 import org.springframework.transaction.annotation.Transactional;
 import uy.edu.ctc.pamahe.common.exception.BusinessException;
 import uy.edu.ctc.pamahe.common.exception.ResourceNotFoundException;
@@ -73,6 +74,25 @@ public class VentaService {
         return this.ventaRepository.findByActivoTrueOrderByFechaVentaDesc().stream()
                 .map(VentaMapper::toResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<VentaResponse> listarPaginado(int page, int size) {
+        validarPaginacion(page, size);
+
+        var resultado = this.ventaRepository.findByActivoTrueOrderByFechaVentaDesc(
+                PageRequest.of(page, size));
+
+        return PageResponse.from(resultado, VentaMapper::toResponse);
+    }
+
+    private void validarPaginacion(int page, int size) {
+        if (page < 0) {
+            throw new BusinessException("La página no puede ser negativa.");
+        }
+        if (size < 1 || size > 100) {
+            throw new BusinessException("El tamaño de página debe estar entre 1 y 100.");
+        }
     }
 
     @Transactional(readOnly = true)
