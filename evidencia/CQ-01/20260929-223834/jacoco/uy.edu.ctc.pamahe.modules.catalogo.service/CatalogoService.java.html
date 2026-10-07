@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CatalogoService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.catalogo.service</a> &gt; <span class="el_source">CatalogoService.java</span></div><h1>CatalogoService.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.catalogo.service;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import uy.edu.ctc.pamahe.common.exception.BusinessException;
+import uy.edu.ctc.pamahe.common.exception.ResourceNotFoundException;
+import uy.edu.ctc.pamahe.common.response.PageResponse;
+import uy.edu.ctc.pamahe.modules.catalogo.dto.response.CatalogoVehiculoResponse;
+import uy.edu.ctc.pamahe.modules.imagenes.model.ImagenVehiculo;
+import uy.edu.ctc.pamahe.modules.imagenes.repository.ImagenVehiculoRepository;
+import uy.edu.ctc.pamahe.modules.parametros.repository.ParametroRepository;
+import uy.edu.ctc.pamahe.modules.vehiculos.model.EstadoVehiculo;
+import uy.edu.ctc.pamahe.modules.vehiculos.model.Vehiculo;
+import uy.edu.ctc.pamahe.modules.vehiculos.repository.VehiculoRepository;
+
+/**
+ * Construye una proyección pública deliberadamente reducida del inventario.
+ * Nunca expone costos, observaciones internas, clientes ni auditoría.
+ */
+@Service
+public class CatalogoService {
+
+        private final VehiculoRepository vehiculoRepository;
+        private final ImagenVehiculoRepository imagenVehiculoRepository;
+        private final ParametroRepository parametroRepository;
+
+        public CatalogoService(
+                        VehiculoRepository vehiculoRepository,
+                        ImagenVehiculoRepository imagenVehiculoRepository,
+<span class="fc" id="L38">                        ParametroRepository parametroRepository) {</span>
+<span class="fc" id="L39">                this.vehiculoRepository = vehiculoRepository;</span>
+<span class="fc" id="L40">                this.imagenVehiculoRepository = imagenVehiculoRepository;</span>
+<span class="fc" id="L41">                this.parametroRepository = parametroRepository;</span>
+<span class="fc" id="L42">        }</span>
+
+        @Transactional(readOnly = true)
+        public List&lt;CatalogoVehiculoResponse&gt; listarDisponibles(
+                        String marca,
+                        String modelo,
+                        String tipoVehiculo,
+                        Integer anioDesde,
+                        Integer anioHasta,
+                        BigDecimal precioMin,
+                        BigDecimal precioMax) {
+<span class="fc" id="L53">                validarFiltros(anioDesde, anioHasta, precioMin, precioMax);</span>
+
+<span class="fc" id="L55">                List&lt;Vehiculo&gt; vehiculos = this.vehiculoRepository.buscarCatalogo(</span>
+                                EstadoVehiculo.DISPONIBLE,
+<span class="fc" id="L57">                                normalizarFiltro(marca),</span>
+<span class="fc" id="L58">                                normalizarFiltro(modelo),</span>
+<span class="fc" id="L59">                                normalizarClave(tipoVehiculo),</span>
+                                anioDesde,
+                                anioHasta,
+                                precioMin,
+                                precioMax);
+
+<span class="fc" id="L65">                return proyectarLista(vehiculos);</span>
+        }
+
+        @Transactional(readOnly = true)
+        public PageResponse&lt;CatalogoVehiculoResponse&gt; listarDisponiblesPaginado(
+                        String marca,
+                        String modelo,
+                        String tipoVehiculo,
+                        Integer anioDesde,
+                        Integer anioHasta,
+                        BigDecimal precioMin,
+                        BigDecimal precioMax,
+                        int page,
+                        int size) {
+<span class="fc" id="L79">                validarFiltros(anioDesde, anioHasta, precioMin, precioMax);</span>
+<span class="nc" id="L80">                validarPaginacion(page, size);</span>
+<span class="nc" id="L81">                var resultado = this.vehiculoRepository.buscarCatalogoPaginado(</span>
+                                EstadoVehiculo.DISPONIBLE,
+<span class="nc" id="L83">                                normalizarFiltro(marca),</span>
+<span class="nc" id="L84">                                normalizarFiltro(modelo),</span>
+<span class="nc" id="L85">                                normalizarClave(tipoVehiculo),</span>
+                                anioDesde,
+                                anioHasta,
+                                precioMin,
+                                precioMax,
+<span class="nc" id="L90">                                PageRequest.of(page, size));</span>
+
+<span class="nc" id="L92">                List&lt;CatalogoVehiculoResponse&gt; content = proyectarLista(resultado.getContent());</span>
+<span class="nc" id="L93">                return new PageResponse&lt;&gt;(</span>
+                                content,
+<span class="nc" id="L95">                                resultado.getNumber(),</span>
+<span class="nc" id="L96">                                resultado.getSize(),</span>
+<span class="nc" id="L97">                                resultado.getTotalElements(),</span>
+<span class="nc" id="L98">                                resultado.getTotalPages(),</span>
+<span class="nc" id="L99">                                resultado.isFirst(),</span>
+<span class="nc" id="L100">                                resultado.isLast());</span>
+        }
+
+        @Transactional(readOnly = true)
+        public CatalogoVehiculoResponse obtenerDetalle(Long id) {
+<span class="fc" id="L105">                Vehiculo vehiculo = this.vehiculoRepository</span>
+<span class="fc" id="L106">                                .findByIdAndActivoTrueAndPublicadoTrueAndEstado(id, EstadoVehiculo.DISPONIBLE)</span>
+<span class="fc" id="L107">                                .orElseThrow(() -&gt; new ResourceNotFoundException(</span>
+                                                &quot;No se encontró un vehículo público disponible con el identificador solicitado.&quot;));
+
+<span class="fc" id="L110">                List&lt;String&gt; imagenes = this.imagenVehiculoRepository</span>
+<span class="fc" id="L111">                                .findByVehiculoAndActivoTrueAndPublicaTrueOrderByPrincipalDescIdAsc(vehiculo)</span>
+<span class="fc" id="L112">                                .stream()</span>
+<span class="fc" id="L113">                                .map(ImagenVehiculo::getUrlPublica)</span>
+<span class="fc" id="L114">                                .filter(Objects::nonNull)</span>
+<span class="fc" id="L115">                                .toList();</span>
+
+<span class="fc" id="L117">                return toPublicResponse(vehiculo, etiquetaTipoVehiculo(vehiculo.getTipoVehiculo()), imagenes,</span>
+<span class="fc" id="L118">                                parametro(&quot;WHATSAPP&quot;), parametro(&quot;TELEFONO&quot;));</span>
+        }
+
+        private List&lt;CatalogoVehiculoResponse&gt; proyectarLista(List&lt;Vehiculo&gt; vehiculos) {
+<span class="pc bpc" id="L122" title="1 of 2 branches missed.">                if (vehiculos.isEmpty()) {</span>
+<span class="fc" id="L123">                        return List.of();</span>
+                }
+
+<span class="nc" id="L126">                Map&lt;Long, List&lt;String&gt;&gt; imagenesPorVehiculo = this.imagenVehiculoRepository</span>
+<span class="nc" id="L127">                                .findByVehiculoInAndActivoTrueAndPublicaTrueOrderByPrincipalDescIdAsc(vehiculos)</span>
+<span class="nc" id="L128">                                .stream()</span>
+<span class="nc bnc" id="L129" title="All 2 branches missed.">                                .filter(i -&gt; i.getUrlPublica() != null)</span>
+<span class="nc" id="L130">                                .collect(Collectors.groupingBy(</span>
+<span class="nc" id="L131">                                                i -&gt; i.getVehiculo().getId(),</span>
+<span class="nc" id="L132">                                                Collectors.mapping(ImagenVehiculo::getUrlPublica,</span>
+<span class="nc" id="L133">                                                                Collectors.toList())));</span>
+
+<span class="nc" id="L135">                String whatsapp = parametro(&quot;WHATSAPP&quot;);</span>
+<span class="nc" id="L136">                String telefono = parametro(&quot;TELEFONO&quot;);</span>
+<span class="nc" id="L137">                Map&lt;String, String&gt; etiquetasTipoVehiculo = etiquetasTipoVehiculo();</span>
+
+<span class="nc" id="L139">                return vehiculos.stream()</span>
+<span class="nc" id="L140">                                .map(v -&gt; toPublicResponse(</span>
+                                                v,
+<span class="nc" id="L142">                                                etiquetaTipoVehiculo(v.getTipoVehiculo(), etiquetasTipoVehiculo),</span>
+<span class="nc" id="L143">                                                imagenesPorVehiculo.getOrDefault(v.getId(), List.of()),</span>
+                                                whatsapp,
+                                                telefono))
+<span class="nc" id="L146">                                .toList();</span>
+        }
+
+        private Map&lt;String, String&gt; etiquetasTipoVehiculo() {
+<span class="nc" id="L150">                return this.parametroRepository.findByCategoriaOrderByClaveAsc(&quot;TIPO_VEHICULO&quot;).stream()</span>
+<span class="nc" id="L151">                                .collect(Collectors.toMap(</span>
+<span class="nc" id="L152">                                                p -&gt; p.getClave().trim().toUpperCase(java.util.Locale.ROOT),</span>
+<span class="nc bnc" id="L153" title="All 4 branches missed.">                                                p -&gt; p.getValor() == null || p.getValor().isBlank()</span>
+<span class="nc" id="L154">                                                                ? p.getClave()</span>
+<span class="nc" id="L155">                                                                : p.getValor().trim(),</span>
+<span class="nc" id="L156">                                                (primero, segundo) -&gt; primero));</span>
+        }
+
+        private String etiquetaTipoVehiculo(String clave) {
+<span class="fc" id="L160">                String normalizada = normalizarClave(clave);</span>
+<span class="pc bpc" id="L161" title="1 of 2 branches missed.">                if (normalizada == null) {</span>
+<span class="nc" id="L162">                        return null;</span>
+                }
+<span class="fc" id="L164">                return this.parametroRepository.findByCategoriaAndClave(&quot;TIPO_VEHICULO&quot;, normalizada)</span>
+<span class="pc bpc" id="L165" title="2 of 4 branches missed.">                                .map(p -&gt; p.getValor() == null || p.getValor().isBlank()</span>
+<span class="nc" id="L166">                                                ? p.getClave()</span>
+<span class="fc" id="L167">                                                : p.getValor().trim())</span>
+<span class="fc" id="L168">                                .orElse(normalizada);</span>
+        }
+
+        private String etiquetaTipoVehiculo(String clave, Map&lt;String, String&gt; etiquetas) {
+<span class="nc" id="L172">                String normalizada = normalizarClave(clave);</span>
+<span class="nc bnc" id="L173" title="All 2 branches missed.">                return normalizada == null ? null : etiquetas.getOrDefault(normalizada, normalizada);</span>
+        }
+
+        private void validarFiltros(Integer anioDesde, Integer anioHasta, BigDecimal precioMin, BigDecimal precioMax) {
+<span class="pc bpc" id="L177" title="5 of 6 branches missed.">                if (anioDesde != null &amp;&amp; anioHasta != null &amp;&amp; anioDesde &gt; anioHasta) {</span>
+<span class="nc" id="L178">                        throw new BusinessException(&quot;El año mínimo no puede ser mayor que el año máximo.&quot;);</span>
+                }
+<span class="pc bpc" id="L180" title="1 of 6 branches missed.">                if (precioMin != null &amp;&amp; precioMax != null &amp;&amp; precioMin.compareTo(precioMax) &gt; 0) {</span>
+<span class="fc" id="L181">                        throw new BusinessException(&quot;El precio mínimo no puede ser mayor que el precio máximo.&quot;);</span>
+                }
+<span class="pc bpc" id="L183" title="1 of 4 branches missed.">                if (precioMin != null &amp;&amp; precioMin.compareTo(BigDecimal.ZERO) &lt; 0) {</span>
+<span class="fc" id="L184">                        throw new BusinessException(&quot;El precio mínimo no puede ser negativo.&quot;);</span>
+                }
+<span class="pc bpc" id="L186" title="3 of 4 branches missed.">                if (precioMax != null &amp;&amp; precioMax.compareTo(BigDecimal.ZERO) &lt; 0) {</span>
+<span class="nc" id="L187">                        throw new BusinessException(&quot;El precio máximo no puede ser negativo.&quot;);</span>
+                }
+<span class="fc" id="L189">        }</span>
+
+        private void validarPaginacion(int page, int size) {
+<span class="pc bpc" id="L192" title="1 of 2 branches missed.">        if ((long) page * size &gt; Integer.MAX_VALUE) {</span>
+<span class="fc" id="L193">            throw new BusinessException(&quot;La página solicitada excede el offset admitido.&quot;);</span>
+        }
+<span class="nc bnc" id="L195" title="All 2 branches missed.">                if (page &lt; 0) {</span>
+<span class="nc" id="L196">                        throw new BusinessException(&quot;La página no puede ser negativa.&quot;);</span>
+                }
+<span class="nc bnc" id="L198" title="All 4 branches missed.">                if (size &lt; 1 || size &gt; 100) {</span>
+<span class="nc" id="L199">                        throw new BusinessException(&quot;El tamaño de página debe estar entre 1 y 100.&quot;);</span>
+                }
+<span class="nc" id="L201">        }</span>
+
+        private String parametro(String clave) {
+<span class="fc" id="L204">                return this.parametroRepository.findByCategoriaAndClaveAndActivoTrue(&quot;CONTACTO&quot;, clave)</span>
+<span class="pc" id="L205">                                .map(p -&gt; p.getValor())</span>
+<span class="fc" id="L206">                                .filter(Objects::nonNull)</span>
+<span class="fc" id="L207">                                .orElse(null);</span>
+        }
+
+        private String normalizarFiltro(String valor) {
+<span class="fc bfc" id="L211" title="All 2 branches covered.">                if (valor == null) {</span>
+<span class="fc" id="L212">                        return null;</span>
+                }
+<span class="fc" id="L214">                String limpio = valor.trim();</span>
+<span class="pc bpc" id="L215" title="1 of 2 branches missed.">                return limpio.isEmpty() ? null : limpio;</span>
+        }
+
+        private String normalizarClave(String valor) {
+<span class="fc" id="L219">                String limpio = normalizarFiltro(valor);</span>
+<span class="fc bfc" id="L220" title="All 2 branches covered.">                return limpio == null ? null : limpio.toUpperCase(java.util.Locale.ROOT);</span>
+        }
+
+        private CatalogoVehiculoResponse toPublicResponse(Vehiculo vehiculo,
+                        String tipoVehiculoLabel,
+                        List&lt;String&gt; imagenes,
+                        String whatsapp,
+                        String telefono) {
+<span class="fc" id="L228">                return new CatalogoVehiculoResponse(</span>
+<span class="fc" id="L229">                                vehiculo.getId(),</span>
+<span class="fc" id="L230">                                vehiculo.getMarca(),</span>
+<span class="fc" id="L231">                                vehiculo.getModelo(),</span>
+<span class="fc" id="L232">                                vehiculo.getTipoVehiculo(),</span>
+                                tipoVehiculoLabel,
+<span class="fc" id="L234">                                vehiculo.getAnio(),</span>
+<span class="fc" id="L235">                                vehiculo.getColor(),</span>
+<span class="fc" id="L236">                                vehiculo.getKilometraje(),</span>
+<span class="fc" id="L237">                                vehiculo.getPrecioVentaEstimado(),</span>
+<span class="fc" id="L238">                                vehiculo.getDescripcionPublica(),</span>
+                                imagenes,
+                                whatsapp,
+                                telefono);
+        }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

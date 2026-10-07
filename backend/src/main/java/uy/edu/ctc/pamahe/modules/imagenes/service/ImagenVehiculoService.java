@@ -85,7 +85,7 @@ public class ImagenVehiculoService {
 
         // Una principal privada sería incoherente: el catálogo no podría mostrarla.
         if (Boolean.TRUE.equals(request.principal()) && !Boolean.TRUE.equals(request.publica())) {
-            throw new BusinessException("Una imagen principal debe ser pública.");
+            throw new BusinessException("Para marcar una imagen como principal, primero debe estar publicada.");
         }
 
         if (publicaAnterior != Boolean.TRUE.equals(request.publica())) {
@@ -146,7 +146,7 @@ public class ImagenVehiculoService {
         ImagenVehiculo imagen = this.imagenVehiculoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró la imagen solicitada."));
         if (!Boolean.TRUE.equals(imagen.getActivo())) {
-            throw new ResourceNotFoundException("No se encontró una imagen activa con el identificador solicitado.");
+            throw new ResourceNotFoundException("La imagen solicitada no existe o ya no está disponible.");
         }
         return imagen;
     }

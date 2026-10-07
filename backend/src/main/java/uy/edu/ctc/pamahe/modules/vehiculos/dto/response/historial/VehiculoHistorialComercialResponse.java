@@ -7,10 +7,10 @@ import uy.edu.ctc.pamahe.modules.vehiculos.dto.response.VehiculoComercialRespons
 import uy.edu.ctc.pamahe.modules.ventas.dto.response.VentaResponse;
 
 public record VehiculoHistorialComercialResponse(
-    VehiculoComercialResponse vehiculo,
-    CompraHistorialComercialResponse compra,
-    List<RefaccionHistorialComercialResponse> refacciones,
-    VentaResponse venta,
-    List<ImagenVehiculoResponse> imagenes
-) {
+        VehiculoComercialResponse vehiculo,
+        CompraHistorialComercialResponse compra,
+        List<RefaccionHistorialComercialResponse> refacciones,
+        VentaResponse venta,
+        List<ImagenVehiculoResponse> imagenes,
+        List<HistorialEventoVehiculoResponse> eventos) {
 }

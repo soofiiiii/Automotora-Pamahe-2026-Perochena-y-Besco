@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RefaccionOperacionOffline.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.taller.idempotency</a> &gt; <span class="el_source">RefaccionOperacionOffline.java</span></div><h1>RefaccionOperacionOffline.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.taller.idempotency;
+
+import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+/** Control de concurrencia mediante reserva de clave de idempotencia para evitar refacciones duplicadas. */
+@Entity
+@Table(name = &quot;refaccion_operaciones_offline&quot;)
+<span class="fc" id="L13">public class RefaccionOperacionOffline {</span>
+
+    @Id
+    @Column(name = &quot;id_operacion&quot;, nullable = false, length = 100)
+    private String idOperacion;
+
+    @Column(name = &quot;request_hash&quot;, nullable = false, length = 64)
+    private String requestHash;
+
+    @Column(name = &quot;refaccion_id&quot;, unique = true)
+    private Long refaccionId;
+
+    @Column(name = &quot;creado_en&quot;, nullable = false, insertable = false, updatable = false)
+    private LocalDateTime creadoEn;
+
+    @Column(name = &quot;actualizado_en&quot;, nullable = false, insertable = false, updatable = false)
+    private LocalDateTime actualizadoEn;
+
+    public String getIdOperacion() {
+<span class="nc" id="L32">        return this.idOperacion;</span>
+    }
+
+    public void setIdOperacion(String idOperacion) {
+<span class="fc" id="L36">        this.idOperacion = idOperacion;</span>
+<span class="fc" id="L37">    }</span>
+
+    public String getRequestHash() {
+<span class="fc" id="L40">        return this.requestHash;</span>
+    }
+
+    public void setRequestHash(String requestHash) {
+<span class="fc" id="L44">        this.requestHash = requestHash;</span>
+<span class="fc" id="L45">    }</span>
+
+    public Long getRefaccionId() {
+<span class="fc" id="L48">        return this.refaccionId;</span>
+    }
+
+    public void setRefaccionId(Long refaccionId) {
+<span class="fc" id="L52">        this.refaccionId = refaccionId;</span>
+<span class="fc" id="L53">    }</span>
+
+    public LocalDateTime getCreadoEn() {
+<span class="nc" id="L56">        return this.creadoEn;</span>
+    }
+
+    public LocalDateTime getActualizadoEn() {
+<span class="nc" id="L60">        return this.actualizadoEn;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

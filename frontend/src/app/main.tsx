@@ -4,10 +4,10 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { AuthProvider } from "../contexts/AuthProvider";
 import { ToastProvider } from "../shared/feedback/ToastProvider";
+import { ConfirmDialogProvider } from "../shared/feedback/ConfirmDialogProvider";
 import { AppErrorBoundary } from "../shared/feedback/AppErrorBoundary";
 import { registerPwa } from "../pwa/registerSW";
-import "../styles/global.css";
-import "../styles/responsive.css";
+import "../styles/index.css";
 
 registerPwa();
 
@@ -17,7 +17,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <BrowserRouter>
         <AuthProvider>
           <ToastProvider>
-            <App />
+            <ConfirmDialogProvider>
+              <App />
+            </ConfirmDialogProvider>
           </ToastProvider>
         </AuthProvider>
       </BrowserRouter>

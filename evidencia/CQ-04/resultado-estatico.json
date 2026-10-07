@@ -1,0 +1,95 @@
+{
+  "generatedAt": "2026-10-04T20:59:32.655Z",
+  "mode": "static",
+  "standardReference": "WCAG 2.1 AA - validaciones básicas aplicables al alcance del proyecto",
+  "keyboardBrowserAuditAvailable": true,
+  "contrastAudits": [
+    {
+      "name": "Texto principal sobre blanco",
+      "ratio": 17.6,
+      "minimum": 4.5,
+      "status": "OK"
+    },
+    {
+      "name": "Texto secundario sobre fondo general",
+      "ratio": 4.53,
+      "minimum": 4.5,
+      "status": "OK"
+    },
+    {
+      "name": "Azul institucional sobre blanco",
+      "ratio": 11.96,
+      "minimum": 4.5,
+      "status": "OK"
+    },
+    {
+      "name": "Blanco sobre azul profundo",
+      "ratio": 13.97,
+      "minimum": 4.5,
+      "status": "OK"
+    },
+    {
+      "name": "Texto de pie de página sobre azul profundo",
+      "ratio": 6.76,
+      "minimum": 4.5,
+      "status": "OK"
+    },
+    {
+      "name": "Etiquetas del catálogo sobre fondo general",
+      "ratio": 5.18,
+      "minimum": 4.5,
+      "status": "OK"
+    },
+    {
+      "name": "Placeholder del buscador sobre blanco",
+      "ratio": 4.76,
+      "minimum": 4.5,
+      "status": "OK"
+    },
+    {
+      "name": "Mensajes de error sobre fondo general",
+      "ratio": 4.67,
+      "minimum": 4.5,
+      "status": "OK"
+    },
+    {
+      "name": "Texto azul profundo sobre acento amarillo",
+      "ratio": 9.34,
+      "minimum": 4.5,
+      "status": "OK"
+    }
+  ],
+  "sourceAudits": [
+    {
+      "name": "Salto al contenido en el sistema interno",
+      "status": "OK"
+    },
+    {
+      "name": "Destino enfocable del contenido interno",
+      "status": "OK"
+    },
+    {
+      "name": "Menú interno asociado mediante aria-controls",
+      "status": "OK"
+    },
+    {
+      "name": "Foco visible global",
+      "status": "OK"
+    },
+    {
+      "name": "Preferencia de movimiento reducido",
+      "status": "OK"
+    },
+    {
+      "name": "Placeholder del catálogo con contraste reforzado",
+      "status": "OK"
+    },
+    {
+      "name": "Texto inferior público con contraste reforzado",
+      "status": "OK"
+    }
+  ],
+  "totalChecks": 16,
+  "passed": 16,
+  "failed": 0
+}

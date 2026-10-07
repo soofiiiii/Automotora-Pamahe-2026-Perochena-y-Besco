@@ -1,0 +1,15 @@
+[Unit]
+Description=Backup MySQL Pamahe y copia externa
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=pamahe-backup
+Group=pamahe-backup
+EnvironmentFile=/etc/pamahe/backup.env
+ExecStart=/bin/bash /opt/pamahe/backend/ops/backup/mysql-backup.sh
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStartSec=1h

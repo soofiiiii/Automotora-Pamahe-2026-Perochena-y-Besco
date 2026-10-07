@@ -1,5 +1,5 @@
-import { ArrowLeft, Pencil } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, Pencil, ReceiptText } from "lucide-react";
+import { useCallback, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   COMMERCIAL_ROLES,
@@ -8,23 +8,34 @@ import {
   hasAnyRole,
 } from "../../../config/permissions";
 import { useAuth } from "../../../hooks/useAuth";
+import { useApiQuery } from "../../../hooks/useApiQuery";
+import { useUsdUyuRate } from "../../../hooks/useUsdUyuRate";
 import { vehiculoService } from "../../../services/api";
-import type {
-  EstadoVehiculo,
-  Vehiculo,
-  VehiculoHistorial,
+import {
+  hasCommercialData,
+  hasManagementData,
+  isVentaHistorialGerencial,
+  type EstadoVehiculo,
 } from "../../../types/vehiculo.types";
 import { LoadingState } from "../../../shared/feedback/LoadingState";
 import { ErrorState } from "../../../shared/feedback/ErrorState";
 import { PageHeader } from "../../../shared/ui/PageHeader";
 import { StatusBadge } from "../../../shared/ui/StatusBadge";
 import { useToast } from "../../../shared/feedback/useToast";
-import { formatCurrency } from "../../../utils/formatCurrency";
+import { useConfirmDialog } from "../../../shared/feedback/useConfirmDialog";
+import {
+  convertUsdToUyu,
+  formatCurrency,
+  formatUsd,
+  formatUyuEquivalent,
+} from "../../../utils/formatCurrency";
 import { formatDate } from "../../../utils/formatDate";
 import { errorMessage } from "../../../utils/errorMessage";
+import { calculateDaysInStock, formatDaysInStock } from "../../../utils/daysInStock";
 import VehicleImages from "../components/VehicleImages";
+import { VehicleHistoryEvents } from "../components/VehicleHistoryEvents";
 
-const globalTransitions: Record<EstadoVehiculo, EstadoVehiculo[]> = {
+const transitions: Record<EstadoVehiculo, EstadoVehiculo[]> = {
   COMPRADO: ["EN_TALLER", "DISPONIBLE", "DADO_DE_BAJA"],
   EN_TALLER: ["DISPONIBLE", "DADO_DE_BAJA"],
   DISPONIBLE: ["RESERVADO", "EN_TALLER", "DADO_DE_BAJA"],
@@ -32,1303 +43,387 @@ const globalTransitions: Record<EstadoVehiculo, EstadoVehiculo[]> = {
   VENDIDO: [],
   DADO_DE_BAJA: [],
 };
+const commercialTransitions: Partial<Record<EstadoVehiculo, EstadoVehiculo[]>> =
+  {
+    COMPRADO: ["DISPONIBLE"],
+    EN_TALLER: ["DISPONIBLE"],
+    DISPONIBLE: ["RESERVADO", "EN_TALLER"],
+    RESERVADO: ["DISPONIBLE"],
+  };
+const workshopTransitions: Partial<Record<EstadoVehiculo, EstadoVehiculo[]>> = {
+  COMPRADO: ["EN_TALLER"],
+  EN_TALLER: ["DISPONIBLE"],
+  DISPONIBLE: ["EN_TALLER"],
+};
+const money = (value?: number | null) =>
+  value == null ? "No informado" : formatCurrency(value);
 
-interface RefaccionHistorialView {
-  id: number;
-  fecha: string;
-  tipoTrabajo: string;
-  descripcion: string;
-  estadoTarea: string;
-}
-
-interface CompraHistorialView {
-  fechaCompra?: string;
-  clienteVendedor?: string;
-}
-
-interface VentaHistorialView {
-  fechaVenta?: string;
-  clienteComprador?: string;
-  precioFinal?: number;
-  costoCompraAlVender?: number;
-  costoRefaccionesAlVender?: number;
-  costoTotalAlVender?: number;
-  rentabilidadCalculada?: number;
-}
-
-
-/* =========================================================
-   COMPONENTE PRINCIPAL
-   ========================================================= */
+const locationLabels = {
+  LOCAL: "Local",
+  TALLER_INTERNO: "Taller interno",
+  TALLER_EXTERNO: "Taller externo",
+  EN_TRASLADO: "En traslado",
+  OTRO: "Otro",
+} as const;
 
 export default function VehiculoDetailPage() {
   const id = Number(useParams().id);
-
-  const validId = Number.isInteger(id) && id > 0;
-
   const { session } = useAuth();
-
-  const roles = useMemo(
-    () => session?.roles ?? [],
-    [session?.roles]
-  );
-
-  const management = hasAnyRole(
-    roles,
-    MANAGEMENT_ROLES
-  );
-
-  const commercial = hasAnyRole(
-    roles,
-    COMMERCIAL_ROLES
-  );
-
-  const workshop = hasAnyRole(
-    roles,
-    WORKSHOP_ROLES
-  );
-
-
-  /* =========================================================
-     ESTADOS
-     ========================================================= */
-
-  const [vehicle, setVehicle] =
-    useState<Vehiculo | null>(null);
-
-  const [history, setHistory] =
-    useState<VehiculoHistorial | null>(null);
-
-  const [busy, setBusy] =
-    useState(false);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [loadError, setLoadError] =
-    useState("");
-
-
+  const usdUyuRate = useUsdUyuRate();
+  const roles = session?.roles ?? [];
+  const management = hasAnyRole(roles, MANAGEMENT_ROLES);
+  const commercial = hasAnyRole(roles, COMMERCIAL_ROLES);
+  const workshop = hasAnyRole(roles, WORKSHOP_ROLES);
   const { show } = useToast();
-
-
-  /* =========================================================
-     CARGAR HISTORIAL COMPLETO
-     ========================================================= */
-
-  const load = async () => {
-    if (!validId) return;
-
-    try {
-      setLoading(true);
-      setLoadError("");
-
-      const data =
-        await vehiculoService.historial(id);
-
-      setHistory(data);
-
-      /*
-       * El backend devuelve versiones diferentes
-       * del vehículo según el rol.
-       *
-       * Lo convertimos a Vehiculo para mantener
-       * la compatibilidad con las acciones
-       * existentes de esta pantalla.
-       */
-      setVehicle(data.vehiculo as Vehiculo);
-
-    } catch (error) {
-      setLoadError(
-        errorMessage(error)
-      );
-
-      setHistory(null);
-      setVehicle(null);
-
-    } finally {
-      setLoading(false);
-    }
-  };
-
-
-  useEffect(() => {
-    if (!validId) return;
-
-    void load();
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, validId]);
-
-
-  /* =========================================================
-     TRANSICIONES DE ESTADO
-     ========================================================= */
-
-  const allowed = useMemo(() => {
-    if (!vehicle) {
-      return [] as EstadoVehiculo[];
-    }
-
-
-    if (management) {
-      return globalTransitions[
-        vehicle.estado
-      ];
-    }
-
-
-    if (
-      hasAnyRole(
-        roles,
-        ["VENDEDOR"]
-      )
-    ) {
-      const map:
-        Partial<
-          Record<
-            EstadoVehiculo,
-            EstadoVehiculo[]
-          >
-        > = {
-
-        COMPRADO: [
-          "DISPONIBLE"
-        ],
-
-        DISPONIBLE: [
-          "RESERVADO",
-          "EN_TALLER",
-        ],
-
-        RESERVADO: [
-          "DISPONIBLE"
-        ],
-      };
-
-      return (
-        map[vehicle.estado] ?? []
-      );
-    }
-
-
-    if (
-      hasAnyRole(
-        roles,
-        ["TALLER"]
-      )
-    ) {
-      const map:
-        Partial<
-          Record<
-            EstadoVehiculo,
-            EstadoVehiculo[]
-          >
-        > = {
-
-        COMPRADO: [
-          "EN_TALLER"
-        ],
-
-        EN_TALLER: [
-          "DISPONIBLE"
-        ],
-
-        DISPONIBLE: [
-          "EN_TALLER"
-        ],
-      };
-
-      return (
-        map[vehicle.estado] ?? []
-      );
-    }
-
-
-    return [];
-
-  }, [
-    vehicle,
-    management,
-    roles,
-  ]);
-
-
-  /* =========================================================
-     LOADING Y ERROR
-     ========================================================= */
-
-  if (loading) {
-    return (
-      <LoadingState
-        label="Cargando vehículo…"
-      />
-    );
-  }
-
-
-  if (loadError || !vehicle) {
+  const { confirm } = useConfirmDialog();
+  const [busy, setBusy] = useState(false);
+  const [deactivated, setDeactivated] = useState<number>();
+  const load = useCallback(
+    async (signal: AbortSignal) => {
+      if (!Number.isSafeInteger(id) || id <= 0)
+        throw new Error("El enlace del vehículo no es válido.");
+      return vehiculoService.historial(id, signal);
+    },
+    [id],
+  );
+  const { data: history, loading, error, retry } = useApiQuery(load);
+  if (loading) return <LoadingState label="Cargando vehículo…" />;
+  if (error || !history)
     return (
       <ErrorState
         title="No pudimos abrir el vehículo"
-        description={
-          loadError ||
-          "El vehículo no está disponible."
-        }
-        onRetry={() => void load()}
+        description={error}
+        onRetry={retry}
       />
     );
-  }
-
-
-  /* =========================================================
-     CAMBIAR ESTADO
-     ========================================================= */
-
-  const changeState = async (
-    state: EstadoVehiculo
-  ) => {
-
+  const vehicle = history.vehiculo;
+  const active = vehicle.activo && deactivated !== id;
+  const purchase = "compra" in history ? history.compra : null;
+  const sale = "venta" in history ? history.venta : null;
+  const purchaseDate =
+    "fechaCompra" in history ? history.fechaCompra : purchase?.fechaCompra;
+  const saleDate =
+    "fechaVenta" in history ? history.fechaVenta : sale?.fechaVenta;
+  const daysInStock = calculateDaysInStock(purchaseDate, saleDate);
+  const economicSale =
+    management && isVentaHistorialGerencial(sale) ? sale : null;
+  const allowed = !active
+    ? []
+    : management
+      ? transitions[vehicle.estado]
+      : hasAnyRole(roles, ["VENDEDOR"])
+        ? (commercialTransitions[vehicle.estado] ?? [])
+        : (workshopTransitions[vehicle.estado] ?? []);
+  const mutate = async (action: () => Promise<unknown>, message: string) => {
     setBusy(true);
-
     try {
-
-      const updatedVehicle =
-        await vehiculoService.state(
-          id,
-          state
-        );
-
-      setVehicle(updatedVehicle);
-
-      setHistory((current) => {
-
-        if (!current) {
-          return null;
-        }
-
-        return {
-          ...current,
-          vehiculo: updatedVehicle,
-        } as VehiculoHistorial;
-
-      });
-
-
-      show(
-        "Estado actualizado.",
-        "success"
-      );
-
-    } catch (error) {
-
-      show(
-        errorMessage(error),
-        "error"
-      );
-
+      await action();
+      show(message, "success");
+      retry();
+    } catch (cause) {
+      show(errorMessage(cause, "No pudimos actualizar el vehículo."), "error");
     } finally {
-
       setBusy(false);
-
     }
   };
-
-
-  /* =========================================================
-     DATOS DEL HISTORIAL
-     ========================================================= */
-
-  const refacciones:
-    RefaccionHistorialView[] =
-    history
-      ? history.refacciones as RefaccionHistorialView[]
-      : [];
-
-
-  /*
-   * Para ADMINISTRADOR / DUENO / VENDEDOR
-   */
-  const compra =
-    history && "compra" in history
-      ? history.compra as CompraHistorialView | null
-      : null;
-
-
-  const venta =
-    history && "venta" in history
-      ? history.venta as VentaHistorialView | null
-      : null;
-
-
-  /*
-   * Para TALLER
-   */
-  const fechaCompra =
-    history && "fechaCompra" in history
-      ? history.fechaCompra
-      : null;
-
-
-  const fechaVenta =
-    history && "fechaVenta" in history
-      ? history.fechaVenta
-      : null;
-
-
-  /*
-   * Determina si la venta contiene
-   * información económica gerencial.
-   */
-  const tieneResumenEconomico =
-    management &&
-    venta &&
-    (
-      venta.costoCompraAlVender !== undefined ||
-      venta.costoRefaccionesAlVender !== undefined ||
-      venta.costoTotalAlVender !== undefined ||
-      venta.rentabilidadCalculada !== undefined
-    );
-
-
   return (
     <>
-
       <PageHeader
         title={`${vehicle.marca} ${vehicle.modelo}`}
-        description={`${vehicle.anio} · ${vehicle.matricula}`}
-
+        description={`${vehicle.anio} · ${vehicle.matricula || "Sin matrícula"}`}
         actions={
           <>
-            <Link
-              className="button button--secondary"
-              to="/app/vehiculos"
-            >
+            <Link className="button button--secondary" to="/app/vehiculos">
               <ArrowLeft size={17} />
               Volver
             </Link>
-
-
-            {commercial && (
-              <Link
-                className="button"
-                to={`/app/vehiculos/${id}/editar`}
-              >
+            {commercial && active && vehicle.estado === "DISPONIBLE" && (
+              <Link className="button" to={`/app/ventas/nueva?vehiculoId=${id}`}>
+                <ReceiptText size={17} />
+                Registrar venta
+              </Link>
+            )}
+            {commercial && active && (
+              <Link className="button" to={`/app/vehiculos/${id}/editar`}>
                 <Pencil size={17} />
                 Editar
               </Link>
             )}
-
           </>
         }
       />
-
-
+      {deactivated === id && (
+        <p className="notice" role="status">
+          El vehículo fue dado de baja. Se conserva su historial.
+        </p>
+      )}
       <div className="split">
-
-        {/* =====================================================
-            COLUMNA PRINCIPAL
-           ===================================================== */}
-
         <div className="grid">
-
-
-          {/* DATOS GENERALES */}
-
           <section className="card">
-
             <div className="section-title">
-
-              <h2>
-                Datos generales
-              </h2>
-
+              <h2>Datos generales</h2>
               <StatusBadge
-                value={vehicle.estado}
+                value={deactivated === id ? "DADO_DE_BAJA" : vehicle.estado}
               />
-
             </div>
-
-
             <div className="detail-list">
-
               <Detail
-                label="Color"
-                value={vehicle.color}
+                label="Tipo"
+                value={vehicle.tipoVehiculoLabel ?? vehicle.tipoVehiculo ?? "Sin especificar"}
               />
-
-
+              <Detail label="Color" value={vehicle.color} />
+              <Detail label="Ubicación actual" value={locationLabels[vehicle.ubicacionActual]} />
               <Detail
                 label="Kilometraje"
                 value={
-                  vehicle.kilometraje
-                    ? `${Intl.NumberFormat(
-                        "es-UY"
-                      ).format(
-                        vehicle.kilometraje
-                      )} km`
-                    : "—"
+                  vehicle.kilometraje == null
+                    ? null
+                    : `${Intl.NumberFormat("es-UY").format(vehicle.kilometraje)} km`
                 }
               />
-
-
-              <Detail
-                label="Chasis"
-                value={
-                  vehicle.numeroChasis
-                }
-              />
-
-
-              {commercial && (
-                <Detail
-                  label="Precio estimado"
-                  value={formatCurrency(
-                    vehicle.precioVentaEstimado
-                  )}
-                />
+              <Detail label="Chasis" value={vehicle.numeroChasis} />
+              <Detail label="Días en stock" value={formatDaysInStock(daysInStock)} />
+              {commercial && hasCommercialData(vehicle) && (
+                <>
+                  <PriceDetail
+                    usd={vehicle.precioVentaUsd}
+                    uyu={
+                      convertUsdToUyu(vehicle.precioVentaUsd, usdUyuRate)
+                        ?? vehicle.precioVentaEstimado
+                    }
+                  />
+                  <Detail
+                    label="Catálogo"
+                    value={vehicle.publicado ? "Publicado" : "No publicado"}
+                  />
+                </>
               )}
-
-
-              <Detail
-                label="Catálogo"
-                value={
-                  vehicle.publicado
-                    ? "Publicado"
-                    : "No publicado"
-                }
-              />
-
-
-              <Detail
-                label="Activo"
-                value={
-                  vehicle.activo
-                    ? "Sí"
-                    : "No"
-                }
-              />
-
+              <Detail label="Activo" value={active ? "Sí" : "No"} />
             </div>
-
-
             {vehicle.descripcionPublica && (
-
-              <div
-                style={{
-                  marginTop: 16,
-                }}
-              >
-
-                <strong>
-                  Descripción pública
-                </strong>
-
-                <p className="muted">
-                  {
-                    vehicle.descripcionPublica
-                  }
-                </p>
-
-              </div>
-
+              <>
+                <h3>Descripción pública</h3>
+                <p>{vehicle.descripcionPublica}</p>
+              </>
             )}
-
-
             {management &&
+              hasManagementData(vehicle) &&
               vehicle.observacionesInternas && (
-
-              <div>
-
-                <strong>
-                  Observaciones internas
-                </strong>
-
-                <p className="muted">
-                  {
-                    vehicle.observacionesInternas
-                  }
-                </p>
-
-              </div>
-
-            )}
-
+                <>
+                  <h3>Observaciones internas</h3>
+                  <p>{vehicle.observacionesInternas}</p>
+                </>
+              )}
           </section>
-
-
-          {/* IMÁGENES */}
-
-          <VehicleImages
-            vehicleId={id}
-          />
-
-
-          {/* =====================================================
-              HISTORIAL DEL VEHÍCULO
-             ===================================================== */}
-
-          {history && (
-
-            <section className="card">
-
-              <h2>
-                Historial del vehículo
-              </h2>
-
-
-              {/* ==========================
-                  COMPRA
-                 ========================== */}
-
-              {compra && (
-
-                <div
-                  className="timeline-row"
-                  style={{
-                    marginTop: 16,
-                  }}
-                >
-
-                  <div>
-
-                    <strong>
-                      Compra
-                    </strong>
-
-
-                    {compra.fechaCompra && (
-
-                      <p>
-
-                        Fecha:{" "}
-
-                        {
-                          formatDate(
-                            compra.fechaCompra
-                          )
-                        }
-
-                      </p>
-
-                    )}
-
-
-                    {compra.clienteVendedor && (
-
-                      <p>
-
-                        Vendedor:{" "}
-
-                        {
-                          compra.clienteVendedor
-                        }
-
-                      </p>
-
-                    )}
-
-                  </div>
-
-                </div>
-
-              )}
-
-
-              {/* ==========================
-                  COMPRA TALLER
-                 ========================== */}
-
-              {fechaCompra && (
-
-                <div
-                  className="timeline-row"
-                  style={{
-                    marginTop: 16,
-                  }}
-                >
-
-                  <div>
-
-                    <strong>
-                      Compra
-                    </strong>
-
-                    <p>
-
-                      Fecha:{" "}
-
-                      {
-                        formatDate(
-                          fechaCompra
-                        )
-                      }
-
-                    </p>
-
-                  </div>
-
-                </div>
-
-              )}
-
-
-              {/* ==========================
-                  REFACCIONES
-                 ========================== */}
-
-              <div
-                style={{
-                  marginTop: 20,
-                }}
-              >
-
-                <strong>
-                  Refacciones y trabajos
-                </strong>
-
-
-                {refacciones.length ? (
-
-                  <div
-                    style={{
-                      marginTop: 12,
-                    }}
-                  >
-
-                    {refacciones.map(
-                      (repair) => (
-
-                        <div
-                          className="timeline-row"
-                          key={repair.id}
-                        >
-
-                          <StatusBadge
-                            value={
-                              repair.estadoTarea
-                            }
-                          />
-
-
-                          <div>
-
-                            <strong>
-                              {
-                                repair.tipoTrabajo
-                              }
-                            </strong>
-
-
-                            <p>
-                              {
-                                repair.descripcion
-                              }
-                            </p>
-
-
-                            <small>
-
-                              {
-                                formatDate(
-                                  repair.fecha
-                                )
-                              }
-
-                            </small>
-
-                          </div>
-
-                        </div>
-
-                      )
-                    )}
-
-                  </div>
-
-                ) : (
-
-                  <p className="muted">
-
-                    No hay refacciones registradas
-                    para esta unidad.
-
-                  </p>
-
-                )}
-
-              </div>
-
-
-              {/* ==========================
-                  VENTA
-                 ========================== */}
-
-              {venta && (
-
-                <div
-                  className="timeline-row"
-                  style={{
-                    marginTop: 20,
-                  }}
-                >
-
-                  <div>
-
-                    <strong>
-                      Venta
-                    </strong>
-
-
-                    {venta.fechaVenta && (
-
-                      <p>
-
-                        Fecha:{" "}
-
-                        {
-                          formatDate(
-                            venta.fechaVenta
-                          )
-                        }
-
-                      </p>
-
-                    )}
-
-
-                    {venta.clienteComprador && (
-
-                      <p>
-
-                        Cliente:{" "}
-
-                        {
-                          venta.clienteComprador
-                        }
-
-                      </p>
-
-                    )}
-
-
-                    {venta.precioFinal !== undefined && (
-
-                      <p>
-
-                        Precio final:{" "}
-
-                        {
-                          formatCurrency(
-                            venta.precioFinal
-                          )
-                        }
-
-                      </p>
-
-                    )}
-
-                  </div>
-
-                </div>
-
-              )}
-
-
-              {/* ==========================
-                  VENTA TALLER
-                 ========================== */}
-
-              {fechaVenta && (
-
-                <div
-                  className="timeline-row"
-                  style={{
-                    marginTop: 20,
-                  }}
-                >
-
-                  <div>
-
-                    <strong>
-                      Venta
-                    </strong>
-
-                    <p>
-
-                      Fecha:{" "}
-
-                      {
-                        formatDate(
-                          fechaVenta
-                        )
-                      }
-
-                    </p>
-
-                  </div>
-
-                </div>
-
-              )}
-
-            </section>
-
-          )}
-
-
-          {/* =====================================================
-              TRABAJOS DE TALLER
-             ===================================================== */}
-
-          {workshop && (
-
-            <section className="card">
-
-              <h2>
-                Trabajos de taller
-              </h2>
-
-
-              {refacciones.length ? (
-
-                refacciones
-                  .slice(0, 8)
-                  .map((r) => (
-
-                    <div
-                      className="timeline-row"
-                      key={r.id}
-                    >
-
-                      <StatusBadge
-                        value={
-                          r.estadoTarea
-                        }
-                      />
-
-
-                      <div>
-
-                        <strong>
-                          {
-                            r.tipoTrabajo
-                          }
-                        </strong>
-
-                        <p>
-                          {
-                            r.descripcion
-                          }
-                        </p>
-
-                        <small>
-                          {
-                            formatDate(
-                              r.fecha
-                            )
-                          }
-                        </small>
-
-                      </div>
-
-                    </div>
-
-                  ))
-
-              ) : (
-
-                <p className="muted">
-
-                  No hay refacciones registradas
-                  para esta unidad.
-
-                </p>
-
-              )}
-
-            </section>
-
-          )}
-
-        </div>
-
-
-        {/* =====================================================
-            COLUMNA LATERAL
-           ===================================================== */}
-
-        <aside className="grid">
-
-
-          {/* CAMBIAR ESTADO */}
-
+          <VehicleImages vehicleId={id} readOnly={!active} />
           <section className="card">
-
-            <h2>
-              Cambiar estado
-            </h2>
-
-
-            <p className="muted">
-
-              Solo se muestran transiciones generales;
-              el backend valida además el rol y las
-              reglas de negocio.
-
-            </p>
-
-
-            <div className="grid">
-
-              {allowed
-                .filter(
-                  (state) =>
-                    !(
-                      state === "DADO_DE_BAJA" &&
-                      !management
-                    )
-                )
-                .map((state) => (
-
-                  <button
-                    className="button button--secondary"
-                    disabled={busy}
-                    type="button"
-                    onClick={() =>
-                      void changeState(state)
-                    }
-                    key={state}
-                  >
-
-                    {
-                      state.replaceAll(
-                        "_",
-                        " "
-                      )
-                    }
-
-                  </button>
-
-                ))}
-
-
-              {!allowed.length && (
-
-                <p className="muted">
-
-                  No hay transiciones manuales
-                  disponibles.
-
-                </p>
-
-              )}
-
-            </div>
-
+            <h2>Historial del vehículo</h2>
+            {purchaseDate && (
+              <div className="timeline-row">
+                <div>
+                  <strong>Compra</strong>
+                  <p>{formatDate(purchaseDate)}</p>
+                  {commercial && purchase && <p>Vendedor: {purchase.clienteVendedor}</p>}
+                </div>
+              </div>
+            )}
+            <h3>Refacciones y trabajos</h3>
+            {history.refacciones.length ? (
+              history.refacciones.map((repair) => (
+                <div className="timeline-row" key={repair.id}>
+                  <StatusBadge value={repair.estadoTarea} />
+                  <div>
+                    <strong>{repair.tipoTrabajo.replaceAll("_", " ")}</strong>
+                    <p>{repair.descripcion}</p>
+                    <small>{formatDate(repair.fecha)}</small>
+                    {workshop && (
+                      <p>
+                        <Link to={`/app/taller/${repair.id}?vehiculoId=${id}`}>
+                          Abrir detalle del trabajo
+                        </Link>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="muted">
+                No hay refacciones registradas para esta unidad.
+              </p>
+            )}
+            {saleDate && (
+              <div className="timeline-row">
+                <div>
+                  <strong>Venta</strong>
+                  <p>{formatDate(saleDate)}</p>
+                  {commercial && sale && (
+                    <>
+                      <p>Comprador: {sale.clienteComprador}</p>
+                      <p>Precio final: {money(sale.precioFinal)}</p>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+            <VehicleHistoryEvents eventos={history.eventos} />
           </section>
-
-
-          {/* PUBLICACIÓN */}
-
-          {commercial &&
-            vehicle.estado === "DISPONIBLE" && (
-
-            <section className="card">
-
-              <h2>
-                Publicación
-              </h2>
-
-
-              <p className="muted">
-
-                La publicación pública depende también
-                de las validaciones del backend.
-
-              </p>
-
-
-              <button
-                className="button button--accent"
-                type="button"
-                disabled={busy}
-
-                onClick={async () => {
-
-                  setBusy(true);
-
-                  try {
-
-                    const updatedVehicle =
-                      await vehiculoService.publication(
-                        id,
-                        !vehicle.publicado
-                      );
-
-                    setVehicle(
-                      updatedVehicle
-                    );
-
-
-                    setHistory((current) => {
-
-                      if (!current) {
-                        return null;
-                      }
-
-                      return {
-                        ...current,
-                        vehiculo: updatedVehicle,
-                      } as VehiculoHistorial;
-
-                    });
-
-
-                    show(
-                      "Publicación actualizada.",
-                      "success"
-                    );
-
-                  } catch (error) {
-
-                    show(
-                      errorMessage(error),
-                      "error"
-                    );
-
-                  } finally {
-
-                    setBusy(false);
-
+        </div>
+        <aside className="grid">
+          <section className="card">
+            <h2>Estado operativo</h2>
+            <div className="actions-row">
+              {allowed.map((state) => (
+                <button
+                  className="button button--secondary"
+                  type="button"
+                  disabled={busy}
+                  key={state}
+                  onClick={() =>
+                    void mutate(
+                      () => vehiculoService.state(id, state),
+                      "Estado actualizado.",
+                    )
                   }
-
-                }}
-              >
-
-                {vehicle.publicado
-                  ? "Retirar del catálogo"
-                  : "Publicar en catálogo"}
-
-              </button>
-
-            </section>
-
-          )}
-
-
-          {/* ADMINISTRACIÓN */}
-
-          {management &&
-            vehicle.activo &&
-            vehicle.estado !== "VENDIDO" && (
-
+                >
+                  {state.replaceAll("_", " ")}
+                </button>
+              ))}
+              {!allowed.length && (
+                <p className="muted">
+                  No hay transiciones manuales disponibles.
+                </p>
+              )}
+            </div>
+          </section>
+          {active &&
+            commercial &&
+            hasCommercialData(vehicle) &&
+            (vehicle.estado === "DISPONIBLE" || vehicle.estado === "RESERVADO") && (
+              <section className="card">
+                <h2>Publicación</h2>
+                <button
+                  className="button button--accent"
+                  type="button"
+                  disabled={busy}
+                  onClick={() =>
+                    void mutate(
+                      () => vehiculoService.publication(id, !vehicle.publicado),
+                      "Publicación actualizada.",
+                    )
+                  }
+                >
+                  {vehicle.publicado
+                    ? "Retirar del catálogo"
+                    : "Publicar en catálogo"}
+                </button>
+              </section>
+            )}
+          {management && active && vehicle.estado !== "VENDIDO" && (
             <section className="card">
-
-              <h2>
-                Administración
-              </h2>
-
-
-              <p className="muted">
-
-                La baja es lógica y conserva
-                el historial.
-
-              </p>
-
-
+              <h2>Administración</h2>
+              <p>La baja conserva el historial del vehículo.</p>
               <button
                 className="button button--danger"
                 type="button"
                 disabled={busy}
-
                 onClick={async () => {
-
-                  if (
-                    !confirm(
-                      "¿Dar de baja este vehículo?"
-                    )
-                  ) {
-                    return;
-                  }
-
-
+                  const accepted = await confirm({
+                    title: "Dar de baja vehículo",
+                    message:
+                      "El vehículo dejará de estar disponible para la operativa y el catálogo. Su historial se conservará.",
+                    confirmLabel: "Dar de baja definitivamente",
+                    requireSecondConfirm: true,
+                  });
+                  if (!accepted) return;
                   setBusy(true);
-
                   try {
-
-                    await vehiculoService.deactivate(
-                      id
-                    );
-
-                    show(
-                      "Vehículo desactivado.",
-                      "success"
-                    );
-
-
-                    const updatedVehicle = {
-                      ...vehicle,
-                      activo: false,
-                    };
-
-
-                    setVehicle(
-                      updatedVehicle
-                    );
-
-
-                    setHistory((current) => {
-
-                      if (!current) {
-                        return null;
-                      }
-
-                      return {
-                        ...current,
-                        vehiculo: updatedVehicle,
-                      } as VehiculoHistorial;
-
-                    });
-
-                  } catch (error) {
-
-                    show(
-                      errorMessage(error),
-                      "error"
-                    );
-
+                    await vehiculoService.deactivate(id);
+                    setDeactivated(id);
+                    show("Vehículo dado de baja correctamente.", "success");
+                    retry();
+                  } catch (cause) {
+                    show(errorMessage(cause, "No pudimos actualizar el vehículo."), "error");
                   } finally {
-
                     setBusy(false);
-
                   }
-
                 }}
               >
-
                 Dar de baja
-
               </button>
-
             </section>
-
           )}
-
-
-          {/* RESUMEN ECONÓMICO */}
-
           {management && (
-
             <section className="card">
-
-              <h2>
-                Resumen económico
-              </h2>
-
-
-              {tieneResumenEconomico && venta ? (
-
+              <h2>Resumen económico</h2>
+              {economicSale ? (
                 <div className="grid">
-
                   <Detail
                     label="Costo compra"
-                    value={formatCurrency(
-                      Number(
-                        venta.costoCompraAlVender ?? 0
-                      )
-                    )}
+                    value={money(economicSale.costoCompraAlVender)}
                   />
-
-
                   <Detail
                     label="Refacciones"
-                    value={formatCurrency(
-                      Number(
-                        venta.costoRefaccionesAlVender ?? 0
-                      )
-                    )}
+                    value={money(economicSale.costoRefaccionesAlVender)}
                   />
-
-
                   <Detail
                     label="Costo total"
-                    value={formatCurrency(
-                      Number(
-                        venta.costoTotalAlVender ?? 0
-                      )
-                    )}
+                    value={money(economicSale.costoTotalAlVender)}
                   />
-
-
                   <Detail
-                    label="Rentabilidad"
-                    value={formatCurrency(
-                      Number(
-                        venta.rentabilidadCalculada ?? 0
-                      )
-                    )}
+                    label="Precio final de venta"
+                    value={money(economicSale.precioFinal)}
                   />
-
+                  <Detail
+                    label="Rentabilidad de la venta"
+                    value={money(economicSale.rentabilidadCalculada)}
+                  />
+                  <p className="muted">
+                    Rentabilidad = precio final de venta − costo total.
+                  </p>
                 </div>
-
               ) : (
-
                 <p className="muted">
-
-                  El historial económico definitivo
-                  estará disponible cuando exista una
-                  venta con información económica.
-
+                  El resumen definitivo estará disponible cuando se registre la
+                  venta.
                 </p>
-
               )}
-
             </section>
-
           )}
-
         </aside>
-
       </div>
-
     </>
   );
 }
 
-
-/* =========================================================
-   COMPONENTE DETAIL
-   ========================================================= */
+function PriceDetail({
+  usd,
+  uyu,
+}: {
+  usd?: number | null;
+  uyu?: number | null;
+}) {
+  return (
+    <div className="detail-item">
+      <small>Precio estimado</small>
+      <strong>{usd == null ? "No informado" : formatUsd(usd)}</strong>
+      {usd != null && uyu != null && (
+        <small className="muted">{formatUyuEquivalent(uyu)}</small>
+      )}
+    </div>
+  );
+}
 
 function Detail({
   label,
   value,
 }: {
   label: string;
-  value: unknown;
+  value?: string | number | null;
 }) {
-
   return (
     <div className="detail-item">
-
-      <small>
-        {label}
-      </small>
-
-      <strong>
-
-        {
-          value === null ||
-          value === undefined ||
-          value === ""
-            ? "—"
-            : String(value)
-        }
-
-      </strong>
-
+      <small>{label}</small>
+      <strong>{value == null || value === "" ? "No informado" : value}</strong>
     </div>
   );
 }

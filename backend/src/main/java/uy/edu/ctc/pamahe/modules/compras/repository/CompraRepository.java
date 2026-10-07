@@ -1,6 +1,7 @@
 package uy.edu.ctc.pamahe.modules.compras.repository;
 
 import java.time.LocalDate;
+import org.springframework.data.jpa.repository.EntityGraph;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,6 +21,8 @@ public interface CompraRepository extends JpaRepository<Compra, Long> {
     Optional<Compra> findByVehiculo(Vehiculo vehiculo);
     Optional<Compra> findByVehiculoAndActivoTrue(Vehiculo vehiculo);
     List<Compra> findByActivoTrueOrderByFechaCompraDesc();
+    @EntityGraph(attributePaths = {"vehiculo", "clienteVendedor", "usuarioResponsable"})
+    @Query("select e from Compra e where e.activo = true order by e.fechaCompra desc, e.id desc")
     Page<Compra> findByActivoTrueOrderByFechaCompraDesc(Pageable pageable);
     List<Compra> findByActivoTrueAndFechaCompraBetweenOrderByFechaCompraDesc(LocalDate desde, LocalDate hasta);
     List<Compra> findByActivoTrueAndFechaCompraLessThanEqualOrderByFechaCompraDesc(LocalDate hasta);
@@ -48,4 +51,16 @@ public interface CompraRepository extends JpaRepository<Compra, Long> {
             """)
     List<Compra> findStockAlCierre(@Param("hasta") LocalDate hasta);
 
+
+    @EntityGraph(attributePaths = {"vehiculo", "clienteVendedor", "usuarioResponsable"})
+    @Query("""
+        select e from Compra e where e.activo = true
+          and (:desde is null or e.fechaCompra >= :desde)
+          and (:hasta is null or e.fechaCompra <= :hasta)
+          and (:clienteId is null or e.clienteVendedor.id = :clienteId)
+          and (:vehiculoId is null or e.vehiculo.id = :vehiculoId)
+        order by e.fechaCompra desc, e.id desc
+        """)
+    Page<Compra> buscarPaginado(@Param("desde") LocalDate desde, @Param("hasta") LocalDate hasta,
+            @Param("clienteId") Long clienteId, @Param("vehiculoId") Long vehiculoId, Pageable pageable);
 }

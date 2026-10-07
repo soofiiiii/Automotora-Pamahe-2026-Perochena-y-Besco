@@ -20,6 +20,10 @@ export const BUSINESS_ADDRESS =
   (import.meta.env.VITE_BUSINESS_ADDRESS as string | undefined)?.trim() || "";
 export const PRIVACY_CONTACT =
   (import.meta.env.VITE_PRIVACY_CONTACT as string | undefined)?.trim() || "";
+export const PUBLIC_SITE_URL =
+  (import.meta.env.VITE_PUBLIC_SITE_URL as string | undefined)
+    ?.trim()
+    .replace(/\/+$/, "") || "";
 
 export const PAGE_SIZE = 12;
 export const MAX_VEHICLE_IMAGE_BYTES = 12 * 1024 * 1024;

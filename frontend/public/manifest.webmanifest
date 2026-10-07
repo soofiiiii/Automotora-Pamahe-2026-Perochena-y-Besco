@@ -1,11 +1,12 @@
 {
-  "name": "Automotora Pamahe",
+  "name": "Pamahe Gestión",
   "short_name": "Pamahe",
-  "description": "Gestión integral y catálogo público de Automotora Pamahe",
-  "start_url": "/",
+  "description": "Sistema interno de gestión de Automotora Pamahe",
+  "id": "/pamahe-gestion",
+  "start_url": "/login",
   "display": "standalone",
-  "background_color": "#f6f6f4",
-  "theme_color": "#17191d",
+  "background_color": "#fafefc",
+  "theme_color": "#192959",
   "lang": "es-UY",
   "icons": [
     {
@@ -18,7 +19,13 @@
       "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

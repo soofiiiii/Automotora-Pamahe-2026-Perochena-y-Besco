@@ -38,6 +38,33 @@ export interface Compra {
   observaciones?: string | null;
 }
 
+export interface CompraRegistroResponse {
+  id: number;
+  vehiculoId: number;
+  vehiculo: string;
+  clienteVendedorId: number;
+  clienteVendedor: string;
+  usuarioResponsableId: number | null;
+  usuarioResponsable: string | null;
+  fechaCompra: string;
+}
+
+export type CompraCreateResponse = Compra | CompraRegistroResponse;
+
+export type DestinoPostCompra = "REQUIERE_TALLER" | "PUEDE_QUEDAR_DISPONIBLE";
+
+export interface DestinoPostCompraResponse {
+  compraId: number;
+  vehiculoId: number;
+  estadoVehiculo: "EN_TALLER" | "DISPONIBLE";
+}
+
+export function hasCompraFinancialData(
+  value: CompraCreateResponse,
+): value is Compra {
+  return "costoAdquisicion" in value;
+}
+
 export interface CompraRequest {
   vehiculoId: number;
   clienteVendedorId: number;
@@ -45,6 +72,23 @@ export interface CompraRequest {
   costoAdquisicion: number;
   observaciones?: string;
 }
+
+export type EstadoComprobanteVenta = "PENDIENTE" | "GENERADO" | "ERROR";
+export type MedioPagoVenta =
+  | "TRANSFERENCIA"
+  | "EFECTIVO"
+  | "FINANCIACION_BANCARIA"
+  | "FINANCIACION_PROPIA"
+  | "VEHICULO_PARTE_PAGO";
+export type EstadoFinanciacion = "PENDIENTE" | "APROBADA" | "RECHAZADA" | "PAGADA";
+export type CanalOrigenVenta =
+  | "WHATSAPP"
+  | "INSTAGRAM"
+  | "FACEBOOK"
+  | "SITIO_WEB"
+  | "REFERIDO"
+  | "PRESENCIAL"
+  | "OTRO";
 
 export interface Venta {
   id: number;
@@ -56,8 +100,30 @@ export interface Venta {
   vendedor?: string | null;
   fechaVenta: string;
   precioFinal: number;
+  medioPago: MedioPagoVenta | null;
+  entidadFinanciera: string | null;
+  montoFinanciado: number | null;
+  estadoFinanciacion: EstadoFinanciacion | null;
+  canalOrigen: CanalOrigenVenta | null;
+  seguimientoPostventaRealizado: boolean;
+  datosCompradorVerificados: boolean;
+  documentacionRevisada: boolean;
+  cobroConfirmado: boolean;
+  proximoMantenimiento: string | null;
+  estadoComprobante: EstadoComprobanteVenta;
+  intentosComprobante: number;
+  ultimoIntentoComprobante: string | null;
+  proximoIntentoComprobante: string | null;
   comprobanteUrl?: string | null;
   observaciones?: string | null;
+}
+
+export interface VentaDetalleGerencial extends Venta {
+  costoCompraAlVender: number;
+  costoRefaccionesAlVender: number;
+  costoTotalAlVender: number;
+  rentabilidadCalculada: number;
+  errorComprobante: string | null;
 }
 
 export interface VentaRequest {
@@ -65,7 +131,26 @@ export interface VentaRequest {
   clienteCompradorId: number;
   fechaVenta: string;
   precioFinal: number;
+  medioPago: MedioPagoVenta;
+  entidadFinanciera?: string;
+  montoFinanciado?: number;
+  estadoFinanciacion?: EstadoFinanciacion;
+  canalOrigen: CanalOrigenVenta;
+  datosCompradorVerificados: boolean;
+  documentacionRevisada: boolean;
+  cobroConfirmado: boolean;
+  proximoMantenimiento?: string;
   observaciones?: string;
+}
+
+export interface ActualizarProximoMantenimientoRequest {
+  proximoMantenimiento: string | null;
+}
+
+export interface ActualizarFinanciacionVentaRequest {
+  entidadFinanciera: string;
+  montoFinanciado: number;
+  estado: EstadoFinanciacion;
 }
 
 export type EstadoRefaccion = "PENDIENTE" | "EN_CURSO" | "FINALIZADA" | "CANCELADA";
@@ -89,6 +174,7 @@ export interface Refaccion {
   costoTotal: number;
   estadoTarea: EstadoRefaccion;
   observaciones?: string | null;
+  registroFotograficoUrl?: string | null;
   sincronizadoDesdeOffline?: boolean | null;
   idOperacionOffline?: string | null;
 }
@@ -137,6 +223,7 @@ export interface DashboardData {
   vehiculosEnTaller: number;
   vehiculosDisponibles: number;
   vehiculosVendidos: number;
+  tareasTallerPendientes: number;
   clientesActivos: number;
   ventasRegistradas: number;
   ingresosVentas: number;
@@ -171,6 +258,19 @@ export interface ImagenVehiculo {
   descripcion?: string | null;
   publica: boolean;
   principal: boolean;
+}
+
+
+export interface Notificacion {
+  id: number;
+  tipo: "VEHICULO_LISTO_REVISION" | "SEGUIMIENTO_POSTVENTA" | "PROXIMO_MANTENIMIENTO";
+  titulo: string;
+  mensaje: string;
+  vehiculoId?: number | null;
+  ventaId?: number | null;
+  leida: boolean;
+  urlDestino?: string | null;
+  creadaEn: string;
 }
 
 export interface Parametro {

@@ -1,0 +1,27 @@
+local.file_match "pamahe" {
+  path_targets = [{"__path__" = "/var/log/pamahe/backend.log*", "__path_exclude__" = "/var/log/pamahe/*.gz", "app" = "pamahe-api"}]
+}
+loki.source.file "pamahe" {
+  targets    = local.file_match.pamahe.targets
+  forward_to = [loki.process.pamahe.receiver]
+}
+loki.process "pamahe" {
+  stage.multiline {
+    firstline     = "^\\d{4}-\\d{2}-\\d{2}T"
+    max_wait_time = "3s"
+    max_lines     = 256
+  }
+  stage.regex {
+    expression = "level=(?P<level>[A-Z]+)"
+  }
+  stage.labels {
+    values = {"level" = ""}
+  }
+  // Correlation ID queda en el contenido: no crea una etiqueta por cada petición.
+  forward_to = [loki.write.local.receiver]
+}
+loki.write "local" {
+  endpoint {
+    url = "http://127.0.0.1:3100/loki/api/v1/push"
+  }
+}

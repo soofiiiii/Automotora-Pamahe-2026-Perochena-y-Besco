@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UsuarioActualService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.usuarios.service</a> &gt; <span class="el_source">UsuarioActualService.java</span></div><h1>UsuarioActualService.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.usuarios.service;
+
+import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+
+import uy.edu.ctc.pamahe.common.exception.ResourceNotFoundException;
+import uy.edu.ctc.pamahe.common.util.SecurityUtils;
+import uy.edu.ctc.pamahe.modules.usuarios.model.Usuario;
+import uy.edu.ctc.pamahe.modules.usuarios.repository.UsuarioRepository;
+
+/**
+ * Resuelve la cuenta autenticada y aplica una segunda verificación de roles en operaciones críticas.
+ * Esta defensa complementa SecurityConfig y protege llamadas internas que no pasan directamente
+ * por un controlador HTTP.
+ */
+@Service
+public class UsuarioActualService {
+
+    private final UsuarioRepository usuarioRepository;
+
+<span class="fc" id="L25">    public UsuarioActualService(UsuarioRepository usuarioRepository) {</span>
+<span class="fc" id="L26">        this.usuarioRepository = usuarioRepository;</span>
+<span class="fc" id="L27">    }</span>
+
+    public Usuario obtenerActivo() {
+<span class="fc" id="L30">        String username = SecurityUtils.usuarioAutenticado();</span>
+<span class="fc" id="L31">        return this.usuarioRepository.findByUsernameAndActivoTrue(username)</span>
+<span class="pc" id="L32">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;El usuario autenticado no existe o se encuentra inactivo.&quot;));</span>
+    }
+
+    public Usuario exigirRoles(String... rolesPermitidos) {
+<span class="fc" id="L36">        Usuario usuario = this.obtenerActivo();</span>
+<span class="fc" id="L37">        Set&lt;String&gt; roles = usuario.getRoles().stream()</span>
+<span class="fc" id="L38">                .map(rol -&gt; rol.getNombre())</span>
+<span class="fc" id="L39">                .collect(Collectors.toSet());</span>
+
+<span class="fc" id="L41">        boolean autorizado = Arrays.stream(rolesPermitidos).anyMatch(roles::contains);</span>
+<span class="pc bpc" id="L42" title="1 of 2 branches missed.">        if (!autorizado) {</span>
+<span class="nc" id="L43">            throw new AccessDeniedException(&quot;El usuario autenticado no posee un rol autorizado para esta operación.&quot;);</span>
+        }
+<span class="fc" id="L45">        return usuario;</span>
+    }
+}
+
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

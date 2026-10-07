@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ReporteController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.reportes.controller</a> &gt; <span class="el_source">ReporteController.java</span></div><h1>ReporteController.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.reportes.controller;
+
+import java.time.LocalDate;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.bind.annotation.*;
+
+import uy.edu.ctc.pamahe.common.response.ApiResponse;
+import uy.edu.ctc.pamahe.modules.reportes.dto.response.DashboardResponse;
+import uy.edu.ctc.pamahe.modules.reportes.dto.response.ReporteComprasResponse;
+import uy.edu.ctc.pamahe.modules.reportes.dto.response.ReporteRefaccionesResponse;
+import uy.edu.ctc.pamahe.modules.reportes.dto.response.ReporteRentabilidadResponse;
+import uy.edu.ctc.pamahe.modules.reportes.dto.response.ReporteStockResponse;
+import uy.edu.ctc.pamahe.modules.reportes.dto.response.ReporteVentasResponse;
+import uy.edu.ctc.pamahe.modules.reportes.service.ReporteService;
+
+
+@RestController
+@RequestMapping(&quot;/reportes&quot;)
+public class ReporteController {
+    private final ReporteService reporteService;
+
+<span class="fc" id="L22">    public ReporteController(ReporteService reporteService) {</span>
+<span class="fc" id="L23">        this.reporteService = reporteService;</span>
+<span class="fc" id="L24">    }</span>
+
+    @GetMapping(&quot;/dashboard&quot;)
+    public ApiResponse&lt;DashboardResponse&gt; dashboard(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+<span class="nc" id="L30">        return ApiResponse.ok(&quot;Dashboard obtenido correctamente.&quot;, this.reporteService.dashboard(desde, hasta));</span>
+    }
+
+    @GetMapping(&quot;/ventas&quot;)
+    public ApiResponse&lt;ReporteVentasResponse&gt; ventas(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+<span class="nc" id="L37">        return ApiResponse.ok(&quot;Reporte de ventas obtenido correctamente.&quot;, this.reporteService.ventas(desde, hasta));</span>
+    }
+
+    @GetMapping(&quot;/compras&quot;)
+    public ApiResponse&lt;ReporteComprasResponse&gt; compras(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+<span class="nc" id="L44">        return ApiResponse.ok(&quot;Reporte de compras obtenido correctamente.&quot;, this.reporteService.compras(desde, hasta));</span>
+    }
+
+    @GetMapping(&quot;/stock&quot;)
+    public ApiResponse&lt;ReporteStockResponse&gt; stock(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+<span class="nc" id="L51">        return ApiResponse.ok(&quot;Reporte de stock obtenido correctamente.&quot;, this.reporteService.stock(desde, hasta));</span>
+    }
+
+    @GetMapping(&quot;/vendidos&quot;)
+    public ApiResponse&lt;ReporteVentasResponse&gt; vendidos(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+<span class="nc" id="L58">        return ApiResponse.ok(&quot;Reporte de vehículos vendidos obtenido correctamente.&quot;, this.reporteService.vendidos(desde, hasta));</span>
+    }
+
+    @GetMapping(&quot;/refacciones&quot;)
+    public ApiResponse&lt;ReporteRefaccionesResponse&gt; refacciones(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+<span class="nc" id="L65">        return ApiResponse.ok(&quot;Reporte de refacciones obtenido correctamente.&quot;, this.reporteService.refacciones(desde, hasta));</span>
+    }
+
+    @GetMapping(&quot;/rentabilidad&quot;)
+    public ApiResponse&lt;ReporteRentabilidadResponse&gt; rentabilidad(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+<span class="nc" id="L72">        return ApiResponse.ok(&quot;Reporte de rentabilidad obtenido correctamente.&quot;, this.reporteService.rentabilidad(desde, hasta));</span>
+    }
+    
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

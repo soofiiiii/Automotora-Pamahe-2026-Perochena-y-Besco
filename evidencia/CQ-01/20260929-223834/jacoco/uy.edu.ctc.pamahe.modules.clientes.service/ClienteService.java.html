@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ClienteService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.clientes.service</a> &gt; <span class="el_source">ClienteService.java</span></div><h1>ClienteService.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.clientes.service;
+
+import java.util.List;
+import uy.edu.ctc.pamahe.modules.clientes.model.TipoCliente;
+import java.util.Locale;
+
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import uy.edu.ctc.pamahe.common.exception.BusinessException;
+import uy.edu.ctc.pamahe.common.exception.ResourceNotFoundException;
+import uy.edu.ctc.pamahe.common.response.PageResponse;
+import uy.edu.ctc.pamahe.modules.auditoria.service.AuditoriaService;
+import uy.edu.ctc.pamahe.modules.clientes.dto.request.ClienteRequest;
+import uy.edu.ctc.pamahe.modules.clientes.dto.response.ClienteResponse;
+import uy.edu.ctc.pamahe.modules.clientes.mapper.ClienteMapper;
+import uy.edu.ctc.pamahe.modules.clientes.model.Cliente;
+import uy.edu.ctc.pamahe.modules.clientes.repository.ClienteRepository;
+
+/**
+ * Gestiona la identidad comercial reutilizable en compras y ventas.
+ * La desactivación es lógica para conservar la referencia histórica de operaciones anteriores.
+ */
+@Service
+public class ClienteService {
+
+    private final ClienteRepository clienteRepository;
+    private final AuditoriaService auditoriaService;
+
+<span class="fc" id="L30">    public ClienteService(ClienteRepository clienteRepository, AuditoriaService auditoriaService) {</span>
+<span class="fc" id="L31">        this.clienteRepository = clienteRepository;</span>
+<span class="fc" id="L32">        this.auditoriaService = auditoriaService;</span>
+<span class="fc" id="L33">    }</span>
+
+    public List&lt;ClienteResponse&gt; listar() {
+<span class="fc" id="L36">        return this.clienteRepository.findByActivoTrueOrderByNombreAsc().stream()</span>
+<span class="fc" id="L37">                .map(ClienteMapper::toResponse)</span>
+<span class="fc" id="L38">                .toList();</span>
+    }
+
+    @Transactional (readOnly = true)
+    public PageResponse&lt;ClienteResponse&gt; listarPaginado(int page, int size) {
+<span class="fc" id="L43">        validarPaginacion(page, size);</span>
+<span class="fc" id="L44">        return PageResponse.from(</span>
+<span class="fc" id="L45">                this.clienteRepository.findByActivoTrueOrderByNombreAsc(PageRequest.of(page, size)),</span>
+                ClienteMapper::toResponse);
+    }
+
+    public ClienteResponse obtener(Long id) {
+<span class="fc" id="L50">        return ClienteMapper.toResponse(this.buscarPorId(id));</span>
+    }
+
+    @Transactional
+    public ClienteResponse crear(ClienteRequest request) {
+
+<span class="fc" id="L56">        String documentoNormalizado = normalizarDocumento(request.documento());</span>
+
+<span class="fc bfc" id="L58" title="All 2 branches covered.">        if (this.clienteRepository.existsByDocumento(documentoNormalizado)) {</span>
+<span class="fc" id="L59">            throw new BusinessException(</span>
+                    &quot;Ya existe un cliente con ese documento.&quot;
+            );
+        }
+
+<span class="fc" id="L64">        Cliente cliente = new Cliente();</span>
+<span class="fc" id="L65">        this.cargarDatos(cliente, request);</span>
+<span class="fc" id="L66">        Cliente guardado = this.clienteRepository.save(cliente);</span>
+<span class="fc" id="L67">        this.auditoriaService.registrar(&quot;ALTA&quot;, &quot;Cliente&quot;, guardado.getId(), &quot;Creación de cliente&quot;);</span>
+<span class="fc" id="L68">        return ClienteMapper.toResponse(guardado);</span>
+    }
+
+    @Transactional
+    public ClienteResponse actualizar(Long id, ClienteRequest request) {
+<span class="fc" id="L73">        Cliente cliente = this.buscarPorId(id);</span>
+
+<span class="fc" id="L75">        String documentoNormalizado = normalizarDocumento(request.documento());</span>
+
+<span class="fc bfc" id="L77" title="All 2 branches covered.">        if (this.clienteRepository.existsByDocumentoAndIdNot(</span>
+                documentoNormalizado,
+                id
+        )) {
+<span class="fc" id="L81">            throw new BusinessException(</span>
+                    &quot;Ya existe otro cliente con ese documento.&quot;
+            );
+        }
+
+<span class="fc" id="L86">        this.cargarDatos(cliente, request);</span>
+<span class="fc" id="L87">        Cliente guardado = this.clienteRepository.save(cliente);</span>
+<span class="fc" id="L88">        this.auditoriaService.registrar(&quot;MODIFICACION&quot;, &quot;Cliente&quot;, guardado.getId(), &quot;Actualización de cliente&quot;);</span>
+<span class="fc" id="L89">        return ClienteMapper.toResponse(guardado);</span>
+    }
+
+    @Transactional
+    public void desactivar(Long id) {
+<span class="fc" id="L94">        Cliente cliente = this.buscarPorId(id);</span>
+<span class="fc" id="L95">        cliente.setActivo(false);</span>
+<span class="fc" id="L96">        this.clienteRepository.save(cliente);</span>
+<span class="fc" id="L97">        this.auditoriaService.registrar(&quot;BAJA_LOGICA&quot;, &quot;Cliente&quot;, cliente.getId(), &quot;Desactivación de cliente&quot;);</span>
+<span class="fc" id="L98">    }</span>
+
+    public Cliente buscarPorId(Long id) {
+<span class="fc" id="L101">        return this.clienteRepository.findById(id)</span>
+<span class="fc" id="L102">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;No se encontró el cliente solicitado.&quot;));</span>
+    }
+
+    public Cliente buscarActivoPorId(Long id) {
+<span class="fc" id="L106">        Cliente cliente = this.buscarPorId(id);</span>
+<span class="fc bfc" id="L107" title="All 2 branches covered.">        if (!Boolean.TRUE.equals(cliente.getActivo())) {</span>
+<span class="fc" id="L108">            throw new ResourceNotFoundException(&quot;No se encontró un cliente activo con el identificador solicitado.&quot;);</span>
+        }
+<span class="fc" id="L110">        return cliente;</span>
+    }
+  
+    private void cargarDatos(
+            Cliente cliente,
+            ClienteRequest request
+    ) {
+<span class="fc" id="L117">        cliente.setNombre(</span>
+<span class="fc" id="L118">                normalizarTexto(request.nombre())</span>
+        );
+
+<span class="fc" id="L121">        cliente.setApellido(</span>
+<span class="fc" id="L122">                normalizarTexto(request.apellido())</span>
+        );
+
+<span class="fc" id="L125">        cliente.setRazonSocial(</span>
+<span class="fc" id="L126">                normalizarTexto(request.razonSocial())</span>
+        );
+
+<span class="fc" id="L129">        cliente.setDocumento(</span>
+<span class="fc" id="L130">                normalizarDocumento(request.documento())</span>
+        );
+
+<span class="fc" id="L133">        cliente.setTelefono(</span>
+<span class="fc" id="L134">                normalizarTelefono(request.telefono())</span>
+        );
+
+<span class="fc" id="L137">        cliente.setEmail(</span>
+<span class="fc" id="L138">                normalizarEmail(request.email())</span>
+        );
+
+<span class="fc" id="L141">        cliente.setDireccion(</span>
+<span class="fc" id="L142">                normalizarTexto(request.direccion())</span>
+        );
+
+<span class="fc" id="L145">        cliente.setTipoCliente(</span>
+<span class="fc" id="L146">                request.tipoCliente()</span>
+        );
+<span class="fc" id="L148">    }</span>
+
+    private String normalizarTexto(String valor) {
+<span class="fc bfc" id="L151" title="All 2 branches covered.">        if (valor == null) {</span>
+<span class="fc" id="L152">            return null;</span>
+        }
+
+<span class="fc" id="L155">        String resultado = valor.trim();</span>
+
+<span class="fc bfc" id="L157" title="All 2 branches covered.">        return resultado.isBlank() ? null : resultado;</span>
+    }
+
+    private String normalizarDocumento(String documento) {
+<span class="pc bpc" id="L161" title="1 of 2 branches missed.">        if (documento == null) {</span>
+<span class="nc" id="L162">            return null;</span>
+        }
+
+<span class="fc" id="L165">        String resultado = documento</span>
+<span class="fc" id="L166">                .trim()</span>
+<span class="fc" id="L167">                .replaceAll(&quot;[^A-Za-z0-9]&quot;, &quot;&quot;)</span>
+<span class="fc" id="L168">                .toUpperCase(Locale.ROOT);</span>
+
+<span class="pc bpc" id="L170" title="1 of 2 branches missed.">        return resultado.isBlank() ? null : resultado;</span>
+    }
+
+    private String normalizarTelefono(String telefono) {
+<span class="pc bpc" id="L174" title="1 of 2 branches missed.">        if (telefono == null) {</span>
+<span class="nc" id="L175">            return null;</span>
+        }
+
+<span class="fc" id="L178">        String resultado = telefono</span>
+<span class="fc" id="L179">                .trim()</span>
+<span class="fc" id="L180">                .replaceAll(&quot;[\\s()-]&quot;, &quot;&quot;);</span>
+
+<span class="pc bpc" id="L182" title="1 of 2 branches missed.">        return resultado.isBlank() ? null : resultado;</span>
+    }
+
+    private String normalizarEmail(String email) {
+<span class="pc bpc" id="L186" title="1 of 2 branches missed.">        if (email == null) {</span>
+<span class="nc" id="L187">            return null;</span>
+        }
+
+<span class="fc" id="L190">        String resultado = email.trim();</span>
+
+<span class="pc bpc" id="L192" title="1 of 2 branches missed.">        if (resultado.isBlank()) {</span>
+<span class="nc" id="L193">            return null;</span>
+        }
+
+<span class="fc" id="L196">        return resultado.toLowerCase(Locale.ROOT);</span>
+    }
+
+    private void validarPaginacion(int page, int size) {
+<span class="pc bpc" id="L200" title="1 of 2 branches missed.">        if ((long) page * size &gt; Integer.MAX_VALUE) {</span>
+<span class="nc" id="L201">            throw new BusinessException(&quot;La página solicitada excede el offset admitido.&quot;);</span>
+        }
+<span class="fc bfc" id="L203" title="All 2 branches covered.">        if (page &lt; 0) {</span>
+<span class="fc" id="L204">            throw new BusinessException(&quot;La página no puede ser negativa.&quot;);</span>
+        }
+<span class="fc bfc" id="L206" title="All 4 branches covered.">        if (size &lt; 1 || size &gt; 100) {</span>
+<span class="fc" id="L207">            throw new BusinessException(&quot;El tamaño de página debe estar entre 1 y 100.&quot;);</span>
+        }
+<span class="fc" id="L209">    }</span>
+
+    @Transactional(readOnly = true)
+    public PageResponse&lt;ClienteResponse&gt; listarPaginado(int page, int size, String q, TipoCliente tipoCliente) {
+<span class="fc" id="L213">        validarPaginacion(page, size);</span>
+<span class="pc bpc" id="L214" title="2 of 4 branches missed.">        String termino = q == null || q.isBlank() ? null : q.trim().toLowerCase(Locale.ROOT);</span>
+<span class="pc bpc" id="L215" title="2 of 4 branches missed.">        if (termino != null &amp;&amp; termino.length() &gt; 120) {</span>
+<span class="nc" id="L216">            throw new BusinessException(&quot;El filtro de cliente admite hasta 120 caracteres.&quot;);</span>
+        }
+        // Buscar texto literal: % y _ del usuario no se interpretan como comodines SQL.
+<span class="pc bpc" id="L219" title="1 of 2 branches missed.">        String patron = termino == null ? null : &quot;%&quot; + termino.replace(&quot;!&quot;, &quot;!!&quot;)</span>
+<span class="fc" id="L220">                .replace(&quot;%&quot;, &quot;!%&quot;).replace(&quot;_&quot;, &quot;!_&quot;) + &quot;%&quot;;</span>
+<span class="fc" id="L221">        return PageResponse.from(this.clienteRepository.buscarPaginado(patron, tipoCliente,</span>
+<span class="fc" id="L222">                PageRequest.of(page, size)), ClienteMapper::toResponse);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

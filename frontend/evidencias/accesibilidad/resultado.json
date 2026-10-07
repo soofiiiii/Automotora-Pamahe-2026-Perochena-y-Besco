@@ -1,0 +1,510 @@
+{
+  "generatedAt": "2026-10-05T21:39:45.421Z",
+  "standardReference": "WCAG 2.1 AA - validaciones básicas aplicables al alcance del proyecto",
+  "routeAudits": [
+    {
+      "route": "inicio-publico",
+      "path": "/",
+      "status": "OK",
+      "result": {
+        "lang": "es-UY",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "mains": 1,
+        "h1s": 1,
+        "duplicateIds": [],
+        "unlabeledFields": [],
+        "unnamedInteractive": [],
+        "imagesWithoutAlt": [],
+        "emptyHeadings": [],
+        "unlabeledDialogs": [],
+        "focusableCount": 33
+      }
+    },
+    {
+      "route": "catalogo",
+      "path": "/catalogo",
+      "status": "OK",
+      "result": {
+        "lang": "es-UY",
+        "title": "Vehículos usados disponibles | Automotora Pamahe",
+        "mains": 1,
+        "h1s": 1,
+        "duplicateIds": [],
+        "unlabeledFields": [],
+        "unnamedInteractive": [],
+        "imagesWithoutAlt": [],
+        "emptyHeadings": [],
+        "unlabeledDialogs": [],
+        "focusableCount": 37
+      }
+    },
+    {
+      "route": "detalle-catalogo",
+      "path": "/catalogo/12",
+      "status": "OK",
+      "result": {
+        "lang": "es-UY",
+        "title": "Toyota Corolla 2022 | Automotora Pamahe",
+        "mains": 1,
+        "h1s": 1,
+        "duplicateIds": [],
+        "unlabeledFields": [],
+        "unnamedInteractive": [],
+        "imagesWithoutAlt": [],
+        "emptyHeadings": [],
+        "unlabeledDialogs": [],
+        "focusableCount": 20
+      }
+    },
+    {
+      "route": "acceso",
+      "path": "/login",
+      "status": "OK",
+      "result": {
+        "lang": "es-UY",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "mains": 1,
+        "h1s": 2,
+        "duplicateIds": [],
+        "unlabeledFields": [],
+        "unnamedInteractive": [],
+        "imagesWithoutAlt": [],
+        "emptyHeadings": [],
+        "unlabeledDialogs": [],
+        "focusableCount": 5
+      }
+    },
+    {
+      "route": "inicio-interno",
+      "path": "/app",
+      "status": "OK",
+      "result": {
+        "lang": "es-UY",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "mains": 1,
+        "h1s": 1,
+        "duplicateIds": [],
+        "unlabeledFields": [],
+        "unnamedInteractive": [],
+        "imagesWithoutAlt": [],
+        "emptyHeadings": [],
+        "unlabeledDialogs": [],
+        "focusableCount": 22
+      }
+    },
+    {
+      "route": "vehiculos",
+      "path": "/app/vehiculos",
+      "status": "OK",
+      "result": {
+        "lang": "es-UY",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "mains": 1,
+        "h1s": 1,
+        "duplicateIds": [],
+        "unlabeledFields": [],
+        "unnamedInteractive": [],
+        "imagesWithoutAlt": [],
+        "emptyHeadings": [],
+        "unlabeledDialogs": [],
+        "focusableCount": 32
+      }
+    },
+    {
+      "route": "clientes",
+      "path": "/app/clientes",
+      "status": "OK",
+      "result": {
+        "lang": "es-UY",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "mains": 1,
+        "h1s": 1,
+        "duplicateIds": [],
+        "unlabeledFields": [],
+        "unnamedInteractive": [],
+        "imagesWithoutAlt": [],
+        "emptyHeadings": [],
+        "unlabeledDialogs": [],
+        "focusableCount": 22
+      }
+    },
+    {
+      "route": "taller",
+      "path": "/app/taller",
+      "status": "OK",
+      "result": {
+        "lang": "es-UY",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "mains": 1,
+        "h1s": 1,
+        "duplicateIds": [],
+        "unlabeledFields": [],
+        "unnamedInteractive": [],
+        "imagesWithoutAlt": [],
+        "emptyHeadings": [],
+        "unlabeledDialogs": [],
+        "focusableCount": 23
+      }
+    },
+    {
+      "route": "dashboard",
+      "path": "/app/dashboard",
+      "status": "OK",
+      "result": {
+        "lang": "es-UY",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "mains": 1,
+        "h1s": 1,
+        "duplicateIds": [],
+        "unlabeledFields": [],
+        "unnamedInteractive": [],
+        "imagesWithoutAlt": [],
+        "emptyHeadings": [],
+        "unlabeledDialogs": [],
+        "focusableCount": 22
+      }
+    }
+  ],
+  "keyboardAudits": [
+    {
+      "scenario": "Salto al contenido público",
+      "status": "OK",
+      "firstFocus": {
+        "tag": "a",
+        "id": "",
+        "name": "Saltar al contenido",
+        "type": "",
+        "href": "#contenido-principal"
+      }
+    },
+    {
+      "scenario": "Recorrido de teclado en acceso",
+      "status": "OK",
+      "sequence": [
+        {
+          "tag": "a",
+          "id": "",
+          "name": "",
+          "type": "",
+          "href": "/"
+        },
+        {
+          "tag": "input",
+          "id": "",
+          "name": "Usuario",
+          "type": "",
+          "href": ""
+        },
+        {
+          "tag": "input",
+          "id": "",
+          "name": "Contraseña",
+          "type": "password",
+          "href": ""
+        },
+        {
+          "tag": "button",
+          "id": "",
+          "name": "Mostrar contraseña",
+          "type": "button",
+          "href": ""
+        },
+        {
+          "tag": "button",
+          "id": "",
+          "name": "Ingresar al sistema",
+          "type": "submit",
+          "href": ""
+        },
+        {
+          "tag": "body",
+          "id": "",
+          "name": "<div style=\" font-family: system-ui, sans-serif; text-align: center; padding: 3rem 1rem; background-color: #192959; color: #ffffff; min-height: 100vh; \" > <h2 style=\"margin-bottom: 0.5rem\"> JavaScript desactivado </h2> <p style=\"color: #d7dcec\"> Necesitás habilitar JavaScript para utilizar la plataforma de Automotora Pamahe. </p> </div> Acceso del personalIngresarUsá únicamente las credenciales asignadas a tu cuenta.La sesión se cierra automáticamente tras un período de inactividad.UsuarioContraseñaIngresar al sistemaSistema internoLa operación de cada vehículo, en un solo lugar.Inventario, taller, compras, ventas y control económico conectados con el stock real.",
+          "type": "",
+          "href": ""
+        },
+        {
+          "tag": "a",
+          "id": "",
+          "name": "",
+          "type": "",
+          "href": "/"
+        },
+        {
+          "tag": "input",
+          "id": "",
+          "name": "Usuario",
+          "type": "",
+          "href": ""
+        },
+        {
+          "tag": "input",
+          "id": "",
+          "name": "Contraseña",
+          "type": "password",
+          "href": ""
+        },
+        {
+          "tag": "button",
+          "id": "",
+          "name": "Mostrar contraseña",
+          "type": "button",
+          "href": ""
+        }
+      ]
+    },
+    {
+      "scenario": "Apertura y cierre de filtros con teclado",
+      "status": "OK"
+    },
+    {
+      "scenario": "Recorrido de teclado en gestión interna",
+      "status": "OK",
+      "sequence": [
+        {
+          "tag": "a",
+          "id": "",
+          "name": "Saltar al contenido",
+          "type": "",
+          "href": "#contenido-principal-interno"
+        },
+        {
+          "tag": "button",
+          "id": "",
+          "name": "Cerrar menú",
+          "type": "button",
+          "href": ""
+        },
+        {
+          "tag": "a",
+          "id": "",
+          "name": "Inicio",
+          "type": "",
+          "href": "/app"
+        },
+        {
+          "tag": "a",
+          "id": "",
+          "name": "Dashboard",
+          "type": "",
+          "href": "/app/dashboard"
+        },
+        {
+          "tag": "a",
+          "id": "",
+          "name": "Mi contraseña",
+          "type": "",
+          "href": "/app/mi-cuenta/password"
+        },
+        {
+          "tag": "a",
+          "id": "",
+          "name": "Vehículos",
+          "type": "",
+          "href": "/app/vehiculos"
+        },
+        {
+          "tag": "a",
+          "id": "",
+          "name": "Clientes",
+          "type": "",
+          "href": "/app/clientes"
+        },
+        {
+          "tag": "a",
+          "id": "",
+          "name": "Compras",
+          "type": "",
+          "href": "/app/compras"
+        },
+        {
+          "tag": "a",
+          "id": "",
+          "name": "Ventas",
+          "type": "",
+          "href": "/app/ventas"
+        },
+        {
+          "tag": "a",
+          "id": "",
+          "name": "Solicitudes",
+          "type": "",
+          "href": "/app/solicitudes-venta"
+        },
+        {
+          "tag": "a",
+          "id": "",
+          "name": "Taller",
+          "type": "",
+          "href": "/app/taller"
+        },
+        {
+          "tag": "a",
+          "id": "",
+          "name": "Costos",
+          "type": "",
+          "href": "/app/costos"
+        },
+        {
+          "tag": "a",
+          "id": "",
+          "name": "Reportes",
+          "type": "",
+          "href": "/app/reportes"
+        },
+        {
+          "tag": "a",
+          "id": "",
+          "name": "Auditoría",
+          "type": "",
+          "href": "/app/auditoria"
+        },
+        {
+          "tag": "a",
+          "id": "",
+          "name": "Usuarios",
+          "type": "",
+          "href": "/app/usuarios"
+        },
+        {
+          "tag": "a",
+          "id": "",
+          "name": "Parámetros",
+          "type": "",
+          "href": "/app/parametros"
+        },
+        {
+          "tag": "button",
+          "id": "",
+          "name": "Cerrar sesión",
+          "type": "button",
+          "href": ""
+        },
+        {
+          "tag": "button",
+          "id": "",
+          "name": "Abrir menú",
+          "type": "button",
+          "href": ""
+        },
+        {
+          "tag": "button",
+          "id": "",
+          "name": "Notificaciones",
+          "type": "button",
+          "href": ""
+        },
+        {
+          "tag": "input",
+          "id": "",
+          "name": "Desde",
+          "type": "date",
+          "href": ""
+        },
+        {
+          "tag": "input",
+          "id": "",
+          "name": "Desde",
+          "type": "date",
+          "href": ""
+        },
+        {
+          "tag": "input",
+          "id": "",
+          "name": "Hasta",
+          "type": "date",
+          "href": ""
+        }
+      ]
+    }
+  ],
+  "contrastAudits": [
+    {
+      "name": "Texto principal sobre blanco",
+      "ratio": 17.6,
+      "minimum": 4.5,
+      "status": "OK"
+    },
+    {
+      "name": "Texto secundario sobre fondo general",
+      "ratio": 4.53,
+      "minimum": 4.5,
+      "status": "OK"
+    },
+    {
+      "name": "Azul institucional sobre blanco",
+      "ratio": 11.96,
+      "minimum": 4.5,
+      "status": "OK"
+    },
+    {
+      "name": "Blanco sobre azul profundo",
+      "ratio": 13.97,
+      "minimum": 4.5,
+      "status": "OK"
+    },
+    {
+      "name": "Texto de pie de página sobre azul profundo",
+      "ratio": 6.76,
+      "minimum": 4.5,
+      "status": "OK"
+    },
+    {
+      "name": "Etiquetas del catálogo sobre fondo general",
+      "ratio": 5.18,
+      "minimum": 4.5,
+      "status": "OK"
+    },
+    {
+      "name": "Placeholder del buscador sobre blanco",
+      "ratio": 4.76,
+      "minimum": 4.5,
+      "status": "OK"
+    },
+    {
+      "name": "Mensajes de error sobre fondo general",
+      "ratio": 4.67,
+      "minimum": 4.5,
+      "status": "OK"
+    },
+    {
+      "name": "Texto azul profundo sobre acento amarillo",
+      "ratio": 9.34,
+      "minimum": 4.5,
+      "status": "OK"
+    }
+  ],
+  "sourceAudits": [
+    {
+      "name": "Salto al contenido en el sistema interno",
+      "status": "OK"
+    },
+    {
+      "name": "Destino enfocable del contenido interno",
+      "status": "OK"
+    },
+    {
+      "name": "Menú interno asociado mediante aria-controls",
+      "status": "OK"
+    },
+    {
+      "name": "Foco visible global",
+      "status": "OK"
+    },
+    {
+      "name": "Preferencia de movimiento reducido",
+      "status": "OK"
+    },
+    {
+      "name": "Placeholder del catálogo con contraste reforzado",
+      "status": "OK"
+    },
+    {
+      "name": "Texto inferior público con contraste reforzado",
+      "status": "OK"
+    }
+  ],
+  "totalChecks": 29,
+  "passed": 29,
+  "failed": 0
+}

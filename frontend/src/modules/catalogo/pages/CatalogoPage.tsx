@@ -1,258 +1,210 @@
-import { Search, SlidersHorizontal, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useCallback } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { RotateCcw } from "lucide-react";
+import { PAGE_SIZE } from "../../../config/appConfig";
+import { useApiQuery } from "../../../hooks/useApiQuery";
+import { useVehicleTypeOptions } from "../../../hooks/useVehicleTypeOptions";
 import { catalogoService } from "../../../services/api";
-import type { CatalogoVehiculo } from "../../../types/vehiculo.types";
-import { LoadingState } from "../../../shared/feedback/LoadingState";
-import { EmptyState } from "../../../shared/feedback/EmptyState";
 import { ErrorState } from "../../../shared/feedback/ErrorState";
-import VehicleCard from "../components/VehicleCard";
-import { errorMessage } from "../../../utils/errorMessage";
+import { PaginationControls } from "../../../shared/navigation/PaginationControls";
+import { SeoMeta } from "../../../shared/seo/SeoMeta";
+import { parseVehicleFilters } from "../../../utils/vehicleFilters";
+import { CatalogHeader } from "../components/CatalogHeader";
+import { FilterFields } from "../components/FilterFields";
+import { VehicleGrid } from "../components/VehicleGrid";
+import { cx, fieldControl } from "../components/catalogStyles";
+import {
+  SORT_OPTIONS,
+  useCatalogFilters,
+  type SortKey,
+} from "../hooks/useCatalogFilters";
+
+const SERVER_SORT_OPTIONS = {
+  recientes: "id,desc",
+  "anio-desc": "anio,desc",
+  "precio-asc": "precioVentaEstimado,asc",
+  "precio-desc": "precioVentaEstimado,desc",
+} as const;
+
+type SortOption = keyof typeof SERVER_SORT_OPTIONS;
+
+const readPage = (value: string | null) => {
+  const parsed = Number(value ?? "1");
+  return Number.isInteger(parsed) && parsed > 0 ? parsed - 1 : 0;
+};
+
+const readSort = (value: string | null): SortOption =>
+  value && value in SERVER_SORT_OPTIONS ? (value as SortOption) : "recientes";
 
 export default function CatalogoPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [rows, setRows] = useState<CatalogoVehiculo[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [q, setQ] = useState(searchParams.get("q") ?? "");
-  const [marca, setMarca] = useState("");
-  const [modelo, setModelo] = useState("");
-  const [anioDesde, setAnioDesde] = useState("");
-  const [anioHasta, setAnioHasta] = useState("");
-  const [min, setMin] = useState("");
-  const [max, setMax] = useState("");
-  const [sort, setSort] = useState("recientes");
+  const { options: vehicleTypes } = useVehicleTypeOptions();
+  const query = searchParams.toString();
+  const page = readPage(searchParams.get("page"));
+  const sort = readSort(searchParams.get("sort"));
 
   const load = useCallback(
-    async (
-      filters: {
-        marca?: string;
-        modelo?: string;
-        anioDesde?: string;
-        anioHasta?: string;
-      } = {},
-    ) => {
-      setLoading(true);
-      setError("");
-      try {
-        const data = await catalogoService.list({
-          marca: filters.marca || undefined,
-          modelo: filters.modelo || undefined,
-          anioDesde: filters.anioDesde ? Number(filters.anioDesde) : undefined,
-          anioHasta: filters.anioHasta ? Number(filters.anioHasta) : undefined,
-        });
-        setRows(data);
-      } catch (e) {
-        setError(errorMessage(e));
-      } finally {
-        setLoading(false);
-      }
+    async (signal: AbortSignal) => {
+      const current = new URLSearchParams(query);
+      const filters = parseVehicleFilters(current, false, true);
+
+      return catalogoService.page(
+        {
+          ...filters,
+          page,
+          size: PAGE_SIZE,
+          sort: SERVER_SORT_OPTIONS[sort],
+        },
+        signal,
+      );
     },
-    [],
+    [page, query, sort],
   );
 
-  useEffect(() => {
-    let cancelled = false;
+  const { data, loading, error, retry } = useApiQuery(load);
+  const rows = data?.content ?? [];
 
-    catalogoService
-      .list({})
-      .then((data) => {
-        if (!cancelled) {
-          setRows(data);
-        }
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          setError(errorMessage(error));
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      });
+  const updateSearchParams = useCallback(
+    (next: URLSearchParams) => setSearchParams(next, { replace: true }),
+    [setSearchParams],
+  );
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const resultCount = data?.totalElements ?? rows.length;
+  const catalog = useCatalogFilters(
+    searchParams,
+    updateSearchParams,
+    resultCount,
+    vehicleTypes,
+  );
 
-  const filtered = useMemo(() => {
-    const term = q.trim().toLowerCase();
-    const result = rows.filter((v) => {
-      const text =
-        `${v.marca} ${v.modelo} ${v.anio} ${v.color ?? ""}`.toLowerCase();
-      return (
-        (!term || text.includes(term)) &&
-        (!min || (v.precioVentaEstimado ?? 0) >= Number(min)) &&
-        (!max || (v.precioVentaEstimado ?? Number.MAX_VALUE) <= Number(max))
-      );
-    });
-    return [...result].sort((a, b) => {
-      if (sort === "precio-asc")
-        return (
-          (a.precioVentaEstimado ?? Number.MAX_VALUE) -
-          (b.precioVentaEstimado ?? Number.MAX_VALUE)
-        );
-      if (sort === "precio-desc")
-        return (b.precioVentaEstimado ?? -1) - (a.precioVentaEstimado ?? -1);
-      if (sort === "anio-desc") return b.anio - a.anio;
-      return b.id - a.id;
-    });
-  }, [rows, q, min, max, sort]);
+  const setPage = (nextPage: number) => {
+    const next = new URLSearchParams(searchParams);
 
-  const submit = () => {
-    const params = new URLSearchParams();
-    if (q.trim()) params.set("q", q.trim());
-    setSearchParams(params, { replace: true });
-    void load({ marca, modelo, anioDesde, anioHasta });
-  };
+    if (nextPage <= 0) next.delete("page");
+    else next.set("page", String(nextPage + 1));
 
-  const reset = () => {
-    setQ("");
-    setMarca("");
-    setModelo("");
-    setAnioDesde("");
-    setAnioHasta("");
-    setMin("");
-    setMax("");
-    setSort("recientes");
-    setSearchParams({}, { replace: true });
-    void load({ marca: "", modelo: "", anioDesde: "", anioHasta: "" });
+    setSearchParams(next, { replace: true });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
-    <div className="container catalog-page">
-      <header className="catalog-heading">
-        <span className="eyebrow">Stock disponible</span>
-        <h1>Encontrá tu vehículo</h1>
-        <p>
-          Todos los vehículos publicados en este catálogo son usados. Consultá
-          cada ficha para confirmar disponibilidad y condiciones.
-        </p>
-      </header>
+    <section className="min-h-screen bg-paper pb-16">
+      <SeoMeta
+        title="Vehículos usados disponibles | Automotora Pamahe"
+        description="Consultá el catálogo de vehículos usados disponibles de Automotora Pamahe en Juan Lacaze, con filtros por marca, modelo, tipo, año y precio."
+        canonicalPath="/catalogo"
+      />
 
-      <form
-        className="catalog-filters"
-        onSubmit={(e) => {
-          e.preventDefault();
-          submit();
-        }}
-      >
-        <div className="catalog-filters__title">
-          <SlidersHorizontal />
-          <strong>Filtros</strong>
-        </div>
-        <label>
-          <span>Búsqueda</span>
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Marca o modelo"
-            maxLength={80}
-          />
-        </label>
-        <label>
-          <span>Marca</span>
-          <input
-            value={marca}
-            onChange={(e) => setMarca(e.target.value)}
-            placeholder="Ej. Toyota"
-            maxLength={80}
-          />
-        </label>
-        <label>
-          <span>Modelo</span>
-          <input
-            value={modelo}
-            onChange={(e) => setModelo(e.target.value)}
-            placeholder="Ej. Corolla"
-            maxLength={80}
-          />
-        </label>
-        <label>
-          <span>Año desde</span>
-          <input
-            type="number"
-            min="1950"
-            max="2100"
-            value={anioDesde}
-            onChange={(e) => setAnioDesde(e.target.value)}
-          />
-        </label>
-        <label>
-          <span>Año hasta</span>
-          <input
-            type="number"
-            min="1950"
-            max="2100"
-            value={anioHasta}
-            onChange={(e) => setAnioHasta(e.target.value)}
-          />
-        </label>
-        <label>
-          <span>Precio mín.</span>
-          <input
-            type="number"
-            min="0"
-            value={min}
-            onChange={(e) => setMin(e.target.value)}
-          />
-        </label>
-        <label>
-          <span>Precio máx.</span>
-          <input
-            type="number"
-            min="0"
-            value={max}
-            onChange={(e) => setMax(e.target.value)}
-          />
-        </label>
-        <button className="button button--accent" type="submit">
-          <Search size={18} />
-          Buscar
-        </button>
-        <button className="button button--ghost" type="button" onClick={reset}>
-          <X size={18} />
-          Limpiar
-        </button>
-      </form>
+      <CatalogHeader state={catalog} />
 
-      <div className="catalog-result-head">
-        <div>
-          <strong>{filtered.length} vehículo(s)</strong>
-          <span> disponibles para consulta</span>
+      <div className="mx-auto grid w-full max-w-[1320px] gap-7 px-4 pb-16 pt-8 sm:px-6 lg:grid-cols-[250px_minmax(0,1fr)] lg:pt-10">
+        <aside className="hidden self-start border border-brand/10 bg-white p-5 shadow-sm lg:sticky lg:top-[92px] lg:block">
+          <div className="flex items-center justify-between gap-3 border-b border-brand/10 pb-4">
+            <h2 className="m-0 text-lg font-black tracking-[-0.02em] text-brand-deep">Filtrar vehículos</h2>
+            <button
+              type="button"
+              onClick={catalog.reset}
+              className="inline-flex items-center gap-1 text-xs font-extrabold uppercase tracking-[0.04em] text-brand hover:text-brand-deep"
+            >
+              <RotateCcw aria-hidden="true" className="size-3.5" /> Limpiar
+            </button>
+          </div>
+
+          <fieldset className="mt-5 border-0 p-0">
+            <legend className="mb-3 text-[12px] font-extrabold uppercase tracking-[0.08em] text-brand-deep/65">
+              Tipo de vehículo
+            </legend>
+            <div className="grid gap-1">
+              <label className="flex cursor-pointer items-center gap-2 py-1.5 text-sm font-semibold text-brand-deep/80">
+                <input
+                  type="radio"
+                  name="tipo-desktop"
+                  checked={catalog.filters.tipo === ""}
+                  onChange={() => catalog.patch({ tipo: "" })}
+                  className="accent-brand"
+                />
+                Todos
+              </label>
+              {catalog.vehicleTypes.map((type) => (
+                <label key={type.value} className="flex cursor-pointer items-center gap-2 py-1.5 text-sm font-semibold text-brand-deep/80">
+                  <input
+                    type="radio"
+                    name="tipo-desktop"
+                    checked={catalog.filters.tipo === type.value}
+                    onChange={() => catalog.patch({ tipo: type.value })}
+                    className="accent-brand"
+                  />
+                  {type.label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <div className="mt-5 border-t border-brand/10 pt-5">
+            <FilterFields state={catalog} layout="stack" />
+          </div>
+        </aside>
+
+        <div className="min-w-0">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-brand/10 pb-4">
+            <div>
+              <strong className="block text-lg font-black text-brand-deep">
+                {resultCount} {resultCount === 1 ? "vehículo" : "vehículos"}
+              </strong>
+              <span className="text-sm text-slate-600">Disponibles para consulta</span>
+            </div>
+
+            <label className="flex items-center gap-2 text-sm text-slate-600">
+              <span className="hidden sm:inline">Ordenar</span>
+              <select
+                aria-label="Ordenar"
+                value={catalog.filters.sort}
+                onChange={(event) => catalog.patch({ sort: event.target.value as SortKey })}
+                className={cx(fieldControl, "h-10 w-auto min-w-48 py-0 text-sm font-bold")}
+              >
+                {SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {error ? (
+            <ErrorState description={error} onRetry={retry} />
+          ) : (
+            <>
+              <VehicleGrid
+                vehicles={rows}
+                loading={loading}
+                onReset={catalog.reset}
+              />
+
+              {!loading && rows.length > 0 && (
+                <div className="mt-8">
+                  <PaginationControls
+                    page={data?.number ?? 0}
+                    totalPages={data?.totalPages ?? 0}
+                    totalElements={data?.totalElements ?? 0}
+                    onPageChange={setPage}
+                  />
+                </div>
+              )}
+            </>
+          )}
         </div>
-        <label className="catalog-sort">
-          <span className="sr-only">Ordenar</span>
-          <select value={sort} onChange={(e) => setSort(e.target.value)}>
-            <option value="recientes">Más recientes</option>
-            <option value="anio-desc">Año: mayor a menor</option>
-            <option value="precio-asc">Precio: menor a mayor</option>
-            <option value="precio-desc">Precio: mayor a menor</option>
-          </select>
-        </label>
       </div>
 
-      {error ? (
-        <ErrorState
-          description={error}
-          onRetry={() => void load({ marca, modelo, anioDesde, anioHasta })}
-        />
-      ) : loading ? (
-        <LoadingState label="Buscando vehículos…" />
-      ) : filtered.length ? (
-        <div className="vehicle-grid">
-          {filtered.map((v) => (
-            <VehicleCard key={v.id} vehicle={v} />
-          ))}
+      <div className="mx-auto w-full max-w-[1320px] px-4 sm:px-6">
+        <div className="flex flex-col gap-4 rounded-2xl bg-brand-deep p-6 text-white sm:flex-row sm:items-center sm:justify-between md:p-8">
+          <div>
+            <strong className="text-xl font-black">¿Querés ofrecernos tu vehículo?</strong>
+            <p className="mb-0 mt-1 text-sm text-white/70">Completá el formulario público con los datos básicos y fotografías para que podamos revisarlo.</p>
+          </div>
+          <Link to="/quiero-vender-mi-vehiculo" className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg bg-sun px-5 font-extrabold text-brand-deep">
+            Quiero vender mi vehículo
+          </Link>
         </div>
-      ) : (
-        <EmptyState
-          title="No encontramos vehículos con esos filtros"
-          description="Probá ampliar el rango de búsqueda."
-        />
-      )}
-    </div>
+      </div>
+    </section>
   );
 }

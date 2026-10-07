@@ -1,0 +1,21 @@
+{
+  "runId": "2026-10-04T21-35-36.691Z",
+  "passed": false,
+  "steps": [
+    {
+      "at": "2026-10-04T21:35:36.695Z",
+      "name": "preflight-stack",
+      "status": "RUN",
+      "detail": {}
+    },
+    {
+      "at": "2026-10-04T21:35:36.707Z",
+      "name": "cq03",
+      "status": "FAIL",
+      "detail": {
+        "message": "fetch failed",
+        "stack": "TypeError: fetch failed"
+      }
+    }
+  ]
+}

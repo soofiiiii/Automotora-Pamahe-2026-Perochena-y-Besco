@@ -1,0 +1,64 @@
+{
+  "axeVersion": "4.13.0",
+  "vehicleId": 1,
+  "audits": [
+    {
+      "name": "inicio",
+      "route": "/",
+      "violations": 0,
+      "criticalSerious": 0,
+      "critical": []
+    },
+    {
+      "name": "catalogo",
+      "route": "/catalogo",
+      "violations": 0,
+      "criticalSerious": 0,
+      "critical": []
+    },
+    {
+      "name": "detalle-publico",
+      "route": "/catalogo/1",
+      "violations": 0,
+      "criticalSerious": 0,
+      "critical": []
+    },
+    {
+      "name": "login",
+      "route": "/login",
+      "violations": 0,
+      "criticalSerious": 0,
+      "critical": []
+    },
+    {
+      "name": "formulario-interno-con-errores",
+      "route": "/app/clientes/nuevo",
+      "violations": 0,
+      "criticalSerious": 0
+    }
+  ],
+  "keyboard": [
+    {
+      "name": "catalogo-filtros",
+      "tabReachedTrigger": true,
+      "enterOpenedDialog": true,
+      "escapeClosedDialog": true,
+      "focusRestored": true,
+      "shiftTabMovedFocus": true,
+      "tabReturnedToTrigger": true,
+      "spaceOpenedDialog": true,
+      "focusRestoredAfterSpace": true
+    },
+    {
+      "name": "formulario-interno",
+      "submitReachedByTab": true,
+      "submittedWithEnter": true,
+      "visibleAlerts": [
+        "Ingresá el nombre.",
+        "Ingresá un documento válido."
+      ]
+    }
+  ],
+  "passed": true,
+  "criticalSeriousTotal": 0
+}

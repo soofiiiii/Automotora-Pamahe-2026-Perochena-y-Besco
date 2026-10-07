@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +16,7 @@ import uy.edu.ctc.pamahe.common.util.SecurityUtils;
 import uy.edu.ctc.pamahe.modules.auditoria.model.Auditoria;
 import uy.edu.ctc.pamahe.modules.auditoria.repository.AuditoriaRepository;
 import uy.edu.ctc.pamahe.modules.auditoria.dto.response.AuditoriaResponse;
+import uy.edu.ctc.pamahe.modules.vehiculos.dto.response.historial.HistorialEventoVehiculoResponse;
 
 /**
  * Registra cambios relevantes dentro de la misma transacción que la operación
@@ -75,8 +77,23 @@ public class AuditoriaService {
         return PageResponse.from(
                 this.auditoriaRepository.buscarPaginado(
                         normalizar(usuario), normalizar(accion), normalizar(entidad), entidadId,
-                        desdeHora, hastaExclusivo, PageRequest.of(page, size)),
+                        desdeHora, hastaExclusivo, PageRequest.of(page, size,
+                                Sort.by(Sort.Order.desc("creadoEn"), Sort.Order.desc("id")))),
                 this::toResponse);
+    }
+
+
+    @Transactional(readOnly = true)
+    public List<HistorialEventoVehiculoResponse> eventosVehiculo(Long vehiculoId) {
+        return this.auditoriaRepository.buscarEventosVehiculo(vehiculoId).stream()
+                .map(a -> new HistorialEventoVehiculoResponse(
+                        a.getCreadoEn(),
+                        a.getUsuario(),
+                        a.getAccion(),
+                        a.getDetalle(),
+                        a.getValoresAnteriores(),
+                        a.getValoresNuevos()))
+                .toList();
     }
 
     private String normalizar(String value) {
@@ -98,11 +115,14 @@ public class AuditoriaService {
     }
 
     private void validarPaginacion(int page, int size) {
+        if ((long) page * size > Integer.MAX_VALUE) {
+            throw new BusinessException("La página solicitada no es válida.");
+        }
         if (page < 0) {
-            throw new BusinessException("La página no puede ser negativa.");
+            throw new BusinessException("La página solicitada no es válida.");
         }
         if (size < 1 || size > 200) {
-            throw new BusinessException("El tamaño de página debe estar entre 1 y 200.");
+            throw new BusinessException("No pudimos mostrar esa página. Actualizá la vista e intentá nuevamente.");
         }
     }
 }

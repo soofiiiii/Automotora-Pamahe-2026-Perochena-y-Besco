@@ -2,6 +2,7 @@ package uy.edu.ctc.pamahe.modules.vehiculos.repository;
 
 import jakarta.persistence.LockModeType;
 import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -41,7 +42,7 @@ public interface VehiculoRepository extends JpaRepository<Vehiculo, Long> {
                                 OR (:disponibleComercial = true AND v.estado = uy.edu.ctc.pamahe.modules.vehiculos.model.EstadoVehiculo.DISPONIBLE)
                                 OR (:disponibleComercial = false AND v.estado <> uy.edu.ctc.pamahe.modules.vehiculos.model.EstadoVehiculo.DISPONIBLE)
                           )
-                        ORDER BY v.creadoEn DESC
+                        ORDER BY v.creadoEn DESC, v.id DESC
                         """)
         List<Vehiculo> buscarConFiltros(
                         @Param("estado") EstadoVehiculo estado,
@@ -73,6 +74,7 @@ public interface VehiculoRepository extends JpaRepository<Vehiculo, Long> {
                                 OR (:disponibleComercial = true AND v.estado = uy.edu.ctc.pamahe.modules.vehiculos.model.EstadoVehiculo.DISPONIBLE)
                                 OR (:disponibleComercial = false AND v.estado <> uy.edu.ctc.pamahe.modules.vehiculos.model.EstadoVehiculo.DISPONIBLE)
                           )
+                        ORDER BY v.creadoEn DESC, v.id DESC
                         """)
         Page<Vehiculo> buscarConFiltrosPaginado(
                         @Param("estado") EstadoVehiculo estado,
@@ -92,18 +94,18 @@ public interface VehiculoRepository extends JpaRepository<Vehiculo, Long> {
                         FROM Vehiculo v
                         WHERE v.activo = true
                           AND v.publicado = true
-                          AND v.estado = :estado
+                          AND v.estado IN :estados
                           AND (:marca IS NULL OR LOWER(v.marca) LIKE LOWER(CONCAT('%', :marca, '%')))
                           AND (:modelo IS NULL OR LOWER(v.modelo) LIKE LOWER(CONCAT('%', :modelo, '%')))
                           AND (:tipoVehiculo IS NULL OR UPPER(v.tipoVehiculo) = UPPER(:tipoVehiculo))
                           AND (:anioDesde IS NULL OR v.anio >= :anioDesde)
                           AND (:anioHasta IS NULL OR v.anio <= :anioHasta)
-                          AND (:precioMin IS NULL OR v.precioVentaEstimado >= :precioMin)
-                          AND (:precioMax IS NULL OR v.precioVentaEstimado <= :precioMax)
-                        ORDER BY v.creadoEn DESC
+                          AND (:precioMin IS NULL OR v.precioVentaUsd >= :precioMin)
+                          AND (:precioMax IS NULL OR v.precioVentaUsd <= :precioMax)
+                        ORDER BY v.creadoEn DESC, v.id DESC
                         """)
         List<Vehiculo> buscarCatalogo(
-                        @Param("estado") EstadoVehiculo estado,
+                        @Param("estados") Collection<EstadoVehiculo> estados,
                         @Param("marca") String marca,
                         @Param("modelo") String modelo,
                         @Param("tipoVehiculo") String tipoVehiculo,
@@ -117,17 +119,18 @@ public interface VehiculoRepository extends JpaRepository<Vehiculo, Long> {
                         FROM Vehiculo v
                         WHERE v.activo = true
                           AND v.publicado = true
-                          AND v.estado = :estado
+                          AND v.estado IN :estados
                           AND (:marca IS NULL OR LOWER(v.marca) LIKE LOWER(CONCAT('%', :marca, '%')))
                           AND (:modelo IS NULL OR LOWER(v.modelo) LIKE LOWER(CONCAT('%', :modelo, '%')))
                           AND (:tipoVehiculo IS NULL OR UPPER(v.tipoVehiculo) = UPPER(:tipoVehiculo))
                           AND (:anioDesde IS NULL OR v.anio >= :anioDesde)
                           AND (:anioHasta IS NULL OR v.anio <= :anioHasta)
-                          AND (:precioMin IS NULL OR v.precioVentaEstimado >= :precioMin)
-                          AND (:precioMax IS NULL OR v.precioVentaEstimado <= :precioMax)
+                          AND (:precioMin IS NULL OR v.precioVentaUsd >= :precioMin)
+                          AND (:precioMax IS NULL OR v.precioVentaUsd <= :precioMax)
+                        ORDER BY v.creadoEn DESC, v.id DESC
                         """)
         Page<Vehiculo> buscarCatalogoPaginado(
-                        @Param("estado") EstadoVehiculo estado,
+                        @Param("estados") Collection<EstadoVehiculo> estados,
                         @Param("marca") String marca,
                         @Param("modelo") String modelo,
                         @Param("tipoVehiculo") String tipoVehiculo,
@@ -137,7 +140,7 @@ public interface VehiculoRepository extends JpaRepository<Vehiculo, Long> {
                         @Param("precioMax") BigDecimal precioMax,
                         Pageable pageable);
 
-        Optional<Vehiculo> findByIdAndActivoTrueAndPublicadoTrueAndEstado(Long id, EstadoVehiculo estado);
+        Optional<Vehiculo> findByIdAndActivoTrueAndPublicadoTrueAndEstadoIn(Long id, Collection<EstadoVehiculo> estados);
 
         @Lock(LockModeType.PESSIMISTIC_WRITE)
         @Query("select v from Vehiculo v where v.id = :id")

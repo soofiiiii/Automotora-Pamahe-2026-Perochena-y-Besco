@@ -6,7 +6,7 @@ import java.util.function.Function;
 import org.springframework.data.domain.Page;
 
 /**
- *  Contrato estable de paginación para no exponer directamente tipos internos de String Data.
+ * Contrato estable de paginación para no exponer directamente tipos internos de Spring Data.
 */
 public record PageResponse<T>(
         List<T> content,

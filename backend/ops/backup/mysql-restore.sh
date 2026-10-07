@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 umask 077
+source "$(dirname "$0")/common.sh"
 
 backup="${1:?Uso: mysql-restore.sh archivo.sql.gz}"
 : "${DB_HOST:?DB_HOST requerido}"
@@ -10,25 +11,22 @@ backup="${1:?Uso: mysql-restore.sh archivo.sql.gz}"
 : "${DB_PASSWORD:?DB_PASSWORD requerido}"
 : "${RESTORE_CONFIRM:=NO}"
 
-if [[ "$RESTORE_CONFIRM" != "YES" ]]; then
-  echo "Restauración cancelada. Defina RESTORE_CONFIRM=YES para confirmar la sobrescritura de $DB_NAME." >&2
+validate_connection
+validate_database "$DB_NAME"
+if [[ "$RESTORE_CONFIRM" != "YES" || "${RESTORE_TARGET:-}" != "$DB_NAME" ]]; then
+  echo "Restauración cancelada. Defina RESTORE_CONFIRM=YES y RESTORE_TARGET igual al nombre de base para confirmar la sobrescritura de $DB_NAME." >&2
   exit 20
 fi
 
-[[ -f "$backup" ]] || { echo "No existe el backup: $backup" >&2; exit 2; }
-[[ -f "$backup.sha256" ]] || { echo "Falta el checksum: $backup.sha256" >&2; exit 3; }
+validate_backup "$backup"
 
-(
-  cd "$(dirname "$backup")"
-  sha256sum -c "$(basename "$backup").sha256"
-)
-gzip -t "$backup"
-
-gunzip -c "$backup" | MYSQL_PWD="$DB_PASSWORD" mysql \
+gunzip -c -- "$backup" | MYSQL_PWD="$DB_PASSWORD" mysql \
   --host="$DB_HOST" \
   --port="$DB_PORT" \
   --user="$DB_USER" \
   --default-character-set=utf8mb4 \
   "$DB_NAME"
 
-printf 'Restauración finalizada en %s. Ejecute mysql-verify-restore.sh para validar integridad.\n' "$DB_NAME"
+bash "$(dirname "$0")/mysql-verify-restore.sh"
+
+printf 'Restauración e integridad verificadas en %s.\n' "$DB_NAME"

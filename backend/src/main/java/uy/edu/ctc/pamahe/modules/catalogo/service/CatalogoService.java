@@ -1,6 +1,7 @@
 package uy.edu.ctc.pamahe.modules.catalogo.service;
 
 import java.math.BigDecimal;
+import java.time.Year;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import uy.edu.ctc.pamahe.common.exception.BusinessException;
 import uy.edu.ctc.pamahe.common.exception.ResourceNotFoundException;
 import uy.edu.ctc.pamahe.common.response.PageResponse;
+import uy.edu.ctc.pamahe.common.util.MonedaUtils;
 import uy.edu.ctc.pamahe.modules.catalogo.dto.response.CatalogoVehiculoResponse;
 import uy.edu.ctc.pamahe.modules.imagenes.model.ImagenVehiculo;
 import uy.edu.ctc.pamahe.modules.imagenes.repository.ImagenVehiculoRepository;
@@ -27,6 +29,10 @@ import uy.edu.ctc.pamahe.modules.vehiculos.repository.VehiculoRepository;
  */
 @Service
 public class CatalogoService {
+
+        private static final List<EstadoVehiculo> ESTADOS_PUBLICOS = List.of(
+                        EstadoVehiculo.DISPONIBLE,
+                        EstadoVehiculo.RESERVADO);
 
         private final VehiculoRepository vehiculoRepository;
         private final ImagenVehiculoRepository imagenVehiculoRepository;
@@ -51,18 +57,19 @@ public class CatalogoService {
                         BigDecimal precioMin,
                         BigDecimal precioMax) {
                 validarFiltros(anioDesde, anioHasta, precioMin, precioMax);
+                BigDecimal cotizacion = cotizacionUsdUyu();
 
                 List<Vehiculo> vehiculos = this.vehiculoRepository.buscarCatalogo(
-                                EstadoVehiculo.DISPONIBLE,
+                                ESTADOS_PUBLICOS,
                                 normalizarFiltro(marca),
                                 normalizarFiltro(modelo),
                                 normalizarClave(tipoVehiculo),
                                 anioDesde,
                                 anioHasta,
-                                precioMin,
-                                precioMax);
+                                MonedaUtils.convertirUyuAUsd(precioMin, cotizacion),
+                                MonedaUtils.convertirUyuAUsd(precioMax, cotizacion));
 
-                return proyectarLista(vehiculos);
+                return proyectarLista(vehiculos, cotizacion);
         }
 
         @Transactional(readOnly = true)
@@ -78,18 +85,19 @@ public class CatalogoService {
                         int size) {
                 validarFiltros(anioDesde, anioHasta, precioMin, precioMax);
                 validarPaginacion(page, size);
+                BigDecimal cotizacion = cotizacionUsdUyu();
                 var resultado = this.vehiculoRepository.buscarCatalogoPaginado(
-                                EstadoVehiculo.DISPONIBLE,
+                                ESTADOS_PUBLICOS,
                                 normalizarFiltro(marca),
                                 normalizarFiltro(modelo),
                                 normalizarClave(tipoVehiculo),
                                 anioDesde,
                                 anioHasta,
-                                precioMin,
-                                precioMax,
+                                MonedaUtils.convertirUyuAUsd(precioMin, cotizacion),
+                                MonedaUtils.convertirUyuAUsd(precioMax, cotizacion),
                                 PageRequest.of(page, size));
 
-                List<CatalogoVehiculoResponse> content = proyectarLista(resultado.getContent());
+                List<CatalogoVehiculoResponse> content = proyectarLista(resultado.getContent(), cotizacion);
                 return new PageResponse<>(
                                 content,
                                 resultado.getNumber(),
@@ -103,9 +111,9 @@ public class CatalogoService {
         @Transactional(readOnly = true)
         public CatalogoVehiculoResponse obtenerDetalle(Long id) {
                 Vehiculo vehiculo = this.vehiculoRepository
-                                .findByIdAndActivoTrueAndPublicadoTrueAndEstado(id, EstadoVehiculo.DISPONIBLE)
+                                .findByIdAndActivoTrueAndPublicadoTrueAndEstadoIn(id, ESTADOS_PUBLICOS)
                                 .orElseThrow(() -> new ResourceNotFoundException(
-                                                "No se encontró un vehículo público disponible con el identificador solicitado."));
+                                                "El vehículo ya no está disponible en el catálogo."));
 
                 List<String> imagenes = this.imagenVehiculoRepository
                                 .findByVehiculoAndActivoTrueAndPublicaTrueOrderByPrincipalDescIdAsc(vehiculo)
@@ -114,10 +122,12 @@ public class CatalogoService {
                                 .filter(Objects::nonNull)
                                 .toList();
 
-                return toPublicResponse(vehiculo, imagenes, parametro("WHATSAPP"), parametro("TELEFONO"));
+                BigDecimal cotizacion = cotizacionUsdUyu();
+                return toPublicResponse(vehiculo, etiquetaTipoVehiculo(vehiculo.getTipoVehiculo()), imagenes,
+                                parametro("WHATSAPP"), parametro("TELEFONO"), cotizacion);
         }
 
-        private List<CatalogoVehiculoResponse> proyectarLista(List<Vehiculo> vehiculos) {
+        private List<CatalogoVehiculoResponse> proyectarLista(List<Vehiculo> vehiculos, BigDecimal cotizacion) {
                 if (vehiculos.isEmpty()) {
                         return List.of();
                 }
@@ -133,17 +143,52 @@ public class CatalogoService {
 
                 String whatsapp = parametro("WHATSAPP");
                 String telefono = parametro("TELEFONO");
+                Map<String, String> etiquetasTipoVehiculo = etiquetasTipoVehiculo();
 
                 return vehiculos.stream()
                                 .map(v -> toPublicResponse(
                                                 v,
+                                                etiquetaTipoVehiculo(v.getTipoVehiculo(), etiquetasTipoVehiculo),
                                                 imagenesPorVehiculo.getOrDefault(v.getId(), List.of()),
                                                 whatsapp,
-                                                telefono))
+                                                telefono,
+                                                cotizacion))
                                 .toList();
         }
 
+        private Map<String, String> etiquetasTipoVehiculo() {
+                return this.parametroRepository.findByCategoriaOrderByClaveAsc("TIPO_VEHICULO").stream()
+                                .collect(Collectors.toMap(
+                                                p -> p.getClave().trim().toUpperCase(java.util.Locale.ROOT),
+                                                p -> p.getValor() == null || p.getValor().isBlank()
+                                                                ? p.getClave()
+                                                                : p.getValor().trim(),
+                                                (primero, segundo) -> primero));
+        }
+
+        private String etiquetaTipoVehiculo(String clave) {
+                String normalizada = normalizarClave(clave);
+                if (normalizada == null) {
+                        return null;
+                }
+                return this.parametroRepository.findByCategoriaAndClave("TIPO_VEHICULO", normalizada)
+                                .map(p -> p.getValor() == null || p.getValor().isBlank()
+                                                ? p.getClave()
+                                                : p.getValor().trim())
+                                .orElse(normalizada);
+        }
+
+        private String etiquetaTipoVehiculo(String clave, Map<String, String> etiquetas) {
+                String normalizada = normalizarClave(clave);
+                return normalizada == null ? null : etiquetas.getOrDefault(normalizada, normalizada);
+        }
+
         private void validarFiltros(Integer anioDesde, Integer anioHasta, BigDecimal precioMin, BigDecimal precioMax) {
+                int maximo = Year.now().getValue();
+                if ((anioDesde != null && (anioDesde < 1900 || anioDesde > maximo))
+                                || (anioHasta != null && (anioHasta < 1900 || anioHasta > maximo))) {
+                        throw new BusinessException("Los años de filtro deben estar entre 1900 y " + maximo + ".");
+                }
                 if (anioDesde != null && anioHasta != null && anioDesde > anioHasta) {
                         throw new BusinessException("El año mínimo no puede ser mayor que el año máximo.");
                 }
@@ -159,11 +204,14 @@ public class CatalogoService {
         }
 
         private void validarPaginacion(int page, int size) {
+        if ((long) page * size > Integer.MAX_VALUE) {
+            throw new BusinessException("La página solicitada no es válida.");
+        }
                 if (page < 0) {
-                        throw new BusinessException("La página no puede ser negativa.");
+                        throw new BusinessException("La página solicitada no es válida.");
                 }
                 if (size < 1 || size > 100) {
-                        throw new BusinessException("El tamaño de página debe estar entre 1 y 100.");
+                        throw new BusinessException("No pudimos mostrar esa página. Actualizá la vista e intentá nuevamente.");
                 }
         }
 
@@ -187,19 +235,44 @@ public class CatalogoService {
                 return limpio == null ? null : limpio.toUpperCase(java.util.Locale.ROOT);
         }
 
+        private BigDecimal cotizacionUsdUyu() {
+                return this.parametroRepository
+                                .findByCategoriaAndClaveAndActivoTrue(
+                                                MonedaUtils.CATEGORIA_MONEDA,
+                                                MonedaUtils.CLAVE_USD_UYU)
+                                .map(parametro -> MonedaUtils.parsearCotizacionUsdUyu(parametro.getValor()))
+                                .orElse(MonedaUtils.COTIZACION_USD_UYU_PREDETERMINADA);
+        }
+
         private CatalogoVehiculoResponse toPublicResponse(Vehiculo vehiculo,
+                        String tipoVehiculoLabel,
                         List<String> imagenes,
                         String whatsapp,
-                        String telefono) {
+                        String telefono,
+                        BigDecimal cotizacion) {
+                BigDecimal precioUsd = vehiculo.getPrecioVentaUsd();
+                if ((precioUsd == null || precioUsd.compareTo(BigDecimal.ZERO) <= 0)
+                                && vehiculo.getPrecioVentaEstimado() != null
+                                && vehiculo.getPrecioVentaEstimado().compareTo(BigDecimal.ZERO) > 0) {
+                        precioUsd = MonedaUtils.convertirUyuAUsd(vehiculo.getPrecioVentaEstimado(), cotizacion);
+                }
+
+                BigDecimal precioUyu = precioUsd == null
+                                ? vehiculo.getPrecioVentaEstimado()
+                                : MonedaUtils.convertirUsdAUyu(precioUsd, cotizacion);
+
                 return new CatalogoVehiculoResponse(
                                 vehiculo.getId(),
                                 vehiculo.getMarca(),
                                 vehiculo.getModelo(),
                                 vehiculo.getTipoVehiculo(),
+                                tipoVehiculoLabel,
                                 vehiculo.getAnio(),
+                                vehiculo.getEstado(),
                                 vehiculo.getColor(),
                                 vehiculo.getKilometraje(),
-                                vehiculo.getPrecioVentaEstimado(),
+                                precioUsd,
+                                precioUyu,
                                 vehiculo.getDescripcionPublica(),
                                 imagenes,
                                 whatsapp,

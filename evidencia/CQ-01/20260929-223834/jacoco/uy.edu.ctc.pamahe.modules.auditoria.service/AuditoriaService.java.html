@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuditoriaService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.auditoria.service</a> &gt; <span class="el_source">AuditoriaService.java</span></div><h1>AuditoriaService.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.auditoria.service;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+import uy.edu.ctc.pamahe.common.exception.BusinessException;
+import uy.edu.ctc.pamahe.common.response.PageResponse;
+import uy.edu.ctc.pamahe.common.util.SecurityUtils;
+import uy.edu.ctc.pamahe.modules.auditoria.model.Auditoria;
+import uy.edu.ctc.pamahe.modules.auditoria.repository.AuditoriaRepository;
+import uy.edu.ctc.pamahe.modules.auditoria.dto.response.AuditoriaResponse;
+import uy.edu.ctc.pamahe.modules.vehiculos.dto.response.historial.HistorialEventoVehiculoResponse;
+
+/**
+ * Registra cambios relevantes dentro de la misma transacción que la operación
+ * auditada.
+ * Propagation.MANDATORY evita auditorías aisladas: si el negocio revierte, su
+ * evidencia también.
+ */
+@Service
+public class AuditoriaService {
+
+    private final AuditoriaRepository auditoriaRepository;
+
+<span class="fc" id="L32">    public AuditoriaService(AuditoriaRepository auditoriaRepository) {</span>
+<span class="fc" id="L33">        this.auditoriaRepository = auditoriaRepository;</span>
+<span class="fc" id="L34">    }</span>
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void registrar(String accion, String entidad, Long entidadId, String detalle) {
+<span class="fc" id="L38">        this.registrar(accion, entidad, entidadId, detalle, null, null);</span>
+<span class="fc" id="L39">    }</span>
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void registrar(String accion, String entidad, Long entidadId, String detalle,
+            String valoresAnteriores, String valoresNuevos) {
+<span class="fc" id="L44">        Auditoria auditoria = new Auditoria();</span>
+<span class="fc" id="L45">        auditoria.setUsuario(SecurityUtils.usuarioActual());</span>
+<span class="fc" id="L46">        auditoria.setAccion(accion);</span>
+<span class="fc" id="L47">        auditoria.setEntidad(entidad);</span>
+<span class="fc" id="L48">        auditoria.setEntidadId(entidadId);</span>
+<span class="fc" id="L49">        auditoria.setDetalle(detalle);</span>
+<span class="fc" id="L50">        auditoria.setValoresAnteriores(valoresAnteriores);</span>
+<span class="fc" id="L51">        auditoria.setValoresNuevos(valoresNuevos);</span>
+<span class="fc" id="L52">        this.auditoriaRepository.save(auditoria);</span>
+<span class="fc" id="L53">    }</span>
+
+    @Transactional(readOnly = true)
+    public List&lt;AuditoriaResponse&gt; listar(String usuario, String accion, String entidad, Long entidadId,
+            LocalDate desde, LocalDate hasta) {
+<span class="pc bpc" id="L58" title="1 of 6 branches missed.">        if (desde != null &amp;&amp; hasta != null &amp;&amp; desde.isAfter(hasta)) {</span>
+<span class="fc" id="L59">            throw new BusinessException(&quot;La fecha desde no puede ser posterior a la fecha hasta.&quot;);</span>
+        }
+<span class="fc bfc" id="L61" title="All 2 branches covered.">        LocalDateTime desdeHora = desde == null ? null : desde.atStartOfDay();</span>
+<span class="fc bfc" id="L62" title="All 2 branches covered.">        LocalDateTime hastaExclusivo = hasta == null ? null : hasta.plusDays(1).atStartOfDay();</span>
+<span class="fc" id="L63">        return this.auditoriaRepository.buscar(</span>
+<span class="fc" id="L64">                normalizar(usuario), normalizar(accion), normalizar(entidad), entidadId,</span>
+<span class="fc" id="L65">                desdeHora, hastaExclusivo, PageRequest.of(0, 200))</span>
+<span class="fc" id="L66">                .stream().map(this::toResponse).toList();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse&lt;AuditoriaResponse&gt; listarPaginado(
+            String usuario, String accion, String entidad, Long entidadId,
+            LocalDate desde, LocalDate hasta, int page, int size) {
+<span class="fc" id="L73">        validarFechas(desde, hasta);</span>
+<span class="fc" id="L74">        validarPaginacion(page, size);</span>
+<span class="pc bpc" id="L75" title="1 of 2 branches missed.">        LocalDateTime desdeHora = desde == null ? null : desde.atStartOfDay();</span>
+<span class="pc bpc" id="L76" title="1 of 2 branches missed.">        LocalDateTime hastaExclusivo = hasta == null ? null : hasta.plusDays(1).atStartOfDay();</span>
+<span class="fc" id="L77">        return PageResponse.from(</span>
+<span class="fc" id="L78">                this.auditoriaRepository.buscarPaginado(</span>
+<span class="fc" id="L79">                        normalizar(usuario), normalizar(accion), normalizar(entidad), entidadId,</span>
+<span class="fc" id="L80">                        desdeHora, hastaExclusivo, PageRequest.of(page, size,</span>
+<span class="fc" id="L81">                                Sort.by(Sort.Order.desc(&quot;creadoEn&quot;), Sort.Order.desc(&quot;id&quot;)))),</span>
+                this::toResponse);
+    }
+
+
+    @Transactional(readOnly = true)
+    public List&lt;HistorialEventoVehiculoResponse&gt; eventosVehiculo(Long vehiculoId) {
+<span class="fc" id="L88">        return this.auditoriaRepository.buscarEventosVehiculo(vehiculoId).stream()</span>
+<span class="fc" id="L89">                .map(a -&gt; new HistorialEventoVehiculoResponse(</span>
+<span class="fc" id="L90">                        a.getCreadoEn(),</span>
+<span class="fc" id="L91">                        a.getUsuario(),</span>
+<span class="fc" id="L92">                        a.getAccion(),</span>
+<span class="fc" id="L93">                        a.getDetalle(),</span>
+<span class="fc" id="L94">                        a.getValoresAnteriores(),</span>
+<span class="fc" id="L95">                        a.getValoresNuevos()))</span>
+<span class="fc" id="L96">                .toList();</span>
+    }
+
+    private String normalizar(String value) {
+<span class="fc bfc" id="L100" title="All 2 branches covered.">        if (value == null)</span>
+<span class="fc" id="L101">            return null;</span>
+<span class="fc" id="L102">        String v = value.trim();</span>
+<span class="fc bfc" id="L103" title="All 2 branches covered.">        return v.isEmpty() ? null : v;</span>
+    }
+
+    private AuditoriaResponse toResponse(Auditoria a) {
+<span class="fc" id="L107">        return new AuditoriaResponse(a.getId(), a.getUsuario(), a.getAccion(), a.getEntidad(), a.getEntidadId(),</span>
+<span class="fc" id="L108">                a.getDetalle(), a.getValoresAnteriores(), a.getValoresNuevos(), a.getCreadoEn());</span>
+    }
+
+    private void validarFechas(LocalDate desde, LocalDate hasta) {
+<span class="pc bpc" id="L112" title="1 of 6 branches missed.">        if (desde != null &amp;&amp; hasta != null &amp;&amp; desde.isAfter(hasta)) {</span>
+<span class="fc" id="L113">            throw new BusinessException(&quot;La fecha desde no puede ser posterior a la fecha hasta.&quot;);</span>
+        }
+<span class="fc" id="L115">    }</span>
+
+    private void validarPaginacion(int page, int size) {
+<span class="pc bpc" id="L118" title="1 of 2 branches missed.">        if ((long) page * size &gt; Integer.MAX_VALUE) {</span>
+<span class="nc" id="L119">            throw new BusinessException(&quot;La página solicitada excede el offset admitido.&quot;);</span>
+        }
+<span class="fc bfc" id="L121" title="All 2 branches covered.">        if (page &lt; 0) {</span>
+<span class="fc" id="L122">            throw new BusinessException(&quot;La página no puede ser negativa.&quot;);</span>
+        }
+<span class="fc bfc" id="L124" title="All 4 branches covered.">        if (size &lt; 1 || size &gt; 200) {</span>
+<span class="fc" id="L125">            throw new BusinessException(&quot;El tamaño de página debe estar entre 1 y 200.&quot;);</span>
+        }
+<span class="fc" id="L127">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

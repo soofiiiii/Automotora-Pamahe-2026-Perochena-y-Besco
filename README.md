@@ -8,7 +8,7 @@ Detener: docker compose down
 
 Levantar Backend
 Desde pamahe/backend:.\mvnw.cmd spring-boot:run
-Backend esperado: http://localhost:8080/api/v1
+Backend esperado: http://localhost:8080/api
 
 Levantar Frontend
 Desde pamahe/frontend: npm run dev

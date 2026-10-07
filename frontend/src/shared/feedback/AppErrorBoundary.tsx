@@ -19,10 +19,10 @@ export class AppErrorBoundary extends Component<Props, State> {
       return (
         <main className="fatal-error">
           <div className="state-card">
-            <strong>La aplicación encontró un error inesperado.</strong>
-            <p>Recargá la página. Si el problema continúa, informalo al responsable del sistema.</p>
+            <strong>No pudimos mostrar esta pantalla correctamente.</strong>
+            <p>Recargá la página para volver a intentarlo. Si el problema continúa, informalo al responsable del sistema.</p>
             <button className="button" type="button" onClick={() => window.location.reload()}>
-              Recargar aplicación
+              Recargar página
             </button>
           </div>
         </main>

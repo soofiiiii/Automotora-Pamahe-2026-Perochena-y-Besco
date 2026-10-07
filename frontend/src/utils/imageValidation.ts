@@ -16,7 +16,7 @@ const readDimensions = (file: File) =>
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error("No se pudo leer la imagen."));
+      reject(new Error("No pudimos leer la imagen seleccionada."));
     };
     img.src = url;
   });
@@ -37,7 +37,7 @@ export async function validateVehicleImage(file: File): Promise<string | null> {
       return "La imagen supera el máximo permitido de 24 megapíxeles.";
     }
   } catch {
-    return "No se pudo validar la imagen seleccionada.";
+    return "No pudimos validar la imagen seleccionada. Probá con otro archivo.";
   }
   return null;
 }

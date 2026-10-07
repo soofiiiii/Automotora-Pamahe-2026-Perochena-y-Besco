@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Refaccion.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.taller.model</a> &gt; <span class="el_source">Refaccion.java</span></div><h1>Refaccion.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.taller.model;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import uy.edu.ctc.pamahe.common.model.BaseEntity;
+import uy.edu.ctc.pamahe.modules.usuarios.model.Usuario;
+import uy.edu.ctc.pamahe.modules.vehiculos.model.Vehiculo;
+
+/** Representa un trabajo que aporta estado operativo y costo acumulado a un vehículo. */
+@Entity
+@Table(name = &quot;refacciones&quot;)
+<span class="fc" id="L21">public class Refaccion extends BaseEntity {</span>
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = &quot;vehiculo_id&quot;, nullable = false)
+    private Vehiculo vehiculo;
+
+    // El ejecutor puede no tener cuenta asignada; quien carga el dato sí debe quedar identificado.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = &quot;responsable_id&quot;)
+    private Usuario responsableOperativo;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = &quot;usuario_registra_id&quot;, nullable = false)
+    private Usuario usuarioQueRegistra;
+
+    @Column(nullable = false)
+    private LocalDate fecha;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = &quot;tipo_trabajo&quot;, nullable = false, length = 40)
+    private TipoTrabajo tipoTrabajo;
+
+    @Column(nullable = false, length = 1000)
+    private String descripcion;
+
+<span class="fc" id="L46">    @Column(name = &quot;costo_repuestos&quot;, nullable = false, precision = 14, scale = 2)</span>
+    private BigDecimal costoRepuestos = BigDecimal.ZERO;
+
+<span class="fc" id="L49">    @Column(name = &quot;costo_mano_obra&quot;, nullable = false, precision = 14, scale = 2)</span>
+    private BigDecimal costoManoObra = BigDecimal.ZERO;
+
+<span class="fc" id="L52">    @Column(name = &quot;costo_servicios_externos&quot;, nullable = false, precision = 14, scale = 2)</span>
+    private BigDecimal costoServiciosExternos = BigDecimal.ZERO;
+
+<span class="fc" id="L55">    @Enumerated(EnumType.STRING)</span>
+    @Column(name = &quot;estado_tarea&quot;, nullable = false, length = 30)
+    private EstadoTarea estadoTarea = EstadoTarea.PENDIENTE;
+
+    @Column(length = 1000)
+    private String observaciones;
+
+    @Column(name = &quot;registro_fotografico_url&quot;, length = 500)
+    private String registroFotograficoUrl;
+
+<span class="fc" id="L65">    @Column(name = &quot;sincronizado_desde_offline&quot;, nullable = false)</span>
+<span class="fc" id="L66">    private Boolean sincronizadoDesdeOffline = false;</span>
+
+    // La unicidad convierte los reintentos de sincronización en una operación idempotente.
+    @Column(name = &quot;id_operacion_offline&quot;, unique = true, length = 100)
+    private String idOperacionOffline;
+
+    public Vehiculo getVehiculo() {
+<span class="fc" id="L73">        return this.vehiculo;</span>
+    }
+
+    public void setVehiculo(Vehiculo vehiculo) {
+<span class="fc" id="L77">        this.vehiculo = vehiculo;</span>
+<span class="fc" id="L78">    }</span>
+
+    public Usuario getResponsableOperativo() {
+<span class="fc" id="L81">        return this.responsableOperativo;</span>
+    }
+
+    public void setResponsableOperativo(Usuario responsableOperativo) {
+<span class="fc" id="L85">        this.responsableOperativo = responsableOperativo;</span>
+<span class="fc" id="L86">    }</span>
+
+    public Usuario getUsuarioQueRegistra() {
+<span class="fc" id="L89">        return this.usuarioQueRegistra;</span>
+    }
+
+    public void setUsuarioQueRegistra(Usuario usuarioQueRegistra) {
+<span class="fc" id="L93">        this.usuarioQueRegistra = usuarioQueRegistra;</span>
+<span class="fc" id="L94">    }</span>
+
+    public LocalDate getFecha() {
+<span class="fc" id="L97">        return this.fecha;</span>
+    }
+
+    public void setFecha(LocalDate fecha) {
+<span class="fc" id="L101">        this.fecha = fecha;</span>
+<span class="fc" id="L102">    }</span>
+
+    public TipoTrabajo getTipoTrabajo() {
+<span class="fc" id="L105">        return this.tipoTrabajo;</span>
+    }
+
+    public void setTipoTrabajo(TipoTrabajo tipoTrabajo) {
+<span class="fc" id="L109">        this.tipoTrabajo = tipoTrabajo;</span>
+<span class="fc" id="L110">    }</span>
+
+    public String getDescripcion() {
+<span class="fc" id="L113">        return this.descripcion;</span>
+    }
+
+    public void setDescripcion(String descripcion) {
+<span class="fc" id="L117">        this.descripcion = descripcion;</span>
+<span class="fc" id="L118">    }</span>
+
+    public BigDecimal getCostoRepuestos() {
+<span class="fc" id="L121">        return this.costoRepuestos;</span>
+    }
+
+    public void setCostoRepuestos(BigDecimal costoRepuestos) {
+<span class="fc" id="L125">        this.costoRepuestos = costoRepuestos;</span>
+<span class="fc" id="L126">    }</span>
+
+    public BigDecimal getCostoManoObra() {
+<span class="fc" id="L129">        return this.costoManoObra;</span>
+    }
+
+    public void setCostoManoObra(BigDecimal costoManoObra) {
+<span class="fc" id="L133">        this.costoManoObra = costoManoObra;</span>
+<span class="fc" id="L134">    }</span>
+
+    public BigDecimal getCostoServiciosExternos() {
+<span class="fc" id="L137">        return this.costoServiciosExternos;</span>
+    }
+
+    public void setCostoServiciosExternos(BigDecimal costoServiciosExternos) {
+<span class="fc" id="L141">        this.costoServiciosExternos = costoServiciosExternos;</span>
+<span class="fc" id="L142">    }</span>
+
+    public EstadoTarea getEstadoTarea() {
+<span class="fc" id="L145">        return this.estadoTarea;</span>
+    }
+
+    public void setEstadoTarea(EstadoTarea estadoTarea) {
+<span class="fc" id="L149">        this.estadoTarea = estadoTarea;</span>
+<span class="fc" id="L150">    }</span>
+
+    public String getObservaciones() {
+<span class="fc" id="L153">        return this.observaciones;</span>
+    }
+
+    public void setObservaciones(String observaciones) {
+<span class="fc" id="L157">        this.observaciones = observaciones;</span>
+<span class="fc" id="L158">    }</span>
+
+    public String getRegistroFotograficoUrl() {
+<span class="fc" id="L161">        return this.registroFotograficoUrl;</span>
+    }
+
+    public void setRegistroFotograficoUrl(String registroFotograficoUrl) {
+<span class="fc" id="L165">        this.registroFotograficoUrl = registroFotograficoUrl;</span>
+<span class="fc" id="L166">    }</span>
+
+    public Boolean getSincronizadoDesdeOffline() {
+<span class="fc" id="L169">        return this.sincronizadoDesdeOffline;</span>
+    }
+
+    public void setSincronizadoDesdeOffline(Boolean sincronizadoDesdeOffline) {
+<span class="fc" id="L173">        this.sincronizadoDesdeOffline = sincronizadoDesdeOffline;</span>
+<span class="fc" id="L174">    }</span>
+
+    public String getIdOperacionOffline() {
+<span class="fc" id="L177">        return this.idOperacionOffline;</span>
+    }
+
+    public void setIdOperacionOffline(String idOperacionOffline) {
+<span class="fc" id="L181">        this.idOperacionOffline = idOperacionOffline;</span>
+<span class="fc" id="L182">    }</span>
+
+    public BigDecimal costoTotal() {
+<span class="fc" id="L185">        return this.costoRepuestos.add(this.costoManoObra).add(this.costoServiciosExternos);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PdfService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.common.util</a> &gt; <span class="el_source">PdfService.java</span></div><h1>PdfService.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.common.util;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+import com.lowagie.text.Document;
+import com.lowagie.text.DocumentException;
+import com.lowagie.text.Paragraph;
+import com.lowagie.text.pdf.PdfWriter;
+
+import uy.edu.ctc.pamahe.common.exception.BusinessException;
+import uy.edu.ctc.pamahe.common.exception.ResourceNotFoundException;
+
+/**
+ * Genera comprobantes administrativos dentro del almacenamiento privado.
+ * Coordina el archivo con la transacción de negocio para evitar comprobantes
+ * huérfanos cuando una compra o venta no logra confirmarse en la base de datos.
+ */
+@Service
+<span class="fc" id="L35">public class PdfService {</span>
+
+<span class="fc" id="L37">    private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern(&quot;dd/MM/yyyy HH:mm&quot;);</span>
+
+    @Value(&quot;${app.storage.root}&quot;)
+    private String storageRoot;
+
+    public String generarComprobante(String tipo, List&lt;String&gt; lineas) {
+<span class="nc" id="L43">        String categoria = this.categoriaSegura(tipo);</span>
+
+<span class="nc" id="L45">        Path basePrivada = this.baseComprobantes();</span>
+<span class="nc" id="L46">        Path carpeta = basePrivada.resolve(categoria).normalize();</span>
+
+<span class="nc" id="L48">        this.validarDentroDeBase(carpeta, basePrivada);</span>
+
+<span class="nc" id="L50">        Path destino = null;</span>
+
+        try {
+<span class="nc" id="L53">            Files.createDirectories(carpeta);</span>
+
+<span class="nc" id="L55">            String nombreArchivo = tipo.toLowerCase(Locale.ROOT)</span>
+                    + &quot;-&quot;
+<span class="nc" id="L57">                    + UUID.randomUUID()</span>
+                    + &quot;.pdf&quot;;
+
+<span class="nc" id="L60">            destino = carpeta.resolve(nombreArchivo).normalize();</span>
+
+<span class="nc" id="L62">            this.validarDentroDeBase(destino, basePrivada);</span>
+
+<span class="nc" id="L64">            byte[] contenido = this.generarPdfEnMemoria(tipo, lineas);</span>
+
+<span class="nc" id="L66">            Files.write(</span>
+                    destino,
+                    contenido,
+                    StandardOpenOption.CREATE_NEW,
+                    StandardOpenOption.WRITE);
+
+<span class="nc" id="L72">            this.eliminarSiRollback(destino);</span>
+
+<span class="nc" id="L74">            return categoria + &quot;/&quot; + nombreArchivo;</span>
+
+<span class="nc" id="L76">        } catch (IOException | DocumentException exception) {</span>
+<span class="nc" id="L77">            this.eliminarSilenciosamente(destino);</span>
+
+<span class="nc" id="L79">            throw new BusinessException(</span>
+                    &quot;No se pudo generar el comprobante PDF.&quot;);
+        }
+    }
+
+    private byte[] generarPdfEnMemoria(
+            String tipo,
+            List&lt;String&gt; lineas) throws DocumentException {
+
+<span class="nc" id="L88">        try (ByteArrayOutputStream buffer = new ByteArrayOutputStream(4096)) {</span>
+
+<span class="nc" id="L90">            Document document = new Document();</span>
+
+            try {
+<span class="nc" id="L93">                PdfWriter.getInstance(document, buffer);</span>
+
+<span class="nc" id="L95">                document.open();</span>
+
+<span class="nc" id="L97">                document.add(new Paragraph(&quot;Automotora Pamahe&quot;));</span>
+
+<span class="nc" id="L99">                document.add(</span>
+                        new Paragraph(
+                                &quot;Comprobante interno de &quot; + tipo));
+
+<span class="nc" id="L103">                document.add(</span>
+                        new Paragraph(
+                                &quot;Fecha de emisión: &quot;
+<span class="nc" id="L106">                                        + LocalDateTime.now()</span>
+<span class="nc" id="L107">                                                .format(FORMATO_FECHA)));</span>
+
+<span class="nc" id="L109">                document.add(new Paragraph(&quot; &quot;));</span>
+
+<span class="nc bnc" id="L111" title="All 2 branches missed.">                if (lineas != null) {</span>
+<span class="nc bnc" id="L112" title="All 2 branches missed.">                    for (String linea : lineas) {</span>
+<span class="nc bnc" id="L113" title="All 2 branches missed.">                        if (linea != null) {</span>
+<span class="nc" id="L114">                            document.add(new Paragraph(linea));</span>
+                        }
+<span class="nc" id="L116">                    }</span>
+                }
+
+<span class="nc" id="L119">                document.add(new Paragraph(&quot; &quot;));</span>
+
+<span class="nc" id="L121">                document.add(</span>
+                        new Paragraph(
+                                &quot;Este documento es de uso interno administrativo &quot;
+                                        + &quot;y no posee validez como comprobante fiscal.&quot;));
+
+            } finally {
+<span class="nc bnc" id="L127" title="All 2 branches missed.">                if (document.isOpen()) {</span>
+<span class="nc" id="L128">                    document.close();</span>
+                }
+            }
+
+<span class="nc" id="L132">            return buffer.toByteArray();</span>
+
+<span class="nc" id="L134">        } catch (IOException exception) {</span>
+<span class="nc" id="L135">            throw new BusinessException(</span>
+                    &quot;No se pudo generar el comprobante PDF.&quot;);
+        }
+    }
+
+    public ComprobanteResource cargarComprobante(String rutaRelativa) {
+<span class="nc bnc" id="L141" title="All 4 branches missed.">        if (rutaRelativa == null || rutaRelativa.isBlank()) {</span>
+<span class="nc" id="L142">            throw new ResourceNotFoundException(</span>
+                    &quot;La operación no posee un comprobante generado.&quot;);
+        }
+
+<span class="nc" id="L146">        Path base = this.baseComprobantes();</span>
+<span class="nc" id="L147">        Path archivo = base.resolve(rutaRelativa).normalize();</span>
+
+<span class="nc" id="L149">        this.validarDentroDeBase(archivo, base);</span>
+
+<span class="nc bnc" id="L151" title="All 2 branches missed.">        if (!Files.isRegularFile(archivo)) {</span>
+<span class="nc" id="L152">            throw new ResourceNotFoundException(</span>
+                    &quot;No se encontró el archivo del comprobante.&quot;);
+        }
+
+<span class="nc" id="L156">        Resource resource = new FileSystemResource(archivo);</span>
+
+<span class="nc" id="L158">        return new ComprobanteResource(</span>
+                resource,
+<span class="nc" id="L160">                archivo.getFileName().toString());</span>
+    }
+
+    private String categoriaSegura(String tipo) {
+<span class="nc bnc" id="L164" title="All 2 branches missed.">        String normalizado = tipo == null</span>
+<span class="nc" id="L165">                ? &quot;&quot;</span>
+<span class="nc" id="L166">                : tipo.trim().toUpperCase(Locale.ROOT);</span>
+
+<span class="nc bnc" id="L168" title="All 3 branches missed.">        return switch (normalizado) {</span>
+<span class="nc" id="L169">            case &quot;COMPRA&quot; -&gt; &quot;compras&quot;;</span>
+<span class="nc" id="L170">            case &quot;VENTA&quot; -&gt; &quot;ventas&quot;;</span>
+            default -&gt;
+<span class="nc" id="L172">                throw new BusinessException(</span>
+                        &quot;Tipo de comprobante no permitido.&quot;);
+        };
+    }
+
+    private Path baseComprobantes() {
+<span class="nc" id="L178">        return Path.of(</span>
+                this.storageRoot,
+                &quot;private&quot;,
+                &quot;comprobantes&quot;)
+<span class="nc" id="L182">                .toAbsolutePath()</span>
+<span class="nc" id="L183">                .normalize();</span>
+    }
+
+    private void validarDentroDeBase(Path path, Path base) {
+<span class="nc" id="L187">        Path rutaNormalizada = path.toAbsolutePath().normalize();</span>
+
+<span class="nc" id="L189">        Path baseNormalizada = base.toAbsolutePath().normalize();</span>
+
+<span class="nc bnc" id="L191" title="All 2 branches missed.">        if (!rutaNormalizada.startsWith(baseNormalizada)) {</span>
+<span class="nc" id="L192">            throw new BusinessException(</span>
+                    &quot;La ruta del comprobante no es válida.&quot;);
+        }
+<span class="nc" id="L195">    }</span>
+
+    private void eliminarSiRollback(Path archivo) {
+<span class="nc bnc" id="L198" title="All 2 branches missed.">        if (!TransactionSynchronizationManager.isSynchronizationActive()) {</span>
+<span class="nc" id="L199">            return;</span>
+        }
+
+<span class="nc" id="L202">        TransactionSynchronizationManager.registerSynchronization(</span>
+<span class="nc" id="L203">                new TransactionSynchronization() {</span>
+
+                    @Override
+                    public void afterCompletion(int status) {
+<span class="nc bnc" id="L207" title="All 2 branches missed.">                        if (status == STATUS_ROLLED_BACK) {</span>
+<span class="nc" id="L208">                            eliminarSilenciosamente(archivo);</span>
+                        }
+<span class="nc" id="L210">                    }</span>
+                });
+<span class="nc" id="L212">    }</span>
+
+    private void eliminarSilenciosamente(Path archivo) {
+<span class="nc bnc" id="L215" title="All 2 branches missed.">        if (archivo == null) {</span>
+<span class="nc" id="L216">            return;</span>
+        }
+
+        try {
+<span class="nc" id="L220">            Files.deleteIfExists(archivo);</span>
+<span class="nc" id="L221">        } catch (IOException ignored) {</span>
+            // La limpieza del archivo no debe ocultar el error principal.
+<span class="nc" id="L223">        }</span>
+<span class="nc" id="L224">    }</span>
+
+    public void eliminarComprobante(String rutaRelativa) {
+<span class="nc bnc" id="L227" title="All 4 branches missed.">        if (rutaRelativa == null || rutaRelativa.isBlank()) {</span>
+<span class="nc" id="L228">            return;</span>
+        }
+
+<span class="nc" id="L231">        Path base = this.baseComprobantes();</span>
+<span class="nc" id="L232">        Path archivo = base.resolve(rutaRelativa).normalize();</span>
+
+<span class="nc" id="L234">        this.validarDentroDeBase(archivo, base);</span>
+<span class="nc" id="L235">        this.eliminarSilenciosamente(archivo);</span>
+<span class="nc" id="L236">    }</span>
+
+<span class="fc" id="L238">    public record ComprobanteResource(</span>
+            Resource resource,
+            String filename) {
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

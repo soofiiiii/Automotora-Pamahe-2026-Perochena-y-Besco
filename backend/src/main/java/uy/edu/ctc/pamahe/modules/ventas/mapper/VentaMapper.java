@@ -7,7 +7,6 @@ import uy.edu.ctc.pamahe.modules.ventas.model.Venta;
 public final class VentaMapper {
     private VentaMapper() {}
 
-
     public static VentaResponse toResponse(Venta venta) {
         return new VentaResponse(
                 venta.getId(),
@@ -19,6 +18,20 @@ public final class VentaMapper {
                 venta.getVendedor().getNombre(),
                 venta.getFechaVenta(),
                 venta.getPrecioFinal(),
+                venta.getMedioPago(),
+                venta.getEntidadFinanciera(),
+                venta.getMontoFinanciado(),
+                venta.getEstadoFinanciacion(),
+                venta.getCanalOrigen(),
+                venta.getSeguimientoPostventaRealizado(),
+                venta.getDatosCompradorVerificados(),
+                venta.getDocumentacionRevisada(),
+                venta.getCobroConfirmado(),
+                venta.getProximoMantenimiento(),
+                venta.getEstadoComprobante(),
+                venta.getIntentosComprobante(),
+                venta.getUltimoIntentoComprobante(),
+                venta.getProximoIntentoComprobante(),
                 comprobanteUrl(venta),
                 venta.getObservaciones()
         );
@@ -39,6 +52,21 @@ public final class VentaMapper {
                 venta.getCostoTotalAlVender(),
                 venta.getPrecioFinal(),
                 venta.getRentabilidadCalculada(),
+                venta.getMedioPago(),
+                venta.getEntidadFinanciera(),
+                venta.getMontoFinanciado(),
+                venta.getEstadoFinanciacion(),
+                venta.getCanalOrigen(),
+                venta.getSeguimientoPostventaRealizado(),
+                venta.getDatosCompradorVerificados(),
+                venta.getDocumentacionRevisada(),
+                venta.getCobroConfirmado(),
+                venta.getProximoMantenimiento(),
+                venta.getEstadoComprobante(),
+                venta.getIntentosComprobante(),
+                venta.getUltimoIntentoComprobante(),
+                venta.getProximoIntentoComprobante(),
+                venta.getErrorComprobante(),
                 comprobanteUrl(venta),
                 venta.getObservaciones()
         );

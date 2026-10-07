@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: uy.edu.ctc.pamahe.modules.auth.service.LoginAttemptServiceTest
+-------------------------------------------------------------------------------
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.021 s -- in uy.edu.ctc.pamahe.modules.auth.service.LoginAttemptServiceTest

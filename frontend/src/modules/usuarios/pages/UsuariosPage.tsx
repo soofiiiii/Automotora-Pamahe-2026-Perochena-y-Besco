@@ -9,6 +9,7 @@ import { EmptyState } from "../../../shared/feedback/EmptyState";
 import { PageHeader } from "../../../shared/ui/PageHeader";
 import { StatusBadge } from "../../../shared/ui/StatusBadge";
 import { useToast } from "../../../shared/feedback/useToast";
+import { useConfirmDialog } from "../../../shared/feedback/useConfirmDialog";
 import { errorMessage } from "../../../utils/errorMessage";
 
 const roles = (u: Usuario) => u.roles.join(", ");
@@ -17,13 +18,14 @@ export default function UsuariosPage() {
   const [rows, setRows] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const { show } = useToast();
+  const { confirm } = useConfirmDialog();
 
   const load = () => {
     setLoading(true);
     usuarioService
       .list()
       .then(setRows)
-      .catch((e) => show(errorMessage(e), "error"))
+      .catch((e) => show(errorMessage(e, "No pudimos cargar los usuarios."), "error"))
       .finally(() => setLoading(false));
   };
 
@@ -39,7 +41,7 @@ export default function UsuariosPage() {
       })
       .catch((error) => {
         if (!cancelled) {
-          show(errorMessage(error), "error");
+          show(errorMessage(error, "No pudimos cargar los usuarios."), "error");
         }
       })
       .finally(() => {
@@ -85,17 +87,24 @@ export default function UsuariosPage() {
             <Pencil size={16} />
             Editar
           </Link>
+          <Link className="button button--secondary" to={`/app/usuarios/${r.id}/password`}>Restablecer clave</Link>
           {r.activo && (
             <button
               className="button button--danger"
               onClick={async () => {
-                if (!confirm(`¿Desactivar a ${r.username}?`)) return;
+                const confirmed = await confirm({
+                  title: "Desactivar usuario",
+                  message: `${r.username} ya no podrá iniciar sesión ni operar dentro del sistema.`,
+                  confirmLabel: "Continuar con la desactivación",
+                  secondConfirmLabel: "Sí, desactivar usuario",
+                });
+                if (!confirmed) return;
                 try {
                   await usuarioService.deactivate(r.id);
-                  show("Usuario desactivado.", "success");
+                  show("Usuario desactivado correctamente.", "success");
                   load();
                 } catch (e) {
-                  show(errorMessage(e), "error");
+                  show(errorMessage(e, "No pudimos desactivar el usuario."), "error");
                 }
               }}
             >

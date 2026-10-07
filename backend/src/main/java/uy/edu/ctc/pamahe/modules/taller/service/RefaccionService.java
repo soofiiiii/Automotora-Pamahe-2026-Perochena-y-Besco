@@ -17,6 +17,7 @@ import uy.edu.ctc.pamahe.common.exception.BusinessException;
 import uy.edu.ctc.pamahe.common.exception.ResourceNotFoundException;
 import uy.edu.ctc.pamahe.common.exception.IdempotencyConflictException;
 import uy.edu.ctc.pamahe.modules.auditoria.service.AuditoriaService;
+import uy.edu.ctc.pamahe.modules.notificaciones.service.NotificacionService;
 import uy.edu.ctc.pamahe.modules.taller.dto.request.RefaccionRequest;
 import uy.edu.ctc.pamahe.modules.taller.dto.request.RefaccionUpdateRequest;
 import uy.edu.ctc.pamahe.modules.taller.dto.response.RefaccionResponse;
@@ -36,8 +37,10 @@ import uy.edu.ctc.pamahe.modules.compras.model.Compra;
 import uy.edu.ctc.pamahe.modules.compras.repository.CompraRepository;
 
 /**
- * Gestiona trabajos de taller y su impacto en el costo y estado operativo del vehículo.
- * Distingue al usuario que registra del responsable que ejecuta y admite una clave idempotente
+ * Gestiona trabajos de taller y su impacto en el costo y estado operativo del
+ * vehículo.
+ * Distingue al usuario que registra del responsable que ejecuta y admite una
+ * clave idempotente
  * para que la sincronización offline no duplique refacciones al reintentar.
  */
 @Service
@@ -49,6 +52,7 @@ public class RefaccionService {
     private final UsuarioActualService usuarioActualService;
     private final AuditoriaService auditoriaService;
     private final CompraRepository compraRepository;
+    private final NotificacionService notificacionService;
 
     public RefaccionService(RefaccionRepository refaccionRepository,
             RefaccionOperacionOfflineRepository operacionOfflineRepository,
@@ -56,7 +60,8 @@ public class RefaccionService {
             UsuarioRepository usuarioRepository,
             UsuarioActualService usuarioActualService,
             AuditoriaService auditoriaService,
-            CompraRepository compraRepository) {
+            CompraRepository compraRepository,
+            NotificacionService notificacionService) {
         this.refaccionRepository = refaccionRepository;
         this.operacionOfflineRepository = operacionOfflineRepository;
         this.vehiculoService = vehiculoService;
@@ -64,6 +69,7 @@ public class RefaccionService {
         this.usuarioActualService = usuarioActualService;
         this.auditoriaService = auditoriaService;
         this.compraRepository = compraRepository;
+        this.notificacionService = notificacionService;
     }
 
     @Transactional(readOnly = true)
@@ -111,7 +117,7 @@ public class RefaccionService {
         }
 
         Vehiculo vehiculo = this.vehiculoService.buscarActivoPorIdConBloqueo(request.vehiculoId());
-        this.validarVehiculoEditable(vehiculo);
+        this.validarVehiculoParaNuevaRefaccion(vehiculo);
         this.validarFecha(vehiculo, request.fecha());
         Usuario responsable = this.buscarResponsableActivo(request.responsableOperativoId());
 
@@ -139,6 +145,7 @@ public class RefaccionService {
             this.operacionOfflineRepository.save(reserva);
         }
         this.sincronizarEstadoVehiculoPorTarea(vehiculo, guardada);
+        this.notificacionService.reconciliarVehiculoListoParaRevision(vehiculo);
 
         this.auditoriaService.registrar(
                 "ALTA",
@@ -155,7 +162,7 @@ public class RefaccionService {
         this.usuarioActualService.exigirRoles("ADMINISTRADOR", "DUENO", "TALLER");
         Refaccion refaccion = this.buscarActiva(id);
         Vehiculo vehiculo = this.vehiculoService.buscarActivoPorIdConBloqueo(refaccion.getVehiculo().getId());
-        this.validarVehiculoEditable(vehiculo);
+        this.validarVehiculoParaActualizarRefaccion(vehiculo);
         this.validarFecha(vehiculo, request.fecha());
         Usuario responsable = this.buscarResponsableActivo(request.responsableOperativoId());
         String anterior = this.resumen(refaccion);
@@ -175,6 +182,7 @@ public class RefaccionService {
                 refaccion.getSincronizadoDesdeOffline());
         Refaccion guardada = this.refaccionRepository.save(refaccion);
         this.sincronizarEstadoVehiculoPorTarea(vehiculo, guardada);
+        this.notificacionService.reconciliarVehiculoListoParaRevision(vehiculo);
 
         this.auditoriaService.registrar(
                 "MODIFICACION",
@@ -194,7 +202,7 @@ public class RefaccionService {
                         "No fue posible adquirir la reserva idempotente para la operación offline."));
         if (!Objects.equals(reserva.getRequestHash(), requestHash)) {
             throw new IdempotencyConflictException(
-                    "El identificador de operación offline ya fue utilizado con datos diferentes.");
+                    "Esta refacción ya fue enviada con información diferente. Revisá la cola offline antes de volver a intentarlo.");
         }
         return reserva;
     }
@@ -202,7 +210,7 @@ public class RefaccionService {
     private void validarMismoPayload(Refaccion existente, RefaccionRequest request) {
         if (!mismaOperacionOffline(existente, request)) {
             throw new IdempotencyConflictException(
-                    "El identificador de operación offline ya fue utilizado con datos diferentes.");
+                    "Esta refacción ya fue enviada con información diferente. Revisá la cola offline antes de volver a intentarlo.");
         }
     }
 
@@ -223,21 +231,26 @@ public class RefaccionService {
         Refaccion refaccion = this.refaccionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró la refacción solicitada."));
         if (!Boolean.TRUE.equals(refaccion.getActivo())) {
-            throw new ResourceNotFoundException("No se encontró una refacción activa con el identificador solicitado.");
+            throw new ResourceNotFoundException("La refacción solicitada no existe o ya no está disponible.");
         }
         return refaccion;
     }
 
-    private void validarVehiculoEditable(Vehiculo vehiculo) {
+    private void validarVehiculoParaNuevaRefaccion(Vehiculo vehiculo) {
+        validarVehiculoConOperativaAbierta(vehiculo);
+    }
+
+    private void validarVehiculoParaActualizarRefaccion(Vehiculo vehiculo) {
+        validarVehiculoConOperativaAbierta(vehiculo);
+    }
+
+    private void validarVehiculoConOperativaAbierta(Vehiculo vehiculo) {
         if (vehiculo.getEstado() == EstadoVehiculo.VENDIDO) {
             throw new BusinessException(
-                    "No se pueden crear ni modificar refacciones después de cerrar la venta del vehículo.");
+                    "No se pueden agregar ni modificar refacciones después de cerrar la venta del vehículo.");
         }
         if (vehiculo.getEstado() == EstadoVehiculo.DADO_DE_BAJA) {
-            throw new BusinessException("No se pueden crear ni modificar refacciones de un vehículo dado de baja.");
-        }
-        if (vehiculo.getEstado() == EstadoVehiculo.RESERVADO) {
-            throw new BusinessException("El vehículo reservado debe volver a DISPONIBLE antes de ingresar al taller.");
+            throw new BusinessException("No se pueden agregar ni modificar refacciones de un vehículo dado de baja.");
         }
     }
 
@@ -274,7 +287,7 @@ public class RefaccionService {
                         || rol.getNombre().equals("ADMINISTRADOR")
                         || rol.getNombre().equals("DUENO"));
         if (!rolPermitido) {
-            throw new BusinessException("El responsable operativo debe tener rol taller, administrador o dueño.");
+            throw new BusinessException("Seleccioná como responsable a un usuario de Taller, Administrador o Dueño.");
         }
         return responsable;
     }
@@ -322,20 +335,39 @@ public class RefaccionService {
     }
 
     private boolean mismaOperacionOffline(Refaccion existente, RefaccionRequest request) {
-        EstadoTarea estadoSolicitado = request.estadoTarea() == null ? EstadoTarea.PENDIENTE : request.estadoTarea();
+        return mismaIdentidadOperacion(existente, request)
+                && mismosDatosTrabajo(existente, request)
+                && mismosCostos(existente, request)
+                && mismosDatosOpcionales(existente, request);
+    }
+
+    private boolean mismaIdentidadOperacion(Refaccion existente, RefaccionRequest request) {
+        Long responsableExistente = existente.getResponsableOperativo() == null
+                ? null
+                : existente.getResponsableOperativo().getId();
         return existente.getVehiculo().getId().equals(request.vehiculoId())
-                && Objects.equals(
-                        existente.getResponsableOperativo() == null ? null : existente.getResponsableOperativo().getId(),
-                        request.responsableOperativoId())
-                && Objects.equals(existente.getFecha(), request.fecha())
+                && Objects.equals(responsableExistente, request.responsableOperativoId());
+    }
+
+    private boolean mismosDatosTrabajo(Refaccion existente, RefaccionRequest request) {
+        EstadoTarea estadoSolicitado = request.estadoTarea() == null ? EstadoTarea.PENDIENTE : request.estadoTarea();
+        return Objects.equals(existente.getFecha(), request.fecha())
                 && Objects.equals(existente.getTipoTrabajo(), request.tipoTrabajo())
                 && Objects.equals(existente.getDescripcion(), normalizarRequerido(request.descripcion()))
-                && compararMoneda(existente.getCostoRepuestos(), costo(request.costoRepuestos()))
+                && Objects.equals(existente.getEstadoTarea(), estadoSolicitado);
+    }
+
+    private boolean mismosCostos(Refaccion existente, RefaccionRequest request) {
+        return compararMoneda(existente.getCostoRepuestos(), costo(request.costoRepuestos()))
                 && compararMoneda(existente.getCostoManoObra(), costo(request.costoManoObra()))
-                && compararMoneda(existente.getCostoServiciosExternos(), costo(request.costoServiciosExternos()))
-                && Objects.equals(existente.getEstadoTarea(), estadoSolicitado)
-                && Objects.equals(existente.getObservaciones(), normalizarOpcional(request.observaciones()))
-                && Objects.equals(existente.getRegistroFotograficoUrl(), normalizarOpcional(request.registroFotograficoUrl()));
+                && compararMoneda(existente.getCostoServiciosExternos(), costo(request.costoServiciosExternos()));
+    }
+
+    private boolean mismosDatosOpcionales(Refaccion existente, RefaccionRequest request) {
+        return Objects.equals(existente.getObservaciones(), normalizarOpcional(request.observaciones()))
+                && Objects.equals(
+                        existente.getRegistroFotograficoUrl(),
+                        normalizarOpcional(request.registroFotograficoUrl()));
     }
 
     private String hashOperacion(RefaccionRequest request) {

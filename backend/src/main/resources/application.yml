@@ -32,7 +32,7 @@ spring:
   servlet:
     multipart:
       max-file-size: ${MAX_IMAGE_FILE_SIZE:12MB}
-      max-request-size: ${MAX_IMAGE_REQUEST_SIZE:13MB}
+      max-request-size: ${MAX_IMAGE_REQUEST_SIZE:64MB}
 
 security:
   jwt:
@@ -43,6 +43,13 @@ security:
     refresh-enabled: false
 
 app:
+  ventas:
+    seguimiento-postventa-dias: ${SEGUIMIENTO_POSTVENTA_DIAS:7}
+    seguimiento-postventa-cron: "${SEGUIMIENTO_POSTVENTA_CRON:0 0 9 * * *}"
+    mantenimiento-aviso-dias: ${MANTENIMIENTO_AVISO_DIAS:7}
+    mantenimiento-cron: "${MANTENIMIENTO_CRON:0 15 9 * * *}"
+  monitoring:
+    scrape-token: ${MONITORING_SCRAPE_TOKEN:}
   cors:
     allowed-origins: ${FRONTEND_URL:http://localhost:5173}
 
@@ -71,14 +78,24 @@ management:
     web:
       base-path: /actuator
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
   endpoint:
     health:
       show-details: never
+      group:
+        database:
+          include: db
+          show-details: never
+          show-components: never
   health:
     defaults:
       enabled: true
   metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      slo:
+        http.server.requests: 100ms,300ms,1s,2s
     tags:
       application: ${spring.application.name}
 

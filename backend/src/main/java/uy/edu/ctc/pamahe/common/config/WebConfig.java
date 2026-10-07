@@ -33,7 +33,6 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // No hacer NUNCA un handler para /private: se saltearía todas las reglas de seguridad y daría todo el contenido por las URLs.
         Path publicDirectory = Path.of(this.storageRoot, "public").toAbsolutePath().normalize();
         registry.addResourceHandler("/uploads/public/**")
                 .addResourceLocations(publicDirectory.toUri().toString() + "/");

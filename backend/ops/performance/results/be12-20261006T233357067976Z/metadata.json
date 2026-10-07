@@ -1,0 +1,11 @@
+{
+  "runId": "be12-20261006T233357067976Z",
+  "profile": "lcp",
+  "label": "release-final-local-production-build",
+  "generatorPlatform": "Windows-11-10.0.22631-SP0",
+  "scriptSha256": "be31c4f27446aae570f499771557890b5bab05fba16ca30782ae72c3622437f7",
+  "warmupSales": 0,
+  "fixturesSha256": null,
+  "k6Version": "k6.exe v2.2.0 (commit/00a9a1b7f5, go1.26.5, windows/amd64)",
+  "exitCode": 0
+}

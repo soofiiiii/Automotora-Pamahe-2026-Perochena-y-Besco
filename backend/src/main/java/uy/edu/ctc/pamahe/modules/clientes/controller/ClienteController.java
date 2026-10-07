@@ -1,6 +1,7 @@
 package uy.edu.ctc.pamahe.modules.clientes.controller;
 
 import java.util.List;
+import uy.edu.ctc.pamahe.modules.clientes.model.TipoCliente;
 
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,8 +38,15 @@ public class ClienteController {
     @GetMapping("/paginado")
     public ApiResponse<PageResponse<ClienteResponse>> listarPaginado(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        return ApiResponse.ok("Clientes paginados obtenidos correctamente.", this.clienteService.listarPaginado(page, size));
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) TipoCliente tipoCliente) {
+        return ApiResponse.ok("Clientes paginados obtenidos correctamente.", this.clienteService.listarPaginado(page, size, q, tipoCliente));
+    }
+
+    @GetMapping("/por-documento")
+    public ApiResponse<ClienteResponse> buscarPorDocumento(@RequestParam String documento) {
+        return ApiResponse.ok("Consulta de documento completada.", this.clienteService.buscarActivoPorDocumento(documento));
     }
 
     @GetMapping("/{id}")

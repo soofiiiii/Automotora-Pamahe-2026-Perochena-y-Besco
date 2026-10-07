@@ -29,7 +29,7 @@ public class RestAccessDeniedHandler implements AccessDeniedHandler {
                 response,
                 HttpStatus.FORBIDDEN.value(),
                 "ACCESS_DENIED",
-                "No tienes permisos para realizar esta operación.",
+                "No tenés permisos para realizar esta operación.",
                 accessDeniedException
         );
     }

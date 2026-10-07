@@ -1,5 +1,6 @@
 package uy.edu.ctc.pamahe.common.config;
 
+import java.net.URI;
 import java.nio.file.Path;
 import java.util.Base64;
 
@@ -23,6 +24,12 @@ public class ProductionConfigurationValidator {
     private final String renewalMode;
     private final boolean refreshEnabled;
 
+    @Value("${server.address:127.0.0.1}")
+    private String serverAddress = "127.0.0.1";
+
+    @Value("${server.forward-headers-strategy:none}")
+    private String forwardHeadersStrategy = "none";
+
     public ProductionConfigurationValidator(
             @Value("${spring.datasource.url}") String dbUrl,
             @Value("${spring.datasource.username}") String dbUser,
@@ -44,6 +51,7 @@ public class ProductionConfigurationValidator {
 
     @PostConstruct
     public void validate() {
+        validarProxy();
         validarBaseDeDatos();
         validarJwt();
         validarCors();
@@ -81,16 +89,30 @@ public class ProductionConfigurationValidator {
         if (isBlank(this.frontendOrigins)) {
             throw new IllegalStateException("FRONTEND_URL es obligatorio en producción.");
         }
-        for (String origin : this.frontendOrigins.split(",")) {
-            String value = origin.trim().toLowerCase(java.util.Locale.ROOT);
-            if (value.isBlank()
-                    || "*".equals(value)
-                    || !value.startsWith("https://")
-                    || value.contains("localhost")
-                    || value.contains("127.0.0.1")) {
+        for (String origin : this.frontendOrigins.split(",", -1)) {
+            try {
+                URI uri = URI.create(origin.trim());
+                String host = uri.getHost();
+                if (!"https".equalsIgnoreCase(uri.getScheme()) || host == null
+                        || host.equalsIgnoreCase("localhost") || host.startsWith("127.")
+                        || host.equals("[::1]") || host.equals("0.0.0.0")
+                        || uri.getUserInfo() != null || uri.getRawQuery() != null || uri.getFragment() != null
+                        || (uri.getRawPath() != null && !uri.getRawPath().isEmpty())
+                        || uri.getPort() == 0 || uri.getPort() > 65535) {
+                    throw new IllegalArgumentException("Origen inválido");
+                }
+            } catch (IllegalArgumentException exception) {
                 throw new IllegalStateException(
-                        "FRONTEND_URL debe contener únicamente orígenes HTTPS explícitos de producción.");
+                        "FRONTEND_URL debe contener orígenes HTTPS exactos, sin rutas, credenciales ni comodines.", exception);
             }
+        }
+    }
+
+    private void validarProxy() {
+        if (!"127.0.0.1".equals(serverAddress)
+                || !"none".equalsIgnoreCase(forwardHeadersStrategy)) {
+            throw new IllegalStateException(
+                    "El perfil prod requiere Spring en loopback y forward-headers-strategy=none; Nginx termina TLS.");
         }
     }
 

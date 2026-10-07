@@ -1,6 +1,7 @@
 package uy.edu.ctc.pamahe.security.config;
 
 import org.springframework.context.annotation.Bean;
+import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -51,7 +52,7 @@ public class Securityconfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, MonitoringAccess monitoringAccess) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .cors(cors -> { })
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -63,18 +64,27 @@ public class Securityconfig {
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers("/actuator/info", "/actuator/metrics", "/actuator/metrics/**")
                         .hasAnyRole("ADMINISTRADOR", "DUENO")
+                        .requestMatchers(HttpMethod.GET, "/actuator/prometheus")
+                        .access((authentication, context) -> new AuthorizationDecision(
+                                monitoringAccess.allowed(context.getRequest())))
                         .requestMatchers("/actuator/**").denyAll()
                         
                         .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/auth/session-policy").permitAll()
                         .requestMatchers(HttpMethod.GET, "/catalogo/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/parametros/opciones").permitAll()
                         .requestMatchers(HttpMethod.POST, "/chatbot/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/uploads/public/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/solicitudes-venta/publica").permitAll()
 
                         .requestMatchers("/usuarios/**", "/roles/**", "/auditoria/**", "/parametros/**")
                         .hasAnyRole("ADMINISTRADOR", "DUENO")
                         .requestMatchers("/reportes/**", "/costos/**", "/exportaciones/**")
                         .hasAnyRole("ADMINISTRADOR", "DUENO")
+                        .requestMatchers("/notificaciones/**")
+                        .hasAnyRole("ADMINISTRADOR", "DUENO", "VENDEDOR")
+                        .requestMatchers("/solicitudes-venta/**")
+                        .hasAnyRole("ADMINISTRADOR", "DUENO", "VENDEDOR")
 
                         .requestMatchers(HttpMethod.GET, "/vehiculos/**")
                         .hasAnyRole("ADMINISTRADOR", "DUENO", "VENDEDOR", "TALLER")
@@ -103,10 +113,14 @@ public class Securityconfig {
 
                         .requestMatchers(HttpMethod.GET, "/compras/**")
                         .hasAnyRole("ADMINISTRADOR", "DUENO")
-                        .requestMatchers(HttpMethod.POST, "/compras")
+                        .requestMatchers(HttpMethod.POST, "/compras", "/compras/con-vehiculo")
+                        .hasAnyRole("ADMINISTRADOR", "DUENO", "VENDEDOR")
+                        .requestMatchers(HttpMethod.PATCH, "/compras/*/destino")
                         .hasAnyRole("ADMINISTRADOR", "DUENO", "VENDEDOR")
                         
                         .requestMatchers(HttpMethod.GET, "/ventas/*/detalle-gerencial")
+                        .hasAnyRole("ADMINISTRADOR", "DUENO")
+                        .requestMatchers(HttpMethod.POST, "/ventas/*/comprobante/reintentar")
                         .hasAnyRole("ADMINISTRADOR", "DUENO")
                         .requestMatchers("/ventas/**", "/clientes/**")
                         .hasAnyRole("ADMINISTRADOR", "DUENO", "VENDEDOR")

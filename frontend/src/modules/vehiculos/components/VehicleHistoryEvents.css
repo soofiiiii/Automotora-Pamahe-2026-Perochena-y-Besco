@@ -1,0 +1,72 @@
+.vehicle-history-events {
+  margin-top: 26px;
+  min-width: 0;
+  padding-top: 22px;
+  border-top: 1px solid #e8edf2;
+}
+
+.vehicle-history-events h3 {
+  margin-bottom: 6px;
+  color: #0f172a;
+  font-weight: 850;
+  letter-spacing: -0.025em;
+}
+
+.vehicle-history-events__list {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+}
+
+.vehicle-history-events__item {
+  position: relative;
+  margin-left: 8px;
+  border-left: 2px solid #dfe6ee;
+  padding: 0 0 24px 28px;
+  overflow-wrap: anywhere;
+}
+
+.vehicle-history-events__item::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: -8px;
+  width: 14px;
+  height: 14px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--brand);
+  box-shadow: 0 0 0 2px rgba(29, 50, 115, 0.16);
+}
+
+.vehicle-history-events__item::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 10px 18px;
+  z-index: -1;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #f8fafc, transparent);
+}
+
+.vehicle-history-events__item:last-child {
+  padding-bottom: 2px;
+  border-left-color: transparent;
+}
+
+.vehicle-history-events__item > strong {
+  color: #172033;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.vehicle-history-events__item p {
+  margin: 5px 0;
+  color: #64748b;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.vehicle-history-events__detail {
+  white-space: pre-wrap;
+  color: #475569 !important;
+}

@@ -47,8 +47,10 @@ class ReporteServiceTest {
                 any(LocalDate.class))).thenReturn(List.of(v));
         when(clientes.findByActivoTrueOrderByNombreAsc()).thenReturn(List.of());
         when(refacciones.findByActivoTrueOrderByFechaDesc()).thenReturn(List.of());
+        when(refacciones.countByActivoTrueAndEstadoTareaIn(anyCollection())).thenReturn(7L);
         var result = new ReporteService(vehiculos, clientes, ventas, compras, refacciones, auditoria).dashboard(null, null);
         assertEquals(1, result.vehiculosVendidos());
+        assertEquals(7, result.tareasTallerPendientes());
         assertEquals(new BigDecimal("3000"), result.rentabilidadAcumulada());
     }
 }

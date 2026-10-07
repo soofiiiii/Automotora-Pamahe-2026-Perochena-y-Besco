@@ -1,0 +1,48 @@
+groups:
+  - name: pamahe
+    rules:
+      - alert: PamaheApiDown
+        expr: up{job="pamahe-api"} == 0 or absent(up{job="pamahe-api"})
+        for: 1m
+        labels: {severity: critical}
+        annotations: {summary: 'API sin scrape: comprobar proceso, red o credencial de monitorización'}
+      - alert: PamaheDatabaseDown
+        expr: probe_success{job="pamahe-health",component="database"} == 0 or absent(probe_success{job="pamahe-health",component="database"})
+        for: 1m
+        labels: {severity: critical}
+        annotations: {summary: 'Health de base de datos no disponible o sonda ausente'}
+      - alert: PamaheHealthDown
+        expr: probe_success{job="pamahe-health",component="api"} == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations: {summary: 'Health agregado de la API falla'}
+      - alert: PamaheHigh5xx
+        expr: sum(rate(http_server_requests_seconds_count{job="pamahe-api",status=~"5.."}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job="pamahe-api"}[5m])), 0.001) > 0.01
+        for: 5m
+        labels: {severity: warning}
+        annotations: {summary: 'Más del 1 % de respuestas 5xx durante 5 minutos'}
+      - alert: PamaheDiskLow
+        expr: (node_filesystem_avail_bytes{job="pamahe-node",fstype!~"tmpfs|overlay|squashfs"} / node_filesystem_size_bytes{job="pamahe-node",fstype!~"tmpfs|overlay|squashfs"} < 0.10) and on(instance,device,mountpoint) (node_filesystem_readonly == 0)
+        for: 5m
+        labels: {severity: warning}
+        annotations: {summary: 'Menos de 10 % libre: revisar filesystem de STORAGE_ROOT y backups'}
+      - alert: PamaheBackupFailed
+        expr: pamahe_job_last_exit_code{job_name=~"backup|restore_verify"} != 0
+        for: 1m
+        labels: {severity: critical}
+        annotations: {summary: 'Backup o restore de verificación falló; revisar journal del job'}
+      - alert: PamaheBackupStale
+        expr: time() - pamahe_job_last_success_timestamp_seconds{job_name="backup"} > 93600 or absent(pamahe_job_last_success_timestamp_seconds{job_name="backup"})
+        for: 5m
+        labels: {severity: critical}
+        annotations: {summary: 'Sin backup exitoso en 26 horas o sin métricas del job'}
+      - alert: PamaheRestoreVerificationStale
+        expr: time() - pamahe_job_last_success_timestamp_seconds{job_name="restore_verify"} > 691200 or absent(pamahe_job_last_success_timestamp_seconds{job_name="restore_verify"})
+        for: 5m
+        labels: {severity: warning}
+        annotations: {summary: 'Sin verificación de restore exitosa en 8 días'}
+      - alert: PamaheNodeExporterDown
+        expr: up{job="pamahe-node"} == 0 or absent(up{job="pamahe-node"})
+        for: 1m
+        labels: {severity: critical}
+        annotations: {summary: 'Se perdió la observación de disco y jobs'}

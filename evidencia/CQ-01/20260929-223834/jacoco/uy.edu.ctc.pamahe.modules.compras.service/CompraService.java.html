@@ -1,0 +1,380 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CompraService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.compras.service</a> &gt; <span class="el_source">CompraService.java</span></div><h1>CompraService.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.compras.service;
+
+import java.time.LocalDate;
+import java.util.List;
+
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import uy.edu.ctc.pamahe.common.exception.BusinessException;
+import uy.edu.ctc.pamahe.common.exception.ResourceNotFoundException;
+import uy.edu.ctc.pamahe.common.response.PageResponse;
+import uy.edu.ctc.pamahe.common.util.PdfService;
+import uy.edu.ctc.pamahe.common.util.SecurityUtils;
+import uy.edu.ctc.pamahe.modules.auditoria.service.AuditoriaService;
+import uy.edu.ctc.pamahe.modules.clientes.model.Cliente;
+import uy.edu.ctc.pamahe.modules.clientes.model.TipoCliente;
+import uy.edu.ctc.pamahe.modules.clientes.service.ClienteService;
+import uy.edu.ctc.pamahe.modules.compras.dto.request.CompraRequest;
+import uy.edu.ctc.pamahe.modules.compras.dto.response.CompraRegistroResponse;
+import uy.edu.ctc.pamahe.modules.compras.dto.response.CompraResponse;
+import uy.edu.ctc.pamahe.modules.compras.mapper.CompraMapper;
+import uy.edu.ctc.pamahe.modules.compras.model.Compra;
+import uy.edu.ctc.pamahe.modules.compras.repository.CompraRepository;
+import uy.edu.ctc.pamahe.modules.usuarios.model.Usuario;
+import uy.edu.ctc.pamahe.modules.usuarios.service.UsuarioActualService;
+import uy.edu.ctc.pamahe.modules.vehiculos.model.EstadoVehiculo;
+import uy.edu.ctc.pamahe.modules.vehiculos.model.Vehiculo;
+import uy.edu.ctc.pamahe.modules.vehiculos.repository.VehiculoRepository;
+import uy.edu.ctc.pamahe.modules.vehiculos.service.VehiculoService;
+
+/**
+ * Registra el ingreso económico del vehículo y fija su costo inicial.
+ * La operación conserva cliente vendedor, usuario autenticado y comprobante en
+ * una sola transacción para que el comienzo del ciclo del vehículo quede
+ * completo o se revierta en conjunto.
+ */
+@Service
+public class CompraService {
+
+    private final CompraRepository compraRepository;
+    private final VehiculoService vehiculoService;
+    private final VehiculoRepository vehiculoRepository;
+    private final ClienteService clienteService;
+    private final UsuarioActualService usuarioActualService;
+    private final PdfService pdfService;
+    private final AuditoriaService auditoriaService;
+
+    public CompraService(
+            CompraRepository compraRepository,
+            VehiculoService vehiculoService,
+            VehiculoRepository vehiculoRepository,
+            ClienteService clienteService,
+            UsuarioActualService usuarioActualService,
+            PdfService pdfService,
+<span class="fc" id="L56">            AuditoriaService auditoriaService) {</span>
+
+<span class="fc" id="L58">        this.compraRepository = compraRepository;</span>
+<span class="fc" id="L59">        this.vehiculoService = vehiculoService;</span>
+<span class="fc" id="L60">        this.vehiculoRepository = vehiculoRepository;</span>
+<span class="fc" id="L61">        this.clienteService = clienteService;</span>
+<span class="fc" id="L62">        this.usuarioActualService = usuarioActualService;</span>
+<span class="fc" id="L63">        this.pdfService = pdfService;</span>
+<span class="fc" id="L64">        this.auditoriaService = auditoriaService;</span>
+<span class="fc" id="L65">    }</span>
+
+    @Transactional(readOnly = true)
+    public List&lt;CompraResponse&gt; listar() {
+<span class="fc" id="L69">        return this.compraRepository</span>
+<span class="fc" id="L70">                .findByActivoTrueOrderByFechaCompraDesc()</span>
+<span class="fc" id="L71">                .stream()</span>
+<span class="fc" id="L72">                .map(CompraMapper::toResponse)</span>
+<span class="fc" id="L73">                .toList();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse&lt;CompraResponse&gt; listarPaginado(int page, int size) {
+<span class="fc" id="L78">        validarPaginacion(page, size);</span>
+
+<span class="fc" id="L80">        return PageResponse.from(</span>
+<span class="fc" id="L81">                this.compraRepository.findByActivoTrueOrderByFechaCompraDesc(</span>
+<span class="fc" id="L82">                        PageRequest.of(page, size)),</span>
+                CompraMapper::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public CompraResponse obtener(Long id) {
+<span class="fc" id="L88">        return CompraMapper.toResponse(this.buscarActiva(id));</span>
+    }
+
+    @Transactional
+    public Object crear(CompraRequest request) {
+<span class="fc" id="L93">        Usuario responsable = this.usuarioActualService.exigirRoles(</span>
+                &quot;ADMINISTRADOR&quot;,
+                &quot;DUENO&quot;,
+                &quot;VENDEDOR&quot;);
+
+<span class="fc" id="L98">        Vehiculo vehiculo = this.vehiculoService</span>
+<span class="fc" id="L99">                .buscarActivoPorIdConBloqueo(request.vehiculoId());</span>
+
+<span class="fc" id="L101">        validarVehiculoParaCompra(vehiculo);</span>
+<span class="fc" id="L102">        validarFechaCompra(request.fechaCompra());</span>
+
+<span class="fc" id="L104">        Cliente clienteVendedor = this.clienteService</span>
+<span class="fc" id="L105">                .buscarActivoPorId(request.clienteVendedorId());</span>
+
+<span class="fc" id="L107">        validarClienteVendedor(clienteVendedor);</span>
+
+<span class="fc" id="L109">        Compra guardada = registrarCompraInicial(</span>
+                request,
+                vehiculo,
+                clienteVendedor,
+                responsable);
+
+<span class="fc" id="L115">        actualizarCostoInicialVehiculo(</span>
+                vehiculo,
+<span class="fc" id="L117">                request.costoAdquisicion());</span>
+
+<span class="fc" id="L119">        guardada = generarYAsignarComprobante(</span>
+                guardada,
+                request,
+                vehiculo,
+                clienteVendedor,
+                responsable);
+
+<span class="fc" id="L126">        registrarAuditoriaCompra(</span>
+                guardada,
+                request,
+                vehiculo,
+                clienteVendedor);
+
+<span class="fc" id="L132">        return construirRespuestaRegistro(</span>
+                guardada,
+                vehiculo,
+                clienteVendedor,
+                responsable);
+    }
+
+    @Transactional(readOnly = true)
+    public PdfService.ComprobanteResource obtenerComprobante(Long id) {
+<span class="fc" id="L141">        Compra compra = this.buscarActiva(id);</span>
+<span class="nc" id="L142">        return this.pdfService.cargarComprobante(compra.getComprobantePath());</span>
+    }
+
+    @Transactional(readOnly = true)
+    public Compra buscarActivaPorVehiculo(Vehiculo vehiculo) {
+<span class="fc" id="L147">        return this.compraRepository</span>
+<span class="fc" id="L148">                .findByVehiculoAndActivoTrue(vehiculo)</span>
+<span class="fc" id="L149">                .orElseThrow(() -&gt; new BusinessException(</span>
+                        &quot;El vehículo no posee una compra activa registrada.&quot;));
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse&lt;CompraResponse&gt; listarPaginado(
+            int page,
+            int size,
+            LocalDate desde,
+            LocalDate hasta,
+            Long clienteId,
+            Long vehiculoId) {
+
+<span class="fc" id="L162">        validarPaginacion(page, size);</span>
+<span class="fc" id="L163">        validarPeriodo(desde, hasta);</span>
+<span class="fc" id="L164">        validarIdentificadoresFiltro(clienteId, vehiculoId);</span>
+
+<span class="fc" id="L166">        return PageResponse.from(</span>
+<span class="fc" id="L167">                this.compraRepository.buscarPaginado(</span>
+                        desde,
+                        hasta,
+                        clienteId,
+                        vehiculoId,
+<span class="fc" id="L172">                        PageRequest.of(page, size)),</span>
+                CompraMapper::toResponse);
+    }
+
+    private Compra buscarActiva(Long id) {
+<span class="fc" id="L177">        Compra compra = this.compraRepository</span>
+<span class="fc" id="L178">                .findById(id)</span>
+<span class="fc" id="L179">                .orElseThrow(() -&gt; new ResourceNotFoundException(</span>
+                        &quot;No se encontró la compra solicitada.&quot;));
+
+<span class="fc bfc" id="L182" title="All 2 branches covered.">        if (!Boolean.TRUE.equals(compra.getActivo())) {</span>
+<span class="fc" id="L183">            throw new ResourceNotFoundException(</span>
+                    &quot;No se encontró una compra activa con el identificador solicitado.&quot;);
+        }
+
+<span class="fc" id="L187">        return compra;</span>
+    }
+
+    private void validarPaginacion(int page, int size) {
+<span class="pc bpc" id="L191" title="1 of 2 branches missed.">        if ((long) page * size &gt; Integer.MAX_VALUE) {</span>
+<span class="nc" id="L192">            throw new BusinessException(</span>
+                    &quot;La página solicitada excede el offset admitido.&quot;);
+        }
+
+<span class="fc bfc" id="L196" title="All 2 branches covered.">        if (page &lt; 0) {</span>
+<span class="fc" id="L197">            throw new BusinessException(</span>
+                    &quot;La página no puede ser negativa.&quot;);
+        }
+
+<span class="fc bfc" id="L201" title="All 4 branches covered.">        if (size &lt; 1 || size &gt; 100) {</span>
+<span class="fc" id="L202">            throw new BusinessException(</span>
+                    &quot;El tamaño de página debe estar entre 1 y 100.&quot;);
+        }
+<span class="fc" id="L205">    }</span>
+
+    private void validarVehiculoParaCompra(Vehiculo vehiculo) {
+        // La relación uno a uno impide reconstruir el origen económico con
+        // compras contradictorias.
+<span class="fc bfc" id="L210" title="All 2 branches covered.">        if (this.compraRepository.existsByVehiculo(vehiculo)) {</span>
+<span class="fc" id="L211">            throw new BusinessException(</span>
+                    &quot;El vehículo ya tiene una compra registrada.&quot;);
+        }
+
+<span class="fc bfc" id="L215" title="All 2 branches covered.">        if (vehiculo.getEstado() != EstadoVehiculo.COMPRADO) {</span>
+<span class="fc" id="L216">            throw new BusinessException(</span>
+                    &quot;La compra solo puede registrarse cuando el vehículo se encuentra en estado COMPRADO.&quot;);
+        }
+<span class="fc" id="L219">    }</span>
+
+    private void validarFechaCompra(LocalDate fechaCompra) {
+<span class="fc bfc" id="L222" title="All 2 branches covered.">        if (fechaCompra.isAfter(LocalDate.now())) {</span>
+<span class="fc" id="L223">            throw new BusinessException(</span>
+                    &quot;La fecha de compra no puede ser futura.&quot;);
+        }
+<span class="fc" id="L226">    }</span>
+
+    private void validarClienteVendedor(Cliente clienteVendedor) {
+<span class="fc" id="L229">        TipoCliente tipoCliente = clienteVendedor.getTipoCliente();</span>
+
+<span class="fc bfc" id="L231" title="All 4 branches covered.">        if (tipoCliente != TipoCliente.VENDEDOR</span>
+                &amp;&amp; tipoCliente != TipoCliente.AMBOS) {
+
+<span class="fc" id="L234">            throw new BusinessException(</span>
+                    &quot;El cliente seleccionado no está habilitado para actuar como vendedor.&quot;);
+        }
+<span class="fc" id="L237">    }</span>
+
+    private Compra registrarCompraInicial(
+            CompraRequest request,
+            Vehiculo vehiculo,
+            Cliente clienteVendedor,
+            Usuario responsable) {
+
+<span class="fc" id="L245">        Compra compra = new Compra();</span>
+
+<span class="fc" id="L247">        compra.setVehiculo(vehiculo);</span>
+<span class="fc" id="L248">        compra.setClienteVendedor(clienteVendedor);</span>
+<span class="fc" id="L249">        compra.setUsuarioResponsable(responsable);</span>
+<span class="fc" id="L250">        compra.setFechaCompra(request.fechaCompra());</span>
+<span class="fc" id="L251">        compra.setCostoAdquisicion(request.costoAdquisicion());</span>
+<span class="fc" id="L252">        compra.setObservaciones(request.observaciones());</span>
+
+<span class="fc" id="L254">        return this.compraRepository.save(compra);</span>
+    }
+
+    private void actualizarCostoInicialVehiculo(
+            Vehiculo vehiculo,
+            java.math.BigDecimal costoAdquisicion) {
+
+        /*
+         * El costo se replica en el vehículo para consultas operativas;
+         * la compra continúa siendo la fuente histórica.
+         */
+<span class="fc" id="L265">        vehiculo.setCostoInicial(costoAdquisicion);</span>
+<span class="fc" id="L266">        this.vehiculoRepository.save(vehiculo);</span>
+<span class="fc" id="L267">    }</span>
+
+    private Compra generarYAsignarComprobante(
+            Compra compra,
+            CompraRequest request,
+            Vehiculo vehiculo,
+            Cliente clienteVendedor,
+            Usuario responsable) {
+
+<span class="fc" id="L276">        String comprobante = this.pdfService.generarComprobante(</span>
+                &quot;COMPRA&quot;,
+<span class="fc" id="L278">                List.of(</span>
+<span class="fc" id="L279">                        &quot;Compra ID: &quot; + compra.getId(),</span>
+<span class="fc" id="L280">                        &quot;Vehículo: &quot; + construirNombreVehiculo(vehiculo),</span>
+<span class="fc" id="L281">                        &quot;Cliente vendedor: &quot; + construirNombreCliente(clienteVendedor),</span>
+<span class="fc" id="L282">                        &quot;Documento vendedor: &quot; + clienteVendedor.getDocumento(),</span>
+<span class="fc" id="L283">                        &quot;Fecha de compra: &quot; + request.fechaCompra(),</span>
+<span class="fc" id="L284">                        &quot;Costo de adquisición: &quot; + request.costoAdquisicion(),</span>
+<span class="fc" id="L285">                        &quot;Registrado por: &quot; + responsable.getNombre()));</span>
+
+<span class="fc" id="L287">        compra.setComprobantePath(comprobante);</span>
+
+<span class="fc" id="L289">        return this.compraRepository.save(compra);</span>
+    }
+
+    private void registrarAuditoriaCompra(
+            Compra compra,
+            CompraRequest request,
+            Vehiculo vehiculo,
+            Cliente clienteVendedor) {
+
+<span class="fc" id="L298">        this.auditoriaService.registrar(</span>
+                &quot;ALTA&quot;,
+                &quot;Compra&quot;,
+<span class="fc" id="L301">                compra.getId(),</span>
+<span class="fc" id="L302">                &quot;Registro de compra del vehículo &quot; + vehiculo.getId(),</span>
+                null,
+<span class="fc" id="L304">                &quot;vehiculoId=&quot; + vehiculo.getId()</span>
+<span class="fc" id="L305">                        + &quot;, clienteVendedorId=&quot; + clienteVendedor.getId()</span>
+<span class="fc" id="L306">                        + &quot;, costoAdquisicion=&quot; + request.costoAdquisicion()</span>
+<span class="fc" id="L307">                        + &quot;, fechaCompra=&quot; + request.fechaCompra());</span>
+<span class="fc" id="L308">    }</span>
+
+    private Object construirRespuestaRegistro(
+            Compra compra,
+            Vehiculo vehiculo,
+            Cliente clienteVendedor,
+            Usuario responsable) {
+
+<span class="fc bfc" id="L316" title="All 2 branches covered.">        if (SecurityUtils.tieneAlgunRol(&quot;ADMINISTRADOR&quot;, &quot;DUENO&quot;)) {</span>
+<span class="fc" id="L317">            return CompraMapper.toResponse(compra);</span>
+        }
+
+<span class="fc" id="L320">        return new CompraRegistroResponse(</span>
+<span class="fc" id="L321">                compra.getId(),</span>
+<span class="fc" id="L322">                vehiculo.getId(),</span>
+<span class="fc" id="L323">                construirNombreVehiculo(vehiculo),</span>
+<span class="fc" id="L324">                clienteVendedor.getId(),</span>
+<span class="fc" id="L325">                construirNombreCliente(clienteVendedor),</span>
+<span class="fc" id="L326">                responsable.getId(),</span>
+<span class="fc" id="L327">                responsable.getNombre(),</span>
+<span class="fc" id="L328">                compra.getFechaCompra());</span>
+    }
+
+    private String construirNombreVehiculo(Vehiculo vehiculo) {
+<span class="fc" id="L332">        return (vehiculo.getMarca()</span>
+                + &quot; &quot;
+<span class="fc" id="L334">                + vehiculo.getModelo()</span>
+                + &quot; &quot;
+<span class="fc" id="L336">                + vehiculo.getAnio())</span>
+<span class="fc" id="L337">                .trim();</span>
+    }
+
+    private String construirNombreCliente(Cliente cliente) {
+<span class="fc" id="L341">        return (cliente.getNombre()</span>
+                + &quot; &quot;
+<span class="fc" id="L343">                + obtenerApellidoSeguro(cliente))</span>
+<span class="fc" id="L344">                .trim();</span>
+    }
+
+    private String obtenerApellidoSeguro(Cliente cliente) {
+<span class="fc bfc" id="L348" title="All 2 branches covered.">        if (cliente.getApellido() == null) {</span>
+<span class="fc" id="L349">            return &quot;&quot;;</span>
+        }
+
+<span class="fc" id="L352">        return cliente.getApellido();</span>
+    }
+
+    private void validarPeriodo(LocalDate desde, LocalDate hasta) {
+<span class="pc bpc" id="L356" title="1 of 4 branches missed.">        if (desde != null</span>
+                &amp;&amp; hasta != null
+<span class="fc bfc" id="L358" title="All 2 branches covered.">                &amp;&amp; desde.isAfter(hasta)) {</span>
+
+<span class="fc" id="L360">            throw new BusinessException(</span>
+                    &quot;La fecha desde no puede ser posterior a hasta.&quot;);
+        }
+<span class="fc" id="L363">    }</span>
+
+    private void validarIdentificadoresFiltro(
+            Long clienteId,
+            Long vehiculoId) {
+
+<span class="fc" id="L369">        validarIdentificadorFiltro(clienteId);</span>
+<span class="fc" id="L370">        validarIdentificadorFiltro(vehiculoId);</span>
+<span class="fc" id="L371">    }</span>
+
+    private void validarIdentificadorFiltro(Long id) {
+<span class="pc bpc" id="L374" title="1 of 4 branches missed.">        if (id != null &amp;&amp; id &lt;= 0) {</span>
+<span class="fc" id="L375">            throw new BusinessException(</span>
+                    &quot;Los identificadores de filtro deben ser positivos.&quot;);
+        }
+<span class="fc" id="L378">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

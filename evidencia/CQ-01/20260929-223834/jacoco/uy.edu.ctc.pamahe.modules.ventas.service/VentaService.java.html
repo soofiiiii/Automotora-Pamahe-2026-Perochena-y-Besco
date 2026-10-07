@@ -1,0 +1,418 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VentaService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.ventas.service</a> &gt; <span class="el_source">VentaService.java</span></div><h1>VentaService.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.ventas.service;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import uy.edu.ctc.pamahe.common.exception.BusinessException;
+import uy.edu.ctc.pamahe.common.exception.ResourceNotFoundException;
+import uy.edu.ctc.pamahe.common.performance.VentaTiming;
+import uy.edu.ctc.pamahe.common.response.PageResponse;
+import uy.edu.ctc.pamahe.common.util.PdfService;
+import uy.edu.ctc.pamahe.modules.auditoria.service.AuditoriaService;
+import uy.edu.ctc.pamahe.modules.clientes.model.Cliente;
+import uy.edu.ctc.pamahe.modules.clientes.model.TipoCliente;
+import uy.edu.ctc.pamahe.modules.clientes.service.ClienteService;
+import uy.edu.ctc.pamahe.modules.compras.model.Compra;
+import uy.edu.ctc.pamahe.modules.compras.repository.CompraRepository;
+import uy.edu.ctc.pamahe.modules.costos.service.CostoService;
+import uy.edu.ctc.pamahe.modules.taller.model.EstadoTarea;
+import uy.edu.ctc.pamahe.modules.taller.repository.RefaccionRepository;
+import uy.edu.ctc.pamahe.modules.usuarios.model.Usuario;
+import uy.edu.ctc.pamahe.modules.usuarios.service.UsuarioActualService;
+import uy.edu.ctc.pamahe.modules.vehiculos.model.EstadoVehiculo;
+import uy.edu.ctc.pamahe.modules.vehiculos.model.Vehiculo;
+import uy.edu.ctc.pamahe.modules.vehiculos.service.VehiculoService;
+import uy.edu.ctc.pamahe.modules.ventas.dto.request.VentaRequest;
+import uy.edu.ctc.pamahe.modules.ventas.dto.response.VentaDetalleGerencialResponse;
+import uy.edu.ctc.pamahe.modules.ventas.dto.response.VentaResponse;
+import uy.edu.ctc.pamahe.modules.ventas.event.VentaComprobanteSolicitadoEvent;
+import uy.edu.ctc.pamahe.modules.ventas.mapper.VentaMapper;
+import uy.edu.ctc.pamahe.modules.ventas.model.EstadoComprobanteVenta;
+import uy.edu.ctc.pamahe.modules.ventas.model.Venta;
+import uy.edu.ctc.pamahe.modules.ventas.repository.VentaRepository;
+
+/**
+ * Cierra el ciclo comercial de una unidad en una única transacción.
+ * Antes de vender valida estado y tareas, fija una fotografía de costos,
+ * calcula la rentabilidad, cambia el vehículo a VENDIDO y genera el
+ * comprobante administrativo correspondiente.
+ */
+@Service
+public class VentaService {
+
+    private final VentaRepository ventaRepository;
+    private final VehiculoService vehiculoService;
+    private final ClienteService clienteService;
+    private final UsuarioActualService usuarioActualService;
+    private final CompraRepository compraRepository;
+    private final RefaccionRepository refaccionRepository;
+    private final CostoService costoService;
+    private final PdfService pdfService;
+    private final AuditoriaService auditoriaService;
+    private final VentaComprobanteService ventaComprobanteService;
+    private final ApplicationEventPublisher eventPublisher;
+
+    public VentaService(
+            VentaRepository ventaRepository,
+            VehiculoService vehiculoService,
+            ClienteService clienteService,
+            UsuarioActualService usuarioActualService,
+            CompraRepository compraRepository,
+            RefaccionRepository refaccionRepository,
+            CostoService costoService,
+            PdfService pdfService,
+            AuditoriaService auditoriaService,
+            VentaComprobanteService ventaComprobanteService,
+<span class="fc" id="L73">            ApplicationEventPublisher eventPublisher) {</span>
+
+<span class="fc" id="L75">        this.ventaRepository = ventaRepository;</span>
+<span class="fc" id="L76">        this.vehiculoService = vehiculoService;</span>
+<span class="fc" id="L77">        this.clienteService = clienteService;</span>
+<span class="fc" id="L78">        this.usuarioActualService = usuarioActualService;</span>
+<span class="fc" id="L79">        this.compraRepository = compraRepository;</span>
+<span class="fc" id="L80">        this.refaccionRepository = refaccionRepository;</span>
+<span class="fc" id="L81">        this.costoService = costoService;</span>
+<span class="fc" id="L82">        this.pdfService = pdfService;</span>
+<span class="fc" id="L83">        this.auditoriaService = auditoriaService;</span>
+<span class="fc" id="L84">        this.ventaComprobanteService = ventaComprobanteService;</span>
+<span class="fc" id="L85">        this.eventPublisher = eventPublisher;</span>
+<span class="fc" id="L86">    }</span>
+
+    @Transactional(readOnly = true)
+    public List&lt;VentaResponse&gt; listar() {
+<span class="fc" id="L90">        return this.ventaRepository</span>
+<span class="fc" id="L91">                .findByActivoTrueOrderByFechaVentaDesc()</span>
+<span class="fc" id="L92">                .stream()</span>
+<span class="fc" id="L93">                .map(VentaMapper::toResponse)</span>
+<span class="fc" id="L94">                .toList();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public VentaResponse obtener(Long id) {
+<span class="fc" id="L99">        return VentaMapper.toResponse(this.buscarActiva(id));</span>
+    }
+
+    @Transactional(readOnly = true)
+    public VentaDetalleGerencialResponse obtenerDetalleGerencial(Long id) {
+<span class="fc" id="L104">        this.usuarioActualService.exigirRoles(</span>
+                &quot;ADMINISTRADOR&quot;,
+                &quot;DUENO&quot;);
+
+<span class="fc" id="L108">        return VentaMapper.toDetalleGerencial(this.buscarActiva(id));</span>
+    }
+
+    @Transactional
+    public VentaResponse crear(VentaRequest request) {
+<span class="fc" id="L113">        Usuario vendedor = this.usuarioActualService.exigirRoles(</span>
+                &quot;ADMINISTRADOR&quot;,
+                &quot;DUENO&quot;,
+                &quot;VENDEDOR&quot;);
+
+<span class="fc" id="L118">        VentaTiming.mark(&quot;seguridad_inicio_tx_roles&quot;);</span>
+
+<span class="fc" id="L120">        Vehiculo vehiculo = this.vehiculoService</span>
+<span class="fc" id="L121">                .buscarActivoPorIdConBloqueo(request.vehiculoId());</span>
+
+<span class="fc" id="L123">        VentaTiming.mark(&quot;bloqueo_vehiculo&quot;);</span>
+
+<span class="fc" id="L125">        validarVehiculoVendible(vehiculo);</span>
+<span class="fc" id="L126">        validarDatosBasicosVenta(request);</span>
+
+<span class="fc" id="L128">        Compra compra = buscarCompraActiva(vehiculo);</span>
+
+<span class="fc" id="L130">        validarFechaRespectoCompra(request, compra);</span>
+
+<span class="fc" id="L132">        Cliente comprador = buscarCompradorHabilitado(</span>
+<span class="fc" id="L133">                request.clienteCompradorId());</span>
+
+<span class="fc" id="L135">        VentaTiming.mark(&quot;validaciones_compra_cliente&quot;);</span>
+
+<span class="fc" id="L137">        CostoService.CostoSnapshot snapshot =</span>
+<span class="fc" id="L138">                this.costoService.calcularActualParaVenta(</span>
+                        vehiculo,
+                        compra);
+
+<span class="fc" id="L142">        VentaTiming.mark(&quot;costos&quot;);</span>
+
+<span class="fc" id="L144">        BigDecimal rentabilidad =</span>
+<span class="fc" id="L145">                request.precioFinal().subtract(snapshot.costoTotal());</span>
+
+<span class="fc" id="L147">        Venta guardada = this.ventaRepository.save(</span>
+<span class="fc" id="L148">                construirVenta(</span>
+                        request,
+                        vehiculo,
+                        comprador,
+                        vendedor,
+                        snapshot,
+                        rentabilidad));
+
+<span class="fc" id="L156">        VentaTiming.mark(&quot;insert_venta&quot;);</span>
+
+<span class="fc" id="L158">        this.vehiculoService.marcarVendidoPorVenta(</span>
+                vehiculo,
+<span class="fc" id="L160">                guardada.getId());</span>
+
+<span class="fc" id="L162">        registrarAuditoriaVenta(</span>
+                guardada,
+                vehiculo,
+                comprador,
+                vendedor,
+                request,
+                snapshot,
+                rentabilidad);
+
+<span class="fc" id="L171">        VentaTiming.mark(&quot;estado_auditorias&quot;);</span>
+
+<span class="fc" id="L173">        this.eventPublisher.publishEvent(</span>
+                new VentaComprobanteSolicitadoEvent(
+<span class="fc" id="L175">                        guardada.getId()));</span>
+
+<span class="fc" id="L177">        VentaResponse response =</span>
+<span class="fc" id="L178">                VentaMapper.toResponse(guardada);</span>
+
+<span class="fc" id="L180">        VentaTiming.mark(&quot;evento_dto&quot;);</span>
+
+<span class="fc" id="L182">        return response;</span>
+    }
+
+    private void validarVehiculoVendible(Vehiculo vehiculo) {
+<span class="fc bfc" id="L186" title="All 2 branches covered.">        if (this.ventaRepository.existsByVehiculo(vehiculo)) {</span>
+<span class="fc" id="L187">            throw new BusinessException(</span>
+                    &quot;El vehículo ya tiene una venta activa registrada.&quot;);
+        }
+
+<span class="fc bfc" id="L191" title="All 2 branches covered.">        if (vehiculo.getEstado() != EstadoVehiculo.DISPONIBLE</span>
+<span class="fc bfc" id="L192" title="All 2 branches covered.">                &amp;&amp; vehiculo.getEstado() != EstadoVehiculo.RESERVADO) {</span>
+
+<span class="fc" id="L194">            throw new BusinessException(</span>
+                    &quot;Solo se puede vender un vehículo en estado DISPONIBLE o RESERVADO.&quot;);
+        }
+
+<span class="fc" id="L198">        boolean tieneTareasAbiertas =</span>
+                this.refaccionRepository
+<span class="fc" id="L200">                        .existsByVehiculoAndActivoTrueAndEstadoTareaIn(</span>
+                                vehiculo,
+<span class="fc" id="L202">                                List.of(</span>
+                                        EstadoTarea.PENDIENTE,
+                                        EstadoTarea.EN_CURSO));
+
+<span class="fc bfc" id="L206" title="All 2 branches covered.">        if (tieneTareasAbiertas) {</span>
+<span class="fc" id="L207">            throw new BusinessException(</span>
+                    &quot;No se puede vender el vehículo mientras existan tareas pendientes o en curso.&quot;);
+        }
+<span class="fc" id="L210">    }</span>
+
+    private void validarDatosBasicosVenta(VentaRequest request) {
+<span class="fc bfc" id="L213" title="All 2 branches covered.">        if (request.fechaVenta().isAfter(LocalDate.now())) {</span>
+<span class="fc" id="L214">            throw new BusinessException(</span>
+                    &quot;La fecha de venta no puede ser futura.&quot;);
+        }
+
+<span class="fc bfc" id="L218" title="All 2 branches covered.">        if (request.precioFinal().compareTo(BigDecimal.ZERO) &lt;= 0) {</span>
+<span class="fc" id="L219">            throw new BusinessException(</span>
+                    &quot;El precio final debe ser mayor que cero.&quot;);
+        }
+<span class="fc" id="L222">    }</span>
+
+    private Compra buscarCompraActiva(Vehiculo vehiculo) {
+<span class="fc" id="L225">        return this.compraRepository</span>
+<span class="fc" id="L226">                .findByVehiculoAndActivoTrue(vehiculo)</span>
+<span class="fc" id="L227">                .orElseThrow(() -&gt; new BusinessException(</span>
+                        &quot;El vehículo debe tener una compra activa antes de registrar la venta.&quot;));
+    }
+
+    private void validarFechaRespectoCompra(
+            VentaRequest request,
+            Compra compra) {
+
+<span class="fc bfc" id="L235" title="All 2 branches covered.">        if (request.fechaVenta().isBefore(compra.getFechaCompra())) {</span>
+<span class="fc" id="L236">            throw new BusinessException(</span>
+                    &quot;La fecha de venta no puede ser anterior a la fecha de compra.&quot;);
+        }
+<span class="fc" id="L239">    }</span>
+
+    private Cliente buscarCompradorHabilitado(Long clienteCompradorId) {
+<span class="fc" id="L242">        Cliente comprador =</span>
+<span class="fc" id="L243">                this.clienteService.buscarActivoPorId(</span>
+                        clienteCompradorId);
+
+<span class="fc bfc" id="L246" title="All 2 branches covered.">        if (comprador.getTipoCliente() != TipoCliente.COMPRADOR</span>
+<span class="fc bfc" id="L247" title="All 2 branches covered.">                &amp;&amp; comprador.getTipoCliente() != TipoCliente.AMBOS) {</span>
+
+<span class="fc" id="L249">            throw new BusinessException(</span>
+                    &quot;El cliente seleccionado no está habilitado para actuar como comprador.&quot;);
+        }
+
+<span class="fc" id="L253">        return comprador;</span>
+    }
+
+    private Venta construirVenta(
+            VentaRequest request,
+            Vehiculo vehiculo,
+            Cliente comprador,
+            Usuario vendedor,
+            CostoService.CostoSnapshot snapshot,
+            BigDecimal rentabilidad) {
+
+<span class="fc" id="L264">        Venta venta = new Venta();</span>
+
+<span class="fc" id="L266">        venta.setVehiculo(vehiculo);</span>
+<span class="fc" id="L267">        venta.setClienteComprador(comprador);</span>
+<span class="fc" id="L268">        venta.setVendedor(vendedor);</span>
+<span class="fc" id="L269">        venta.setFechaVenta(request.fechaVenta());</span>
+<span class="fc" id="L270">        venta.setCostoCompraAlVender(snapshot.costoCompra());</span>
+<span class="fc" id="L271">        venta.setCostoRefaccionesAlVender(snapshot.costoRefacciones());</span>
+<span class="fc" id="L272">        venta.setCostoTotalAlVender(snapshot.costoTotal());</span>
+<span class="fc" id="L273">        venta.setPrecioFinal(request.precioFinal());</span>
+<span class="fc" id="L274">        venta.setRentabilidadCalculada(rentabilidad);</span>
+<span class="fc" id="L275">        venta.setObservaciones(request.observaciones());</span>
+<span class="fc" id="L276">        venta.setEstadoComprobante(</span>
+                EstadoComprobanteVenta.PENDIENTE);
+<span class="fc" id="L278">        venta.setIntentosComprobante(0);</span>
+<span class="fc" id="L279">        venta.setProximoIntentoComprobante(</span>
+<span class="fc" id="L280">                LocalDateTime.now());</span>
+
+<span class="fc" id="L282">        return venta;</span>
+    }
+
+    private void registrarAuditoriaVenta(
+            Venta venta,
+            Vehiculo vehiculo,
+            Cliente comprador,
+            Usuario vendedor,
+            VentaRequest request,
+            CostoService.CostoSnapshot snapshot,
+            BigDecimal rentabilidad) {
+
+<span class="fc" id="L294">        this.auditoriaService.registrar(</span>
+                &quot;ALTA&quot;,
+                &quot;Venta&quot;,
+<span class="fc" id="L297">                venta.getId(),</span>
+                &quot;Registro de venta del vehículo &quot;
+<span class="fc" id="L299">                        + vehiculo.getId(),</span>
+                null,
+<span class="fc" id="L301">                &quot;vehiculoId=&quot; + vehiculo.getId()</span>
+                        + &quot;, clienteCompradorId=&quot;
+<span class="fc" id="L303">                        + comprador.getId()</span>
+                        + &quot;, vendedorId=&quot;
+<span class="fc" id="L305">                        + vendedor.getId()</span>
+                        + &quot;, fechaVenta=&quot;
+<span class="fc" id="L307">                        + request.fechaVenta()</span>
+                        + &quot;, costoCompraAlVender=&quot;
+<span class="fc" id="L309">                        + snapshot.costoCompra()</span>
+                        + &quot;, costoRefaccionesAlVender=&quot;
+<span class="fc" id="L311">                        + snapshot.costoRefacciones()</span>
+                        + &quot;, costoTotalAlVender=&quot;
+<span class="fc" id="L313">                        + snapshot.costoTotal()</span>
+                        + &quot;, precioFinal=&quot;
+<span class="fc" id="L315">                        + request.precioFinal()</span>
+                        + &quot;, rentabilidad=&quot;
+                        + rentabilidad);
+<span class="fc" id="L318">    }</span>
+
+    @Transactional
+    public void reintentarComprobante(Long id) {
+<span class="fc" id="L322">        this.usuarioActualService.exigirRoles(</span>
+                &quot;ADMINISTRADOR&quot;,
+                &quot;DUENO&quot;);
+
+<span class="fc" id="L326">        this.buscarActiva(id);</span>
+
+<span class="fc" id="L328">        this.ventaComprobanteService.reprogramar(id);</span>
+
+<span class="fc" id="L330">        this.eventPublisher.publishEvent(</span>
+                new VentaComprobanteSolicitadoEvent(id));
+<span class="fc" id="L332">    }</span>
+
+    @Transactional(readOnly = true)
+    public PdfService.ComprobanteResource obtenerComprobante(Long id) {
+<span class="fc" id="L336">        Venta venta = this.buscarActiva(id);</span>
+
+<span class="fc" id="L338">        return this.pdfService.cargarComprobante(</span>
+<span class="fc" id="L339">                venta.getComprobantePath());</span>
+    }
+
+    private Venta buscarActiva(Long id) {
+<span class="fc" id="L343">        Venta venta = this.ventaRepository</span>
+<span class="fc" id="L344">                .findById(id)</span>
+<span class="fc" id="L345">                .orElseThrow(() -&gt; new ResourceNotFoundException(</span>
+                        &quot;No se encontró la venta solicitada.&quot;));
+
+<span class="fc bfc" id="L348" title="All 2 branches covered.">        if (!Boolean.TRUE.equals(venta.getActivo())) {</span>
+<span class="fc" id="L349">            throw new ResourceNotFoundException(</span>
+                    &quot;No se encontró una venta activa con el identificador solicitado.&quot;);
+        }
+
+<span class="fc" id="L353">        return venta;</span>
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse&lt;VentaResponse&gt; listarPaginado(
+            int page,
+            int size,
+            LocalDate desde,
+            LocalDate hasta,
+            Long clienteId,
+            Long vehiculoId) {
+
+<span class="fc" id="L365">        validarPaginacion(page, size);</span>
+<span class="fc" id="L366">        validarPeriodo(desde, hasta);</span>
+<span class="fc" id="L367">        validarIdentificadoresFiltro(clienteId, vehiculoId);</span>
+
+<span class="fc" id="L369">        return PageResponse.from(</span>
+<span class="fc" id="L370">                this.ventaRepository.buscarPaginado(</span>
+                        desde,
+                        hasta,
+                        clienteId,
+                        vehiculoId,
+<span class="fc" id="L375">                        PageRequest.of(page, size)),</span>
+                VentaMapper::toResponse);
+    }
+
+    private void validarPaginacion(int page, int size) {
+<span class="pc bpc" id="L380" title="3 of 8 branches missed.">        if (page &lt; 0</span>
+                || size &lt; 1
+                || size &gt; 100
+                || (long) page * size &gt; Integer.MAX_VALUE) {
+
+<span class="fc" id="L385">            throw new BusinessException(</span>
+                    &quot;Página inválida: size debe estar entre 1 y 100 y el offset ser representable.&quot;);
+        }
+<span class="fc" id="L388">    }</span>
+
+    private void validarPeriodo(
+            LocalDate desde,
+            LocalDate hasta) {
+
+<span class="pc bpc" id="L394" title="1 of 4 branches missed.">        if (desde != null</span>
+                &amp;&amp; hasta != null
+<span class="fc bfc" id="L396" title="All 2 branches covered.">                &amp;&amp; desde.isAfter(hasta)) {</span>
+
+<span class="fc" id="L398">            throw new BusinessException(</span>
+                    &quot;La fecha desde no puede ser posterior a hasta.&quot;);
+        }
+<span class="fc" id="L401">    }</span>
+
+    private void validarIdentificadoresFiltro(
+            Long clienteId,
+            Long vehiculoId) {
+
+<span class="fc" id="L407">        validarIdentificadorFiltro(clienteId);</span>
+<span class="fc" id="L408">        validarIdentificadorFiltro(vehiculoId);</span>
+<span class="fc" id="L409">    }</span>
+
+    private void validarIdentificadorFiltro(Long id) {
+<span class="fc bfc" id="L412" title="All 4 branches covered.">        if (id != null &amp;&amp; id &lt;= 0) {</span>
+<span class="fc" id="L413">            throw new BusinessException(</span>
+                    &quot;Los identificadores de filtro deben ser positivos.&quot;);
+        }
+<span class="fc" id="L416">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

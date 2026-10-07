@@ -7,6 +7,9 @@ import java.nio.file.Path;
 import java.util.Base64;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.test.util.ReflectionTestUtils;
 
 class ProductionConfigurationValidatorTest {
 
@@ -77,6 +80,24 @@ class ProductionConfigurationValidatorTest {
                 true);
 
         assertThrows(IllegalStateException.class, validator::validate);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"https://example.test/path", "https://user@example.test", "https://example.test?x=1",
+            "https://example.test#fragment", "https://*.example.test", "https://example.test,", "https://[::1]"})
+    void rechazaUrlsQueNoSonOrigenesProductivos(String origin) {
+        assertThrows(IllegalStateException.class,
+                () -> validator(strongSecret, origin, absoluteStorage, "REAUTHENTICATE", false).validate());
+    }
+
+    @Test
+    void rechazaBindPublicoYProcesamientoPrevioDeForwarded() {
+        var v = validator(strongSecret, "https://pamahe.example", absoluteStorage, "REAUTHENTICATE", false);
+        ReflectionTestUtils.setField(v, "serverAddress", "0.0.0.0");
+        assertThrows(IllegalStateException.class, v::validate);
+        ReflectionTestUtils.setField(v, "serverAddress", "127.0.0.1");
+        ReflectionTestUtils.setField(v, "forwardHeadersStrategy", "framework");
+        assertThrows(IllegalStateException.class, v::validate);
     }
 
     private ProductionConfigurationValidator validator(

@@ -75,14 +75,14 @@ public class GlobalExceptionHandler {
         public ResponseEntity<ApiErrorResponse> handleAccessDenied(AccessDeniedException exception,
                         HttpServletRequest request) {
                 return this.response(HttpStatus.FORBIDDEN, "ACCESS_DENIED",
-                                "No tienes permisos para realizar esta operación.",
+                                "No tenés permisos para realizar esta operación.",
                                 request, null, exception, false);
         }
 
         @ExceptionHandler(ExpiredJwtException.class)
         public ResponseEntity<ApiErrorResponse> handleExpiredJwt(ExpiredJwtException exception,
                         HttpServletRequest request) {
-                return this.response(HttpStatus.UNAUTHORIZED, "AUTH_TOKEN_EXPIRED", "El token de acceso está vencido.",
+                return this.response(HttpStatus.UNAUTHORIZED, "AUTH_TOKEN_EXPIRED", "Tu sesión venció. Iniciá sesión nuevamente.",
                                 request,
                                 null, exception, false);
         }
@@ -90,7 +90,7 @@ public class GlobalExceptionHandler {
         @ExceptionHandler(JwtException.class)
         public ResponseEntity<ApiErrorResponse> handleJwt(JwtException exception,
                         HttpServletRequest request) {
-                return this.response(HttpStatus.UNAUTHORIZED, "AUTH_TOKEN_INVALID", "El token de acceso es inválido.",
+                return this.response(HttpStatus.UNAUTHORIZED, "AUTH_TOKEN_INVALID", "Tu sesión no es válida. Iniciá sesión nuevamente.",
                                 request,
                                 null, exception, false);
         }
@@ -102,7 +102,7 @@ public class GlobalExceptionHandler {
                 exception.getBindingResult().getFieldErrors()
                                 .forEach(error -> errores.put(error.getField(), error.getDefaultMessage()));
                 return this.response(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
-                                "Hay campos inválidos en la solicitud.",
+                                "Revisá los datos ingresados y corregí los campos indicados.",
                                 request, errores, exception, false);
         }
 
@@ -114,7 +114,7 @@ public class GlobalExceptionHandler {
                                 .forEach(violation -> errores.put(violation.getPropertyPath().toString(),
                                                 violation.getMessage()));
                 return this.response(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
-                                "Hay parámetros inválidos en la solicitud.",
+                                "Revisá los datos enviados e intentá nuevamente.",
                                 request, errores, exception, false);
         }
 
@@ -122,14 +122,14 @@ public class GlobalExceptionHandler {
         public ResponseEntity<ApiErrorResponse> handleUnreadable(HttpMessageNotReadableException exception,
                         HttpServletRequest request) {
                 return this.response(HttpStatus.BAD_REQUEST, "MALFORMED_REQUEST",
-                                "El JSON enviado está malformado o contiene un valor no permitido.", request, null,
+                                "No pudimos procesar la información enviada. Revisá los datos e intentá nuevamente.", request, null,
                                 exception, false);
         }
 
         @ExceptionHandler(MethodArgumentTypeMismatchException.class)
         public ResponseEntity<ApiErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException exception,
                         HttpServletRequest request) {
-                String mensaje = "El parámetro '" + exception.getName() + "' contiene un valor incompatible.";
+                String mensaje = "Revisá el valor enviado en '" + exception.getName() + "'.";
                 return this.response(HttpStatus.BAD_REQUEST, "INVALID_PARAMETER", mensaje, request, null, exception,
                                 false);
         }
@@ -138,7 +138,7 @@ public class GlobalExceptionHandler {
         public ResponseEntity<ApiErrorResponse> handleMissingParameter(
                         MissingServletRequestParameterException exception,
                         HttpServletRequest request) {
-                String mensaje = "Falta el parámetro obligatorio '" + exception.getParameterName() + "'.";
+                String mensaje = "Falta completar el dato obligatorio '" + exception.getParameterName() + "'.";
                 return this.response(HttpStatus.BAD_REQUEST, "MISSING_PARAMETER", mensaje, request, null, exception,
                                 false);
         }
@@ -154,7 +154,7 @@ public class GlobalExceptionHandler {
         public ResponseEntity<ApiErrorResponse> handleDataIntegrity(DataIntegrityViolationException exception,
                         HttpServletRequest request) {
                 return this.response(HttpStatus.CONFLICT, "DATA_CONFLICT",
-                                "La operación entra en conflicto con datos existentes o restricciones de integridad.",
+                                "No se pudo guardar porque los datos entran en conflicto con un registro existente. Revisá la información e intentá nuevamente.",
                                 request, null,
                                 exception, true);
         }
@@ -170,7 +170,7 @@ public class GlobalExceptionHandler {
         public ResponseEntity<ApiErrorResponse> handleGeneral(Exception exception,
                         HttpServletRequest request) {
                 return this.response(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR",
-                                "Ocurrió un error interno en el servidor.", request, null, exception, true);
+                                "No pudimos completar la operación por un problema interno. Intentá nuevamente en unos minutos.", request, null, exception, true);
         }
 
         private ResponseEntity<ApiErrorResponse> response(HttpStatus status,
