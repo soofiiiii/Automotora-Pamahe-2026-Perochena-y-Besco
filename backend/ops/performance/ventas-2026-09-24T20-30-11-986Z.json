@@ -1,0 +1,237 @@
+{
+  "profile": "ventas-50-vus",
+  "results": {
+    "root_group": {
+      "path": "",
+      "id": "d41d8cd98f00b204e9800998ecf8427e",
+      "groups": [],
+      "checks": [
+          {
+            "name": "venta confirmada",
+            "path": "::venta confirmada",
+            "id": "7a1ed2e9bc8156f767dda1f1650d7147",
+            "passes": 49,
+            "fails": 1
+          }
+        ],
+      "name": ""
+    },
+    "options": {
+      "summaryTrendStats": [
+        "avg",
+        "min",
+        "med",
+        "max",
+        "p(90)",
+        "p(95)"
+      ],
+      "summaryTimeUnit": "",
+      "noColor": false
+    },
+    "state": {
+      "isStdOutTTY": true,
+      "isStdErrTTY": true,
+      "testRunDurationMs": 795.9597
+    },
+    "metrics": {
+      "http_req_blocked": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "med": 22.74525,
+          "max": 25.2733,
+          "p(90)": 24.06846,
+          "p(95)": 24.40767,
+          "avg": 22.632977999999998,
+          "min": 19.644
+        }
+      },
+      "http_req_receiving": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "avg": 0.78884,
+          "min": 0,
+          "med": 0,
+          "max": 22.4566,
+          "p(90)": 1.1568800000000001,
+          "p(95)": 1.3668699999999998
+        }
+      },
+      "iterations": {
+        "contains": "default",
+        "values": {
+          "count": 50,
+          "rate": 62.81725067236444
+        },
+        "type": "counter"
+      },
+      "http_req_duration": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "p(95)": 770.3159750000001,
+          "avg": 712.2332620000001,
+          "min": 438.9148,
+          "med": 723.3393,
+          "max": 770.874,
+          "p(90)": 769.83244
+        }
+      },
+      "http_reqs": {
+        "type": "counter",
+        "contains": "default",
+        "values": {
+          "count": 50,
+          "rate": 62.81725067236444
+        }
+      },
+      "http_req_waiting": {
+        "values": {
+          "avg": 711.2849960000001,
+          "min": 437.4155,
+          "med": 723.0231,
+          "max": 770.6077,
+          "p(90)": 769.24262,
+          "p(95)": 770.05042
+        },
+        "type": "trend",
+        "contains": "time"
+      },
+      "iteration_duration": {
+        "values": {
+          "p(90)": 791.55452,
+          "p(95)": 792.852355,
+          "avg": 736.2589260000001,
+          "min": 462.8977,
+          "med": 746.6878,
+          "max": 794.246
+        },
+        "type": "trend",
+        "contains": "time"
+      },
+      "http_req_sending": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "min": 0,
+          "med": 0,
+          "max": 0.9084,
+          "p(90)": 0.5739000000000001,
+          "p(95)": 0.6556,
+          "avg": 0.15942599999999998
+        }
+      },
+      "http_req_duration{endpoint:venta-crear}": {
+        "values": {
+          "avg": 712.2332620000001,
+          "min": 438.9148,
+          "med": 723.3393,
+          "max": 770.874,
+          "p(90)": 769.83244,
+          "p(95)": 770.3159750000001
+        },
+        "thresholds": {
+          "p(95)<300": {
+            "ok": false
+          }
+        },
+        "type": "trend",
+        "contains": "time"
+      },
+      "http_req_duration{expected_response:true}": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "avg": 717.3703183673472,
+          "min": 438.9148,
+          "med": 723.6555,
+          "max": 770.874,
+          "p(90)": 769.88088,
+          "p(95)": 770.3203000000001
+        }
+      },
+      "http_req_connecting": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "p(95)": 4.8385,
+          "avg": 3.459451999999999,
+          "min": 1.1667,
+          "med": 3.5942,
+          "max": 5.3521,
+          "p(90)": 4.8180700000000005
+        }
+      },
+      "http_req_failed": {
+        "type": "rate",
+        "contains": "default",
+        "values": {
+          "rate": 0.02,
+          "passes": 1,
+          "fails": 49
+        },
+        "thresholds": {
+          "rate<0.01": {
+            "ok": false
+          }
+        }
+      },
+      "http_reqs{endpoint:venta-crear}": {
+        "type": "counter",
+        "contains": "default",
+        "values": {
+          "rate": 62.81725067236444,
+          "count": 50
+        },
+        "thresholds": {
+          "count==50": {
+            "ok": true
+          }
+        }
+      },
+      "http_req_tls_handshaking": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "max": 0,
+          "p(90)": 0,
+          "p(95)": 0,
+          "avg": 0,
+          "min": 0,
+          "med": 0
+        }
+      },
+      "data_sent": {
+        "values": {
+          "rate": 28079.311050546905,
+          "count": 22350
+        },
+        "type": "counter",
+        "contains": "data"
+      },
+      "data_received": {
+        "type": "counter",
+        "contains": "data",
+        "values": {
+          "count": 38037,
+          "rate": 47787.595276494525
+        }
+      },
+      "checks": {
+        "type": "rate",
+        "contains": "default",
+        "values": {
+          "rate": 0.98,
+          "passes": 49,
+          "fails": 1
+        },
+        "thresholds": {
+          "rate>0.99": {
+            "ok": false
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: uy.edu.ctc.pamahe.common.config.ProductionConfigurationValidatorTest
+-------------------------------------------------------------------------------
+Tests run: 13, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.475 s -- in uy.edu.ctc.pamahe.common.config.ProductionConfigurationValidatorTest

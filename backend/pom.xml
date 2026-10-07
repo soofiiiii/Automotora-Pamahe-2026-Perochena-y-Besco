@@ -10,15 +10,21 @@
 	</parent>
 	<groupId>uy.edu.ctc</groupId>
 	<artifactId>pamahe-backend</artifactId>
-	<version>1.0.0</version>
+	<version>2.0.0</version>
 	<name>pamahe-backend</name>
 	<description>Backend del Sistema Integral de Gestión para Automotora Pamahe</description>
 	<properties>
 		<java.version>17</java.version>
 		<twelvemonkeys.version>3.13.1</twelvemonkeys.version>
 		<jacoco.version>0.8.13</jacoco.version>
+		<maven-pmd-plugin.version>3.28.0</maven-pmd-plugin.version>
 	</properties>
 	<dependencies>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+            <scope>runtime</scope>
+        </dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
@@ -141,6 +147,68 @@
 						<phase>verify</phase>
 						<goals>
 							<goal>report</goal>
+						</goals>
+					</execution>
+					<!-- O-09: umbral por paquete financiero/estados, sin diluirlo con DTO o modelos. -->
+                    <execution>
+                        <id>check-critical-business-coverage</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <haltOnFailure>true</haltOnFailure>
+                            <rules>
+                                <rule>
+                                    <element>PACKAGE</element>
+                                    <includes>
+                                        <include>uy.edu.ctc.pamahe.modules.vehiculos.service</include>
+                                        <include>uy.edu.ctc.pamahe.modules.compras.service</include>
+                                        <include>uy.edu.ctc.pamahe.modules.ventas.service</include>
+                                        <include>uy.edu.ctc.pamahe.modules.costos.service</include>
+                                        <include>uy.edu.ctc.pamahe.modules.taller.service</include>
+                                        <include>uy.edu.ctc.pamahe.modules.reportes.service</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.80</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-pmd-plugin</artifactId>
+				<version>${maven-pmd-plugin.version}</version>
+				<configuration>
+					<rulesets>
+						<ruleset>${project.basedir}/config/pmd/pmd-critical-ruleset.xml</ruleset>
+					</rulesets>
+					<includes>
+						<include>uy/edu/ctc/pamahe/modules/vehiculos/service/*.java</include>
+						<include>uy/edu/ctc/pamahe/modules/compras/service/*.java</include>
+						<include>uy/edu/ctc/pamahe/modules/ventas/service/*.java</include>
+						<include>uy/edu/ctc/pamahe/modules/costos/service/*.java</include>
+						<include>uy/edu/ctc/pamahe/modules/taller/service/*.java</include>
+						<include>uy/edu/ctc/pamahe/modules/reportes/service/*.java</include>
+					</includes>
+					<includeTests>false</includeTests>
+					<linkXRef>false</linkXRef>
+					<failOnViolation>true</failOnViolation>
+					<printFailingErrors>true</printFailingErrors>
+				</configuration>
+				<executions>
+					<execution>
+						<id>check-critical-cyclomatic-complexity</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>check</goal>
 						</goals>
 					</execution>
 				</executions>

@@ -1,0 +1,464 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ReporteService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.reportes.service</a> &gt; <span class="el_source">ReporteService.java</span></div><h1>ReporteService.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.reportes.service;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import uy.edu.ctc.pamahe.common.exception.BusinessException;
+import uy.edu.ctc.pamahe.modules.auditoria.model.Auditoria;
+import uy.edu.ctc.pamahe.modules.auditoria.repository.AuditoriaRepository;
+import uy.edu.ctc.pamahe.modules.clientes.repository.ClienteRepository;
+import uy.edu.ctc.pamahe.modules.compras.model.Compra;
+import uy.edu.ctc.pamahe.modules.compras.repository.CompraRepository;
+import uy.edu.ctc.pamahe.modules.reportes.dto.response.DashboardResponse;
+import uy.edu.ctc.pamahe.modules.reportes.dto.response.ReporteCompraItemResponse;
+import uy.edu.ctc.pamahe.modules.reportes.dto.response.ReporteComprasResponse;
+import uy.edu.ctc.pamahe.modules.reportes.dto.response.ReporteRefaccionItemResponse;
+import uy.edu.ctc.pamahe.modules.reportes.dto.response.ReporteRefaccionesResponse;
+import uy.edu.ctc.pamahe.modules.reportes.dto.response.ReporteRentabilidadResponse;
+import uy.edu.ctc.pamahe.modules.reportes.dto.response.ReporteStockResponse;
+import uy.edu.ctc.pamahe.modules.reportes.dto.response.ReporteVehiculoStockItemResponse;
+import uy.edu.ctc.pamahe.modules.reportes.dto.response.ReporteVentaItemResponse;
+import uy.edu.ctc.pamahe.modules.reportes.dto.response.ReporteVentasResponse;
+import uy.edu.ctc.pamahe.modules.taller.model.EstadoTarea;
+import uy.edu.ctc.pamahe.modules.taller.model.Refaccion;
+import uy.edu.ctc.pamahe.modules.taller.repository.RefaccionRepository;
+import uy.edu.ctc.pamahe.modules.vehiculos.model.EstadoVehiculo;
+import uy.edu.ctc.pamahe.modules.vehiculos.repository.VehiculoRepository;
+import uy.edu.ctc.pamahe.modules.ventas.model.Venta;
+import uy.edu.ctc.pamahe.modules.ventas.repository.VentaRepository;
+
+/**
+ * Capa de consultas gerenciales.
+ * Los reportes monetarios usan valores persistidos y snapshots de venta,
+ * evitando reconstruir
+ * rentabilidades históricas a partir de costos actuales del vehículo.
+ */
+@Service
+public class ReporteService {
+
+<span class="fc" id="L53">        private static final Pattern ESTADO_AUDITORIA_PATTERN = Pattern.compile(&quot;(?:^|,\\s*)estado=([A-Z_]+)(?:,|$)&quot;);</span>
+<span class="fc" id="L54">        private static final Pattern PUBLICADO_AUDITORIA_PATTERN = Pattern</span>
+<span class="fc" id="L55">                        .compile(&quot;(?:^|,\\s*)publicado=(true|false)(?:,|$)&quot;, Pattern.CASE_INSENSITIVE);</span>
+
+        private final AuditoriaRepository auditoriaRepository;
+        private final VehiculoRepository vehiculoRepository;
+        private final ClienteRepository clienteRepository;
+        private final VentaRepository ventaRepository;
+        private final CompraRepository compraRepository;
+        private final RefaccionRepository refaccionRepository;
+
+        public ReporteService(VehiculoRepository vehiculoRepository,
+                        ClienteRepository clienteRepository,
+                        VentaRepository ventaRepository,
+                        CompraRepository compraRepository,
+<span class="fc" id="L68">                        RefaccionRepository refaccionRepository, AuditoriaRepository auditoriaRepository) {</span>
+<span class="fc" id="L69">                this.vehiculoRepository = vehiculoRepository;</span>
+<span class="fc" id="L70">                this.clienteRepository = clienteRepository;</span>
+<span class="fc" id="L71">                this.ventaRepository = ventaRepository;</span>
+<span class="fc" id="L72">                this.compraRepository = compraRepository;</span>
+<span class="fc" id="L73">                this.refaccionRepository = refaccionRepository;</span>
+<span class="fc" id="L74">                this.auditoriaRepository = auditoriaRepository;</span>
+<span class="fc" id="L75">        }</span>
+
+        @Transactional(readOnly = true)
+        public DashboardResponse dashboard(LocalDate desde, LocalDate hasta) {
+<span class="fc" id="L79">                Periodo periodo = resolverPeriodo(desde, hasta);</span>
+<span class="fc" id="L80">                var vehiculos = this.vehiculoRepository.findByActivoTrueOrderByCreadoEnDesc();</span>
+<span class="fc" id="L81">                var ventas = this.ventaRepository.findByActivoTrueOrderByFechaVentaDesc();</span>
+<span class="fc" id="L82">                var ventasPeriodo = this.ventaRepository</span>
+<span class="fc" id="L83">                                .findByActivoTrueAndFechaVentaBetweenOrderByFechaVentaDesc(periodo.desde(),</span>
+<span class="fc" id="L84">                                                periodo.hasta());</span>
+
+<span class="fc" id="L86">                Map&lt;String, Long&gt; porEstado = Arrays.stream(EstadoVehiculo.values())</span>
+<span class="fc" id="L87">                                .collect(Collectors.toMap(</span>
+<span class="fc" id="L88">                                                estado -&gt; estado.name(),</span>
+<span class="pc bnc" id="L89" title="All 2 branches missed.">                                                estado -&gt; vehiculos.stream().filter(v -&gt; v.getEstado() == estado)</span>
+<span class="fc" id="L90">                                                                .count()));</span>
+
+<span class="fc" id="L92">                BigDecimal ingresos = sumar(ventas.stream().map(Venta::getPrecioFinal).toList());</span>
+<span class="fc" id="L93">                BigDecimal rentabilidad = sumar(ventas.stream().map(Venta::getRentabilidadCalculada).toList());</span>
+<span class="fc" id="L94">                BigDecimal ingresosPeriodo = sumar(ventasPeriodo.stream().map(Venta::getPrecioFinal).toList());</span>
+<span class="fc" id="L95">                BigDecimal rentabilidadPeriodo = sumar(</span>
+<span class="fc" id="L96">                                ventasPeriodo.stream().map(Venta::getRentabilidadCalculada).toList());</span>
+
+<span class="fc" id="L98">                BigDecimal inversionActual = sumar(</span>
+<span class="fc" id="L99">                                this.refaccionRepository.findByActivoTrueOrderByFechaDesc().stream()</span>
+<span class="pc bnc" id="L100" title="All 2 branches missed.">                                                .filter(r -&gt; r.getEstadoTarea() != EstadoTarea.CANCELADA)</span>
+<span class="pc" id="L101">                                                .filter(r -&gt; Boolean.TRUE.equals(r.getVehiculo().getActivo()))</span>
+<span class="pc bnc" id="L102" title="All 2 branches missed.">                                                .filter(r -&gt; r.getVehiculo().getEstado() != EstadoVehiculo.VENDIDO)</span>
+<span class="fc" id="L103">                                                .map(Refaccion::costoTotal)</span>
+<span class="fc" id="L104">                                                .toList());</span>
+
+<span class="fc" id="L106">                return new DashboardResponse(</span>
+<span class="fc" id="L107">                                vehiculos.size(),</span>
+<span class="fc" id="L108">                                porEstado.getOrDefault(EstadoVehiculo.EN_TALLER.name(), 0L),</span>
+<span class="fc" id="L109">                                porEstado.getOrDefault(EstadoVehiculo.DISPONIBLE.name(), 0L),</span>
+<span class="fc" id="L110">                                ventas.size(),</span>
+<span class="fc" id="L111">                                this.clienteRepository.findByActivoTrueOrderByNombreAsc().size(),</span>
+<span class="fc" id="L112">                                ventas.size(),</span>
+                                ingresos,
+                                rentabilidad,
+                                porEstado,
+<span class="fc" id="L116">                                periodo.desde(),</span>
+<span class="fc" id="L117">                                periodo.hasta(),</span>
+<span class="fc" id="L118">                                ventasPeriodo.size(),</span>
+                                ingresosPeriodo,
+                                rentabilidadPeriodo,
+                                inversionActual);
+        }
+
+        @Transactional(readOnly = true)
+        public ReporteVentasResponse ventas(LocalDate desde, LocalDate hasta) {
+<span class="fc" id="L126">                Periodo periodo = resolverPeriodo(desde, hasta);</span>
+<span class="fc" id="L127">                List&lt;Venta&gt; ventas = this.ventaRepository</span>
+<span class="fc" id="L128">                                .findByActivoTrueAndFechaVentaBetweenOrderByFechaVentaDesc(periodo.desde(),</span>
+<span class="fc" id="L129">                                                periodo.hasta());</span>
+<span class="fc" id="L130">                List&lt;ReporteVentaItemResponse&gt; items = ventas.stream().map(this::toVentaItem).toList();</span>
+<span class="fc" id="L131">                return new ReporteVentasResponse(</span>
+<span class="fc" id="L132">                                periodo.desde(),</span>
+<span class="fc" id="L133">                                periodo.hasta(),</span>
+<span class="fc" id="L134">                                ventas.size(),</span>
+<span class="fc" id="L135">                                sumar(ventas.stream().map(Venta::getPrecioFinal).toList()),</span>
+<span class="fc" id="L136">                                sumar(ventas.stream().map(Venta::getCostoTotalAlVender).toList()),</span>
+<span class="fc" id="L137">                                sumar(ventas.stream().map(Venta::getRentabilidadCalculada).toList()),</span>
+                                items);
+        }
+
+        @Transactional(readOnly = true)
+        public ReporteComprasResponse compras(LocalDate desde, LocalDate hasta) {
+<span class="fc" id="L143">                Periodo periodo = resolverPeriodo(desde, hasta);</span>
+<span class="fc" id="L144">                List&lt;Compra&gt; compras = this.compraRepository</span>
+<span class="fc" id="L145">                                .findByActivoTrueAndFechaCompraBetweenOrderByFechaCompraDesc(periodo.desde(),</span>
+<span class="fc" id="L146">                                                periodo.hasta());</span>
+<span class="fc" id="L147">                List&lt;ReporteCompraItemResponse&gt; items = compras.stream()</span>
+<span class="fc" id="L148">                                .map(c -&gt; new ReporteCompraItemResponse(</span>
+<span class="fc" id="L149">                                                c.getId(),</span>
+<span class="fc" id="L150">                                                c.getVehiculo().getId(),</span>
+<span class="fc" id="L151">                                                nombreVehiculo(c.getVehiculo().getMarca(), c.getVehiculo().getModelo(),</span>
+<span class="fc" id="L152">                                                                c.getVehiculo().getAnio()),</span>
+<span class="fc" id="L153">                                                c.getFechaCompra(),</span>
+<span class="fc" id="L154">                                                c.getCostoAdquisicion()))</span>
+<span class="fc" id="L155">                                .toList();</span>
+<span class="fc" id="L156">                return new ReporteComprasResponse(</span>
+<span class="fc" id="L157">                                periodo.desde(),</span>
+<span class="fc" id="L158">                                periodo.hasta(),</span>
+<span class="fc" id="L159">                                compras.size(),</span>
+<span class="fc" id="L160">                                sumar(compras.stream().map(Compra::getCostoAdquisicion).toList()),</span>
+                                items);
+        }
+
+        @Transactional(readOnly = true)
+        public ReporteStockResponse stock(LocalDate desde, LocalDate hasta) {
+<span class="fc" id="L166">                Periodo periodo = resolverPeriodo(desde, hasta);</span>
+
+                /*
+                 * Vehículos comprados específicamente dentro del período solicitado.
+                 */
+<span class="fc" id="L171">                List&lt;Compra&gt; comprasPeriodo = this.compraRepository</span>
+<span class="fc" id="L172">                                .findByActivoTrueAndFechaCompraBetweenOrderByFechaCompraDesc(</span>
+<span class="fc" id="L173">                                                periodo.desde(),</span>
+<span class="fc" id="L174">                                                periodo.hasta());</span>
+
+                /*
+                 * Para reconstruir el stock al cierre deben considerarse todas
+                 * las compras realizadas hasta la fecha final.
+                 */
+<span class="fc" id="L180">                List&lt;Compra&gt; comprasHastaCierre = this.compraRepository</span>
+<span class="fc" id="L181">                                .findByActivoTrueAndFechaCompraLessThanEqualOrderByFechaCompraDesc(</span>
+<span class="fc" id="L182">                                                periodo.hasta());</span>
+
+                /*
+                 * Vehículos que ya habían sido vendidos al llegar a la fecha de cierre.
+                 */
+<span class="fc" id="L187">                Set&lt;Long&gt; vehiculosVendidosHastaCierre = this.ventaRepository</span>
+<span class="fc" id="L188">                                .findByActivoTrueAndFechaVentaLessThanEqualOrderByFechaVentaDesc(</span>
+<span class="fc" id="L189">                                                periodo.hasta())</span>
+<span class="fc" id="L190">                                .stream()</span>
+<span class="pc bnc" id="L191" title="All 2 branches missed.">                                .filter(venta -&gt; venta.getVehiculo() != null)</span>
+<span class="pc" id="L192">                                .map(venta -&gt; venta.getVehiculo().getId())</span>
+<span class="fc" id="L193">                                .filter(Objects::nonNull)</span>
+<span class="fc" id="L194">                                .collect(Collectors.toSet());</span>
+
+                /*
+                 * Formaban parte del stock al cierre aquellos vehículos cuya compra
+                 * ya había ocurrido y cuya venta todavía no se había producido.
+                 */
+<span class="fc" id="L200">                List&lt;Compra&gt; stockAlCierre = comprasHastaCierre.stream()</span>
+<span class="pc bpc" id="L201" title="1 of 2 branches missed.">                                .filter(compra -&gt; compra.getVehiculo() != null)</span>
+<span class="pc bpc" id="L202" title="1 of 2 branches missed.">                                .filter(compra -&gt; compra.getVehiculo().getId() != null)</span>
+<span class="pc bpc" id="L203" title="1 of 2 branches missed.">                                .filter(compra -&gt; !vehiculosVendidosHastaCierre.contains(</span>
+<span class="fc" id="L204">                                                compra.getVehiculo().getId()))</span>
+<span class="fc" id="L205">                                .toList();</span>
+
+                /*
+                 * Reconstruye estado y publicación que tenía cada vehículo
+                 * exactamente al cierre del período solicitado.
+                 */
+<span class="fc" id="L211">                Map&lt;Long, EstadoHistoricoVehiculo&gt; situacionHistorica = reconstruirSituacionVehiculos(</span>
+                                stockAlCierre,
+<span class="fc" id="L213">                                periodo.hasta());</span>
+
+<span class="fc" id="L215">                List&lt;ReporteVehiculoStockItemResponse&gt; items = stockAlCierre.stream()</span>
+<span class="fc" id="L216">                                .map(compra -&gt; {</span>
+<span class="fc" id="L217">                                        var vehiculo = compra.getVehiculo();</span>
+
+<span class="fc" id="L219">                                        EstadoHistoricoVehiculo situacion = situacionHistorica.getOrDefault(</span>
+<span class="fc" id="L220">                                                        vehiculo.getId(),</span>
+                                                        new EstadoHistoricoVehiculo(
+                                                                        EstadoVehiculo.COMPRADO,
+                                                                        false));
+
+<span class="fc" id="L225">                                        return new ReporteVehiculoStockItemResponse(</span>
+<span class="fc" id="L226">                                                        vehiculo.getId(),</span>
+<span class="fc" id="L227">                                                        vehiculo.getMarca(),</span>
+<span class="fc" id="L228">                                                        vehiculo.getModelo(),</span>
+<span class="fc" id="L229">                                                        vehiculo.getAnio(),</span>
+<span class="fc" id="L230">                                                        vehiculo.getTipoVehiculo(),</span>
+<span class="fc" id="L231">                                                        situacion.estado(),</span>
+<span class="fc" id="L232">                                                        situacion.publicado(),</span>
+<span class="fc" id="L233">                                                        vehiculo.getPrecioVentaEstimado(),</span>
+<span class="fc" id="L234">                                                        compra.getFechaCompra());</span>
+                                })
+<span class="fc" id="L236">                                .toList();</span>
+
+<span class="fc" id="L238">                long disponibles = items.stream()</span>
+<span class="pc bpc" id="L239" title="1 of 2 branches missed.">                                .filter(item -&gt; item.estado() == EstadoVehiculo.DISPONIBLE)</span>
+<span class="fc" id="L240">                                .count();</span>
+
+<span class="fc" id="L242">                long publicados = items.stream()</span>
+<span class="fc" id="L243">                                .filter(item -&gt; Boolean.TRUE.equals(item.publicado()))</span>
+<span class="fc" id="L244">                                .count();</span>
+
+<span class="fc" id="L246">                return new ReporteStockResponse(</span>
+<span class="fc" id="L247">                                periodo.desde(),</span>
+<span class="fc" id="L248">                                periodo.hasta(),</span>
+<span class="fc" id="L249">                                comprasPeriodo.size(),</span>
+<span class="fc" id="L250">                                stockAlCierre.size(),</span>
+                                disponibles,
+                                publicados,
+                                false,
+                                items);
+        }
+
+        @Transactional(readOnly = true)
+        public ReporteVentasResponse vendidos(LocalDate desde, LocalDate hasta) {
+<span class="nc" id="L259">                return ventas(desde, hasta);</span>
+        }
+
+        @Transactional(readOnly = true)
+        public ReporteRefaccionesResponse refacciones(LocalDate desde, LocalDate hasta) {
+<span class="fc" id="L264">                Periodo periodo = resolverPeriodo(desde, hasta);</span>
+<span class="fc" id="L265">                List&lt;Refaccion&gt; refacciones = this.refaccionRepository</span>
+<span class="fc" id="L266">                                .findByActivoTrueAndFechaBetweenOrderByFechaDesc(periodo.desde(), periodo.hasta())</span>
+<span class="fc" id="L267">                                .stream()</span>
+<span class="fc bfc" id="L268" title="All 2 branches covered.">                                .filter(r -&gt; r.getEstadoTarea() != EstadoTarea.CANCELADA)</span>
+<span class="fc" id="L269">                                .toList();</span>
+
+<span class="fc" id="L271">                List&lt;ReporteRefaccionItemResponse&gt; items = refacciones.stream()</span>
+<span class="fc" id="L272">                                .map(r -&gt; new ReporteRefaccionItemResponse(</span>
+<span class="fc" id="L273">                                                r.getId(),</span>
+<span class="fc" id="L274">                                                r.getVehiculo().getId(),</span>
+<span class="fc" id="L275">                                                nombreVehiculo(r.getVehiculo().getMarca(), r.getVehiculo().getModelo(),</span>
+<span class="fc" id="L276">                                                                r.getVehiculo().getAnio()),</span>
+<span class="fc" id="L277">                                                r.getFecha(),</span>
+<span class="fc" id="L278">                                                r.getTipoTrabajo(),</span>
+<span class="fc" id="L279">                                                r.getEstadoTarea(),</span>
+<span class="fc" id="L280">                                                r.getCostoRepuestos(),</span>
+<span class="fc" id="L281">                                                r.getCostoManoObra(),</span>
+<span class="fc" id="L282">                                                r.getCostoServiciosExternos(),</span>
+<span class="fc" id="L283">                                                r.costoTotal()))</span>
+<span class="fc" id="L284">                                .toList();</span>
+
+<span class="fc" id="L286">                return new ReporteRefaccionesResponse(</span>
+<span class="fc" id="L287">                                periodo.desde(),</span>
+<span class="fc" id="L288">                                periodo.hasta(),</span>
+<span class="fc" id="L289">                                refacciones.size(),</span>
+<span class="fc" id="L290">                                sumar(refacciones.stream().map(Refaccion::getCostoRepuestos).toList()),</span>
+<span class="fc" id="L291">                                sumar(refacciones.stream().map(Refaccion::getCostoManoObra).toList()),</span>
+<span class="fc" id="L292">                                sumar(refacciones.stream().map(Refaccion::getCostoServiciosExternos).toList()),</span>
+<span class="fc" id="L293">                                sumar(refacciones.stream().map(Refaccion::costoTotal).toList()),</span>
+                                items);
+        }
+
+        @Transactional(readOnly = true)
+        public ReporteRentabilidadResponse rentabilidad(LocalDate desde, LocalDate hasta) {
+<span class="fc" id="L299">                Periodo periodo = resolverPeriodo(desde, hasta);</span>
+<span class="fc" id="L300">                List&lt;Venta&gt; ventas = this.ventaRepository</span>
+<span class="fc" id="L301">                                .findByActivoTrueAndFechaVentaBetweenOrderByFechaVentaDesc(periodo.desde(),</span>
+<span class="fc" id="L302">                                                periodo.hasta());</span>
+<span class="fc" id="L303">                BigDecimal ingresos = sumar(ventas.stream().map(Venta::getPrecioFinal).toList());</span>
+<span class="fc" id="L304">                BigDecimal costo = sumar(ventas.stream().map(Venta::getCostoTotalAlVender).toList());</span>
+<span class="fc" id="L305">                BigDecimal rentabilidad = sumar(ventas.stream().map(Venta::getRentabilidadCalculada).toList());</span>
+<span class="pc bpc" id="L306" title="1 of 2 branches missed.">                BigDecimal margen = ingresos.compareTo(BigDecimal.ZERO) == 0</span>
+<span class="nc" id="L307">                                ? BigDecimal.ZERO</span>
+<span class="fc" id="L308">                                : rentabilidad.multiply(BigDecimal.valueOf(100)).divide(ingresos, 2,</span>
+                                                RoundingMode.HALF_UP);
+
+<span class="fc" id="L311">                return new ReporteRentabilidadResponse(</span>
+<span class="fc" id="L312">                                periodo.desde(),</span>
+<span class="fc" id="L313">                                periodo.hasta(),</span>
+<span class="fc" id="L314">                                ventas.size(),</span>
+                                ingresos,
+                                costo,
+                                rentabilidad,
+                                margen,
+<span class="fc" id="L319">                                ventas.stream().map(this::toVentaItem).toList());</span>
+        }
+
+        private EstadoVehiculo extraerEstado(String valoresNuevos, EstadoVehiculo valorAnterior) {
+<span class="pc bpc" id="L323" title="2 of 4 branches missed.">                if (valoresNuevos == null || valoresNuevos.isBlank()) {</span>
+<span class="nc" id="L324">                        return valorAnterior;</span>
+                }
+<span class="fc" id="L326">                Matcher matcher = ESTADO_AUDITORIA_PATTERN.matcher(valoresNuevos);</span>
+<span class="pc bpc" id="L327" title="1 of 2 branches missed.">                if (!matcher.find()) {</span>
+<span class="nc" id="L328">                        return valorAnterior;</span>
+                }
+                try {
+<span class="fc" id="L331">                        return EstadoVehiculo.valueOf(matcher.group(1));</span>
+<span class="nc" id="L332">                } catch (IllegalArgumentException ex) {</span>
+<span class="nc" id="L333">                        return valorAnterior;</span>
+                }
+        }
+
+        private boolean extraerPublicado(
+                        String valoresNuevos,
+                        boolean valorAnterior) {
+
+<span class="pc bpc" id="L341" title="2 of 4 branches missed.">                if (valoresNuevos == null || valoresNuevos.isBlank()) {</span>
+<span class="nc" id="L342">                        return valorAnterior;</span>
+                }
+
+<span class="fc" id="L345">                Matcher matcher = PUBLICADO_AUDITORIA_PATTERN.matcher(valoresNuevos);</span>
+
+<span class="pc bpc" id="L347" title="1 of 2 branches missed.">                if (!matcher.find()) {</span>
+<span class="nc" id="L348">                        return valorAnterior;</span>
+                }
+
+<span class="fc" id="L351">                return Boolean.parseBoolean(matcher.group(1));</span>
+        }
+
+        private Map&lt;Long, EstadoHistoricoVehiculo&gt; reconstruirSituacionVehiculos(
+                        List&lt;Compra&gt; stockAlCierre,
+                        LocalDate hasta) {
+
+<span class="fc" id="L358">                Map&lt;Long, EstadoHistoricoVehiculo&gt; resultado = new HashMap&lt;&gt;();</span>
+
+                /*
+                 * Todo vehículo comienza su ciclo en COMPRADO y no publicado.
+                 * Esta es la base conocida sobre la que se reproducen los cambios
+                 * registrados posteriormente en auditoría.
+                 */
+<span class="fc bfc" id="L365" title="All 2 branches covered.">                for (Compra compra : stockAlCierre) {</span>
+<span class="fc" id="L366">                        var vehiculo = compra.getVehiculo();</span>
+
+<span class="fc" id="L368">                        resultado.put(</span>
+<span class="fc" id="L369">                                        vehiculo.getId(),</span>
+                                        new EstadoHistoricoVehiculo(
+                                                        EstadoVehiculo.COMPRADO,
+                                                        false));
+<span class="fc" id="L373">                }</span>
+
+<span class="pc bpc" id="L375" title="1 of 2 branches missed.">                if (resultado.isEmpty()) {</span>
+<span class="nc" id="L376">                        return resultado;</span>
+                }
+
+                /*
+                 * Incluye todos los eventos producidos durante el día &quot;hasta&quot;.
+                 */
+<span class="fc" id="L382">                LocalDateTime hastaExclusivo = hasta.plusDays(1).atStartOfDay();</span>
+
+<span class="fc" id="L384">                List&lt;Auditoria&gt; historial = this.auditoriaRepository</span>
+<span class="fc" id="L385">                                .buscarHistorialVehiculosHasta(</span>
+<span class="fc" id="L386">                                                resultado.keySet(),</span>
+                                                hastaExclusivo);
+
+                /*
+                 * Los eventos llegan ordenados cronológicamente.
+                 * Cada uno modifica la última situación conocida.
+                 */
+<span class="fc bfc" id="L393" title="All 2 branches covered.">                for (Auditoria auditoria : historial) {</span>
+<span class="fc" id="L394">                        Long vehiculoId = auditoria.getEntidadId();</span>
+
+<span class="fc" id="L396">                        EstadoHistoricoVehiculo anterior = resultado.get(vehiculoId);</span>
+
+<span class="pc bpc" id="L398" title="1 of 2 branches missed.">                        if (anterior == null) {</span>
+<span class="nc" id="L399">                                continue;</span>
+                        }
+
+<span class="fc" id="L402">                        String valoresNuevos = auditoria.getValoresNuevos();</span>
+
+<span class="fc" id="L404">                        EstadoVehiculo estado = extraerEstado(</span>
+                                        valoresNuevos,
+<span class="fc" id="L406">                                        anterior.estado());</span>
+
+<span class="fc" id="L408">                        boolean publicado = extraerPublicado(</span>
+                                        valoresNuevos,
+<span class="fc" id="L410">                                        anterior.publicado());</span>
+
+<span class="fc" id="L412">                        resultado.put(</span>
+                                        vehiculoId,
+                                        new EstadoHistoricoVehiculo(
+                                                        estado,
+                                                        publicado));
+<span class="fc" id="L417">                }</span>
+
+<span class="fc" id="L419">                return resultado;</span>
+        }
+
+        private ReporteVentaItemResponse toVentaItem(Venta venta) {
+<span class="fc" id="L423">                return new ReporteVentaItemResponse(</span>
+<span class="fc" id="L424">                                venta.getId(),</span>
+<span class="fc" id="L425">                                venta.getVehiculo().getId(),</span>
+<span class="fc" id="L426">                                nombreVehiculo(venta.getVehiculo().getMarca(), venta.getVehiculo().getModelo(),</span>
+<span class="fc" id="L427">                                                venta.getVehiculo().getAnio()),</span>
+<span class="fc" id="L428">                                venta.getFechaVenta(),</span>
+<span class="fc" id="L429">                                venta.getPrecioFinal(),</span>
+<span class="fc" id="L430">                                venta.getCostoTotalAlVender(),</span>
+<span class="fc" id="L431">                                venta.getRentabilidadCalculada());</span>
+        }
+
+        private Periodo resolverPeriodo(LocalDate desde, LocalDate hasta) {
+<span class="fc" id="L435">                LocalDate hoy = LocalDate.now();</span>
+<span class="fc bfc" id="L436" title="All 2 branches covered.">                LocalDate inicio = desde == null ? hoy.withDayOfMonth(1) : desde;</span>
+<span class="fc bfc" id="L437" title="All 2 branches covered.">                LocalDate fin = hasta == null ? hoy : hasta;</span>
+<span class="fc bfc" id="L438" title="All 2 branches covered.">                if (inicio.isAfter(fin)) {</span>
+<span class="fc" id="L439">                        throw new BusinessException(&quot;La fecha desde no puede ser posterior a la fecha hasta.&quot;);</span>
+                }
+<span class="fc" id="L441">                return new Periodo(inicio, fin);</span>
+        }
+
+        private BigDecimal sumar(List&lt;BigDecimal&gt; valores) {
+<span class="fc" id="L445">                return valores.stream()</span>
+<span class="fc" id="L446">                                .filter(java.util.Objects::nonNull)</span>
+<span class="fc" id="L447">                                .reduce(BigDecimal.ZERO, BigDecimal::add);</span>
+        }
+
+        private String nombreVehiculo(String marca, String modelo, Integer anio) {
+<span class="fc" id="L451">                return (marca + &quot; &quot; + modelo + &quot; &quot; + anio).trim();</span>
+        }
+
+<span class="fc" id="L454">        private record Periodo(</span>
+                        LocalDate desde,
+                        LocalDate hasta) {
+        }
+
+<span class="fc" id="L459">        private record EstadoHistoricoVehiculo(</span>
+                        EstadoVehiculo estado,
+                        boolean publicado) {
+        }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

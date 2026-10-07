@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: uy.edu.ctc.pamahe.modules.imagenes.service.ImagenVehiculoServiceTest
+-------------------------------------------------------------------------------
+Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.185 s -- in uy.edu.ctc.pamahe.modules.imagenes.service.ImagenVehiculoServiceTest

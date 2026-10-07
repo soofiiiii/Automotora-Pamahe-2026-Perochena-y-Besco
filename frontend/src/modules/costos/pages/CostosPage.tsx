@@ -30,7 +30,7 @@ export default function CostosPage() {
         );
         setRows(costs);
       })
-      .catch((e) => show(errorMessage(e), "error"))
+      .catch((e) => show(errorMessage(e, "No pudimos cargar los costos de los vehículos."), "error"))
       .finally(() => setLoading(false));
   }, [show]);
   
@@ -38,7 +38,7 @@ export default function CostosPage() {
     <>
       <PageHeader
         title="Costos y rentabilidad"
-        description="Vista reservada a Dueño/Administrador. La API concentra el cálculo para evitar duplicar reglas financieras en el frontend."
+        description="Vista reservada a Dueño/Administrador. Los costos y la rentabilidad se calculan automáticamente a partir de la información registrada."
       />
       {loading ? (
         <LoadingState />
@@ -71,10 +71,16 @@ export default function CostosPage() {
                     label="Costo total"
                     value={formatCurrency(Number(cost.costoTotal ?? 0))}
                   />
-                  {cost.rentabilidad !== undefined && (
+                  {cost.historicoCerrado && cost.precioVentaFinal != null && (
                     <Item
-                      label="Rentabilidad"
-                      value={formatCurrency(Number(cost.rentabilidad ?? 0))}
+                      label="Precio final de venta"
+                      value={formatCurrency(Number(cost.precioVentaFinal))}
+                    />
+                  )}
+                  {cost.historicoCerrado && cost.rentabilidad != null && (
+                    <Item
+                      label="Rentabilidad de la venta"
+                      value={formatCurrency(Number(cost.rentabilidad))}
                     />
                   )}
                 </div>

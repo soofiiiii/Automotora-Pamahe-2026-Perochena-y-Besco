@@ -20,7 +20,7 @@ public class Cliente extends BaseEntity {
     @Column(name = "razon_social", length = 160)
     private String razonSocial;
 
-    @Column(nullable = false, unique = true, length = 30)
+    @Column(nullable = false, length = 30)
     private String documento;
 
     @Column(length = 40)

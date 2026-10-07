@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: uy.edu.ctc.pamahe.integration.RefaccionOfflineConcurrencyMySqlIntegrationTest
+-------------------------------------------------------------------------------
+Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 27.30 s -- in uy.edu.ctc.pamahe.integration.RefaccionOfflineConcurrencyMySqlIntegrationTest

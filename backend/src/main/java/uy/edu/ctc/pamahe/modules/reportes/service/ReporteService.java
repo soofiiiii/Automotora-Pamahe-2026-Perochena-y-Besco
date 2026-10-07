@@ -95,6 +95,9 @@ public class ReporteService {
                 BigDecimal rentabilidadPeriodo = sumar(
                                 ventasPeriodo.stream().map(Venta::getRentabilidadCalculada).toList());
 
+                long tareasTallerPendientes = this.refaccionRepository.countByActivoTrueAndEstadoTareaIn(
+                                List.of(EstadoTarea.PENDIENTE, EstadoTarea.EN_CURSO));
+
                 BigDecimal inversionActual = sumar(
                                 this.refaccionRepository.findByActivoTrueOrderByFechaDesc().stream()
                                                 .filter(r -> r.getEstadoTarea() != EstadoTarea.CANCELADA)
@@ -108,6 +111,7 @@ public class ReporteService {
                                 porEstado.getOrDefault(EstadoVehiculo.EN_TALLER.name(), 0L),
                                 porEstado.getOrDefault(EstadoVehiculo.DISPONIBLE.name(), 0L),
                                 ventas.size(),
+                                tareasTallerPendientes,
                                 this.clienteRepository.findByActivoTrueOrderByNombreAsc().size(),
                                 ventas.size(),
                                 ingresos,
@@ -165,25 +169,18 @@ public class ReporteService {
         public ReporteStockResponse stock(LocalDate desde, LocalDate hasta) {
                 Periodo periodo = resolverPeriodo(desde, hasta);
 
-                /*
-                 * Vehículos comprados específicamente dentro del período solicitado.
-                 */
+
                 List<Compra> comprasPeriodo = this.compraRepository
                                 .findByActivoTrueAndFechaCompraBetweenOrderByFechaCompraDesc(
                                                 periodo.desde(),
                                                 periodo.hasta());
 
-                /*
-                 * Para reconstruir el stock al cierre deben considerarse todas
-                 * las compras realizadas hasta la fecha final.
-                 */
+
                 List<Compra> comprasHastaCierre = this.compraRepository
                                 .findByActivoTrueAndFechaCompraLessThanEqualOrderByFechaCompraDesc(
                                                 periodo.hasta());
 
-                /*
-                 * Vehículos que ya habían sido vendidos al llegar a la fecha de cierre.
-                 */
+
                 Set<Long> vehiculosVendidosHastaCierre = this.ventaRepository
                                 .findByActivoTrueAndFechaVentaLessThanEqualOrderByFechaVentaDesc(
                                                 periodo.hasta())
@@ -193,10 +190,6 @@ public class ReporteService {
                                 .filter(Objects::nonNull)
                                 .collect(Collectors.toSet());
 
-                /*
-                 * Formaban parte del stock al cierre aquellos vehículos cuya compra
-                 * ya había ocurrido y cuya venta todavía no se había producido.
-                 */
                 List<Compra> stockAlCierre = comprasHastaCierre.stream()
                                 .filter(compra -> compra.getVehiculo() != null)
                                 .filter(compra -> compra.getVehiculo().getId() != null)
@@ -204,10 +197,7 @@ public class ReporteService {
                                                 compra.getVehiculo().getId()))
                                 .toList();
 
-                /*
-                 * Reconstruye estado y publicación que tenía cada vehículo
-                 * exactamente al cierre del período solicitado.
-                 */
+
                 Map<Long, EstadoHistoricoVehiculo> situacionHistorica = reconstruirSituacionVehiculos(
                                 stockAlCierre,
                                 periodo.hasta());
@@ -357,11 +347,6 @@ public class ReporteService {
 
                 Map<Long, EstadoHistoricoVehiculo> resultado = new HashMap<>();
 
-                /*
-                 * Todo vehículo comienza su ciclo en COMPRADO y no publicado.
-                 * Esta es la base conocida sobre la que se reproducen los cambios
-                 * registrados posteriormente en auditoría.
-                 */
                 for (Compra compra : stockAlCierre) {
                         var vehiculo = compra.getVehiculo();
 
@@ -386,10 +371,6 @@ public class ReporteService {
                                                 resultado.keySet(),
                                                 hastaExclusivo);
 
-                /*
-                 * Los eventos llegan ordenados cronológicamente.
-                 * Cada uno modifica la última situación conocida.
-                 */
                 for (Auditoria auditoria : historial) {
                         Long vehiculoId = auditoria.getEntidadId();
 

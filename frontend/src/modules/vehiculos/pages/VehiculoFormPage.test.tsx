@@ -1,55 +1,108 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { describe, expect, it, beforeEach, vi } from "vitest";
-import { MemoryRouter } from "react-router-dom";
-
+// @vitest-environment jsdom
+import "@testing-library/jest-dom/vitest";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
+import type { Vehiculo } from "../../../types/vehiculo.types";
 import VehiculoFormPage from "./VehiculoFormPage";
 
-const mockCreate = vi.hoisted(() => vi.fn());
-const mockUpdate = vi.hoisted(() => vi.fn());
-const mockNavigate = vi.hoisted(() => vi.fn());
-const mockShow = vi.hoisted(() => vi.fn());
-const mockGet = vi.hoisted(() => vi.fn());
-
-let mockRoles: string[] = ["ADMINISTRADOR"];
-
-vi.mock("../../../services/api", () => ({
-  vehiculoService: {
-    create: mockCreate,
-    update: mockUpdate,
-    get: mockGet,
-  },
+const mocks = vi.hoisted(() => ({
+  roles: ["ADMINISTRADOR"] as string[],
+  get: vi.fn<(id: number) => Promise<Vehiculo>>(),
+  update: vi.fn<
+    (id: number, body: Record<string, unknown>) => Promise<Vehiculo>
+  >(),
+  createWithVehicle: vi.fn(),
+  defineDestination: vi.fn(),
+  listClients: vi.fn(),
+  listByCategory: vi.fn(),
+  show: vi.fn(),
 }));
 
 vi.mock("../../../hooks/useAuth", () => ({
-  useAuth: () => ({
-    session: {
-      roles: mockRoles,
-    },
-  }),
+  useAuth: () => ({ session: { roles: mocks.roles } }),
+}));
+
+vi.mock("../../../hooks/useUsdUyuRate", () => ({
+  useUsdUyuRate: () => null,
+}));
+
+vi.mock("../../../services/api", () => ({
+  vehiculoService: {
+    get: mocks.get,
+    update: mocks.update,
+  },
+  compraService: {
+    createWithVehicle: mocks.createWithVehicle,
+    defineDestination: mocks.defineDestination,
+    receipt: vi.fn(),
+  },
+  clienteService: {
+    list: mocks.listClients,
+  },
+  parametroService: {
+    listByCategory: mocks.listByCategory,
+  },
+  ventaService: {
+    receipt: vi.fn(),
+  },
 }));
 
 vi.mock("../../../shared/feedback/useToast", () => ({
-  useToast: () => ({
-    show: mockShow,
-  }),
+  useToast: () => ({ show: mocks.show }),
 }));
 
-vi.mock("react-router-dom", async () => {
-  const actual = await vi.importActual<typeof import("react-router-dom")>(
-    "react-router-dom",
-  );
+const vehicle: Vehiculo = {
+  id: 4,
+  marca: "Toyota",
+  modelo: "Corolla",
+  tipoVehiculo: "AUTO",
+  tipoVehiculoLabel: "Automóvil",
+  anio: 2021,
+  matricula: "ABC1234",
+  numeroChasis: "CHASIS-1",
+  color: "Blanco",
+  kilometraje: 42000,
+  estado: "DISPONIBLE",
+  ubicacionActual: "LOCAL",
+  descripcionPublica: "Unidad disponible",
+  activo: true,
+  publicado: true,
+  precioVentaEstimado: 890000,
+  costoInicial: 700000,
+  observacionesInternas: "Control interno",
+};
 
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-  };
-});
-
-function renderForm() {
+function renderPage(path = "/app/vehiculos/nuevo") {
   return render(
-    <MemoryRouter>
-      <VehiculoFormPage />
+    <MemoryRouter initialEntries={[path]}>
+      <Routes>
+        <Route
+          path="/app/vehiculos/nuevo"
+          element={<VehiculoFormPage />}
+        />
+        <Route
+          path="/app/vehiculos/:id/editar"
+          element={<VehiculoFormPage />}
+        />
+        <Route
+          path="/app/vehiculos"
+          element={<div>Inventario</div>}
+        />
+      </Routes>
     </MemoryRouter>,
   );
 }
@@ -57,119 +110,241 @@ function renderForm() {
 beforeEach(() => {
   vi.clearAllMocks();
 
-  mockRoles = ["ADMINISTRADOR"];
+  mocks.roles = ["ADMINISTRADOR"];
+  mocks.get.mockResolvedValue(vehicle);
 
-  mockCreate.mockResolvedValue({});
-  mockUpdate.mockResolvedValue({});
-  mockGet.mockResolvedValue({});
+  mocks.listClients.mockResolvedValue([
+    {
+      id: 20,
+      nombre: "Ana",
+      apellido: "Pérez",
+      documento: "12345678",
+      tipoCliente: "VENDEDOR",
+      activo: true,
+    },
+  ]);
+
+  mocks.listByCategory.mockResolvedValue([
+    {
+      id: 1,
+      categoria: "TIPO_VEHICULO",
+      clave: "AUTO",
+      valor: "Automóvil",
+      descripcion: null,
+      activo: true,
+    },
+  ]);
+
+  mocks.createWithVehicle.mockResolvedValue({
+    id: 30,
+    vehiculoId: 10,
+    vehiculo: "Toyota Corolla",
+    clienteVendedorId: 20,
+    clienteVendedor: "Ana Pérez",
+    usuarioResponsableId: 1,
+    usuarioResponsable: "Admin",
+    fechaCompra: "2026-10-05",
+    costoAdquisicion: 700000,
+  });
+
+  mocks.update.mockResolvedValue(vehicle);
 });
 
+afterEach(() => cleanup());
+
+async function fillRequiredCreationFields() {
+  await screen.findByRole("option", { name: /Ana Pérez/i });
+
+  fireEvent.change(screen.getByLabelText("Marca"), {
+    target: { value: " Toyota " },
+  });
+
+  fireEvent.change(screen.getByLabelText("Modelo"), {
+    target: { value: " Corolla " },
+  });
+
+  fireEvent.change(screen.getByLabelText("Cliente vendedor"), {
+    target: { value: "20" },
+  });
+
+  fireEvent.change(screen.getByLabelText("Costo de adquisición"), {
+    target: { value: "700000" },
+  });
+}
+
 describe("VehiculoFormPage", () => {
-  it("muestra errores cuando los campos obligatorios están vacíos", async () => {
-    const user = userEvent.setup();
+  it(
+    "al crear un vehículo registra también la compra y normaliza los datos",
+    async () => {
+      renderPage();
+      await fillRequiredCreationFields();
 
-    renderForm();
+      fireEvent.change(screen.getByLabelText(/Matrícula/), {
+        target: { value: " abc1234 " },
+      });
 
-    await user.click(
-      screen.getByRole("button", { name: "Guardar vehículo" }),
-    );
+      fireEvent.change(screen.getByLabelText(/Número de chasis \/ VIN/), {
+        target: { value: " chasis-1 " },
+      });
 
-    expect(await screen.findAllByText("Obligatorio")).toHaveLength(2);
+      fireEvent.change(
+        screen.getByLabelText(/Precio de venta estimado/i),
+        {
+          target: { value: "890000" },
+        },
+      );
 
-    expect(mockCreate).not.toHaveBeenCalled();
-  });
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "Registrar vehículo y compra",
+        }),
+      );
 
-  it("crea un vehículo y normaliza la matrícula", async () => {
-    const user = userEvent.setup();
+      await waitFor(() =>
+        expect(mocks.createWithVehicle).toHaveBeenCalledWith(
+          expect.objectContaining({
+            vehiculo: expect.objectContaining({
+              marca: "Toyota",
+              modelo: "Corolla",
+              matricula: "ABC1234",
+              numeroChasis: "CHASIS-1",
+              ubicacionActual: "LOCAL",
+              precioVentaUsd: 890000,
+            }),
+            clienteVendedorId: 20,
+            costoAdquisicion: 700000,
+          }),
+        ),
+      );
 
-    renderForm();
+      expect(
+        await screen.findByText(
+          "Vehículo y compra registrados correctamente",
+        ),
+      ).toBeInTheDocument();
+    },
+  );
 
-    await user.type(screen.getByLabelText("Marca"), "Toyota");
-    await user.type(screen.getByLabelText("Modelo"), "Corolla");
-    await user.clear(screen.getByLabelText("Matrícula"));
-    await user.type(screen.getByLabelText("Matrícula"), "abc123");
+  it(
+    "registra la ubicación física sin alterar el estado operativo manualmente",
+    async () => {
+      renderPage();
+      await fillRequiredCreationFields();
 
-    await user.click(
-      screen.getByRole("button", { name: "Guardar vehículo" }),
-    );
+      fireEvent.change(
+        screen.getByLabelText("Ubicación física actual"),
+        {
+          target: { value: "TALLER_EXTERNO" },
+        },
+      );
 
-    await waitFor(() => {
-      expect(mockCreate).toHaveBeenCalledTimes(1);
-    });
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "Registrar vehículo y compra",
+        }),
+      );
 
-    expect(mockCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        marca: "Toyota",
-        modelo: "Corolla",
-        matricula: "ABC123",
+      await waitFor(() =>
+        expect(mocks.createWithVehicle).toHaveBeenCalledWith(
+          expect.objectContaining({
+            vehiculo: expect.objectContaining({
+              ubicacionActual: "TALLER_EXTERNO",
+            }),
+          }),
+        ),
+      );
+    },
+  );
+
+  it("permite el ingreso sin matrícula ni VIN", async () => {
+    renderPage();
+    await fillRequiredCreationFields();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Registrar vehículo y compra",
       }),
     );
 
-    expect(mockShow).toHaveBeenCalledWith(
-      "Vehículo guardado.",
-      "success",
-    );
-
-    expect(mockNavigate).toHaveBeenCalledWith("/app/vehiculos");
-  });
-
-  it("envía observaciones internas para un rol autorizado", async () => {
-    const user = userEvent.setup();
-
-    mockRoles = ["DUENO"];
-
-    renderForm();
-
-    await user.type(screen.getByLabelText("Marca"), "Toyota");
-    await user.type(screen.getByLabelText("Modelo"), "Corolla");
-    await user.type(screen.getByLabelText("Matrícula"), "ABC123");
-    await user.type(
-      screen.getByLabelText("Observaciones internas"),
-      "Vehículo revisado",
-    );
-
-    await user.click(
-      screen.getByRole("button", { name: "Guardar vehículo" }),
-    );
-
-    await waitFor(() => {
-      expect(mockCreate).toHaveBeenCalledTimes(1);
-    });
-
-    expect(mockCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        observacionesInternas: "Vehículo revisado",
-      }),
+    await waitFor(() =>
+      expect(mocks.createWithVehicle).toHaveBeenCalledWith(
+        expect.objectContaining({
+          vehiculo: expect.objectContaining({
+            matricula: undefined,
+            numeroChasis: undefined,
+          }),
+        }),
+      ),
     );
   });
 
-  it("no muestra ni envía observaciones internas para un rol no autorizado", async () => {
-    const user = userEvent.setup();
+  it(
+    "oculta observaciones internas para perfiles comerciales sin permiso gerencial",
+    async () => {
+      mocks.roles = ["VENDEDOR"];
+      renderPage();
 
-    mockRoles = ["VENDEDOR"];
+      await screen.findByRole("option", { name: /Ana Pérez/i });
+      await screen.findByRole("option", { name: "Automóvil" });
 
-    renderForm();
+      expect(
+        screen.queryByLabelText("Observaciones internas"),
+      ).not.toBeInTheDocument();
+    },
+  );
 
-    expect(
-      screen.queryByLabelText("Observaciones internas"),
-    ).not.toBeInTheDocument();
+  it(
+    "carga un vehículo existente y envía su actualización sin modificar la compra",
+    async () => {
+      renderPage("/app/vehiculos/4/editar");
 
-    await user.type(screen.getByLabelText("Marca"), "Toyota");
-    await user.type(screen.getByLabelText("Modelo"), "Corolla");
-    await user.type(screen.getByLabelText("Matrícula"), "ABC123");
+      expect(
+        await screen.findByDisplayValue("Corolla"),
+      ).toBeInTheDocument();
 
-    await user.click(
-      screen.getByRole("button", { name: "Guardar vehículo" }),
-    );
+      fireEvent.change(screen.getByLabelText("Color"), {
+        target: { value: "Gris" },
+      });
 
-    await waitFor(() => {
-      expect(mockCreate).toHaveBeenCalledTimes(1);
-    });
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "Guardar vehículo",
+        }),
+      );
 
-    expect(mockCreate).toHaveBeenCalledWith(
-      expect.not.objectContaining({
-        observacionesInternas: expect.anything(),
-      }),
-    );
-  });
+      await waitFor(() =>
+        expect(mocks.update).toHaveBeenCalledWith(
+          4,
+          expect.objectContaining({
+            color: "Gris",
+          }),
+        ),
+      );
+    },
+  );
+
+  it(
+    "mantiene el label exacto de un tipo dinámico desactivado al editar",
+    async () => {
+      mocks.get.mockResolvedValue({
+        ...vehicle,
+        tipoVehiculo: "UTE_DOBLE",
+        tipoVehiculoLabel: "Utilitario doble cabina",
+      });
+
+      mocks.listByCategory.mockResolvedValue([]);
+
+      renderPage("/app/vehiculos/4/editar");
+
+      expect(
+        await screen.findByRole("option", {
+          name: "Utilitario doble cabina (histórico)",
+        }),
+      ).toBeInTheDocument();
+
+      expect(
+        screen.getByLabelText("Tipo de vehículo"),
+      ).toHaveValue("UTE_DOBLE");
+    },
+  );
 });

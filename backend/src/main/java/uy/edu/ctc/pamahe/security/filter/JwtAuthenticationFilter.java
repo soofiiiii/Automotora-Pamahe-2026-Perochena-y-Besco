@@ -78,14 +78,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             this.authenticationEntryPoint.commence(
                     request,
                     response,
-                    new JwtAuthenticationException("AUTH_TOKEN_EXPIRED", "El token de acceso está vencido.", exception)
+                    new JwtAuthenticationException("AUTH_TOKEN_EXPIRED", "Tu sesión venció. Iniciá sesión nuevamente.", exception)
             );
         } catch (JwtException | IllegalArgumentException exception) {
             SecurityContextHolder.clearContext();
             this.authenticationEntryPoint.commence(
                     request,
                     response,
-                    new JwtAuthenticationException("AUTH_TOKEN_INVALID", "El token de acceso es inválido.", exception)
+                    new JwtAuthenticationException("AUTH_TOKEN_INVALID", "Tu sesión no es válida. Iniciá sesión nuevamente.", exception)
             );
         } catch (AuthenticationException exception) {
             SecurityContextHolder.clearContext();
@@ -94,7 +94,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     response,
                     new JwtAuthenticationException(
                             "AUTH_TOKEN_USER_INVALID",
-                            "El usuario asociado al token no existe o se encuentra inactivo.",
+                            "Tu cuenta ya no está habilitada para usar el sistema. Contactá a un administrador.",
                             exception
                     )
             );

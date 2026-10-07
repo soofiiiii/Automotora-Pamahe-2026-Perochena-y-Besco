@@ -64,4 +64,24 @@ class HttpsEnforcementFilterTest {
         verify(errorWriter).write(eq(request), eq(response), eq(HttpStatus.UPGRADE_REQUIRED.value()),
                 eq("HTTPS_REQUIRED"), any(), any());
     }
+    @Test
+    void rechazaListaDeProtocolosAunqueElProxySeaLocal() throws Exception {
+        var request = new MockHttpServletRequest("GET", "/api/vehiculos");
+        request.setRemoteAddr("127.0.0.1");
+        request.addHeader("X-Forwarded-Proto", "https, http");
+        var response = new MockHttpServletResponse();
+        new HttpsEnforcementFilter(errorWriter).doFilter(request, response, chain);
+        verify(chain, never()).doFilter(any(), any());
+        verify(errorWriter).write(eq(request), eq(response), eq(426), eq("HTTPS_REQUIRED"), any(), any());
+    }
+
+    @Test
+    void forwardedRfcSinProtoConfiableNoHabilitaHttps() throws Exception {
+        var request = new MockHttpServletRequest("GET", "/api/vehiculos");
+        request.setRemoteAddr("203.0.113.20");
+        request.addHeader("Forwarded", "for=127.0.0.1;proto=https");
+        var response = new MockHttpServletResponse();
+        new HttpsEnforcementFilter(errorWriter).doFilter(request, response, chain);
+        verify(chain, never()).doFilter(any(), any());
+    }
 }

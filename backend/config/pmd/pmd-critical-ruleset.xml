@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset name="Pamahe critical business complexity"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+    <description>
+        O-09 / CQ-01: las funciones de servicios críticos deben mantener complejidad ciclomática menor que 10.
+        El umbral 10 reporta y hace fallar cualquier método con complejidad mayor o igual a 10.
+    </description>
+
+    <rule ref="category/java/design.xml/CyclomaticComplexity">
+        <properties>
+            <property name="classReportLevel" value="999" />
+            <property name="methodReportLevel" value="10" />
+        </properties>
+    </rule>
+</ruleset>

@@ -58,4 +58,11 @@ class AuthServiceSessionPolicyTest {
         ReflectionTestUtils.setField(service, "refreshEnabled", true);
         assertThrows(IllegalStateException.class, service::validarPoliticaSesion);
     }
+    @Test
+    void rechazaRefreshAunqueElModoDigaReauthenticate() {
+        ReflectionTestUtils.setField(service, "renewalMode", "REAUTHENTICATE");
+        ReflectionTestUtils.setField(service, "refreshEnabled", true);
+        assertThrows(IllegalStateException.class, service::validarPoliticaSesion);
+    }
+
 }

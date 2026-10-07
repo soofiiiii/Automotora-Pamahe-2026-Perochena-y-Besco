@@ -18,7 +18,6 @@ import uy.edu.ctc.pamahe.modules.taller.dto.request.RefaccionUpdateRequest;
 import uy.edu.ctc.pamahe.modules.taller.dto.response.RefaccionResponse;
 import uy.edu.ctc.pamahe.modules.taller.model.EstadoTarea;
 import uy.edu.ctc.pamahe.modules.taller.service.RefaccionService;
-import uy.edu.ctc.pamahe.common.response.PageResponse;
 
 @RestController
 @RequestMapping("/taller/refacciones")
@@ -37,17 +36,6 @@ public class RefaccionController {
                     this.refaccionService.listarPorEstado(estado));
         }
         return ApiResponse.ok("Refacciones obtenidas correctamente.", this.refaccionService.listar());
-    }
-
-    @GetMapping("/paginado")
-    public ApiResponse<PageResponse<RefaccionResponse>> listarPaginado(
-            @RequestParam(required = false) EstadoTarea estado,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-
-        return ApiResponse.ok(
-                "Refacciones paginadas obtenidas correctamente.",
-                this.refaccionService.listarPaginado(estado, page, size));
     }
 
     @GetMapping("/vehiculos/{vehiculoId}")

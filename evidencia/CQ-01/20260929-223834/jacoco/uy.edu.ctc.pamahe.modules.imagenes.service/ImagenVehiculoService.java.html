@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ImagenVehiculoService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.imagenes.service</a> &gt; <span class="el_source">ImagenVehiculoService.java</span></div><h1>ImagenVehiculoService.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.imagenes.service;
+
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import uy.edu.ctc.pamahe.common.exception.BusinessException;
+import uy.edu.ctc.pamahe.common.exception.ResourceNotFoundException;
+import uy.edu.ctc.pamahe.modules.auditoria.service.AuditoriaService;
+import uy.edu.ctc.pamahe.modules.imagenes.dto.request.ActualizarVisibilidadImagenRequest;
+import uy.edu.ctc.pamahe.modules.imagenes.dto.response.ImagenVehiculoResponse;
+import uy.edu.ctc.pamahe.modules.imagenes.mapper.ImagenVehiculoMapper;
+import uy.edu.ctc.pamahe.modules.imagenes.model.ImagenVehiculo;
+import uy.edu.ctc.pamahe.modules.imagenes.repository.ImagenVehiculoRepository;
+import uy.edu.ctc.pamahe.modules.usuarios.service.UsuarioActualService;
+import uy.edu.ctc.pamahe.modules.vehiculos.model.Vehiculo;
+import uy.edu.ctc.pamahe.modules.vehiculos.service.VehiculoService;
+
+/**
+ * Coordina metadatos y archivo físico manteniendo las imágenes privadas por defecto.
+ * La publicación requiere una acción explícita y conserva como máximo una imagen principal por vehículo.
+ */
+@Service
+public class ImagenVehiculoService {
+
+    private final ImagenVehiculoRepository imagenVehiculoRepository;
+    private final VehiculoService vehiculoService;
+    private final UsuarioActualService usuarioActualService;
+    private final FileStorageService fileStorageService;
+    private final AuditoriaService auditoriaService;
+
+    public ImagenVehiculoService(ImagenVehiculoRepository imagenVehiculoRepository,
+            VehiculoService vehiculoService,
+            UsuarioActualService usuarioActualService,
+            FileStorageService fileStorageService,
+<span class="fc" id="L38">            AuditoriaService auditoriaService) {</span>
+<span class="fc" id="L39">        this.imagenVehiculoRepository = imagenVehiculoRepository;</span>
+<span class="fc" id="L40">        this.vehiculoService = vehiculoService;</span>
+<span class="fc" id="L41">        this.usuarioActualService = usuarioActualService;</span>
+<span class="fc" id="L42">        this.fileStorageService = fileStorageService;</span>
+<span class="fc" id="L43">        this.auditoriaService = auditoriaService;</span>
+<span class="fc" id="L44">    }</span>
+
+    @Transactional(readOnly = true)
+    public List&lt;ImagenVehiculoResponse&gt; listarPorVehiculo(Long vehiculoId) {
+<span class="fc" id="L48">        Vehiculo vehiculo = this.vehiculoService.buscarActivoPorId(vehiculoId);</span>
+<span class="fc" id="L49">        return this.imagenVehiculoRepository.findByVehiculoAndActivoTrueOrderByPrincipalDescIdAsc(vehiculo).stream()</span>
+<span class="fc" id="L50">                .map(ImagenVehiculoMapper::toResponse)</span>
+<span class="fc" id="L51">                .toList();</span>
+    }
+
+    @Transactional
+    public ImagenVehiculoResponse subir(Long vehiculoId, MultipartFile file, String descripcion) {
+<span class="fc" id="L56">        this.usuarioActualService.exigirRoles(&quot;ADMINISTRADOR&quot;, &quot;DUENO&quot;, &quot;VENDEDOR&quot;, &quot;TALLER&quot;);</span>
+<span class="fc" id="L57">        Vehiculo vehiculo = this.vehiculoService.buscarActivoPorId(vehiculoId);</span>
+<span class="fc" id="L58">        FileStorageService.StoredImage almacenada = this.fileStorageService.guardarImagenPrivada(vehiculoId, file);</span>
+
+<span class="fc" id="L60">        ImagenVehiculo imagen = new ImagenVehiculo();</span>
+<span class="fc" id="L61">        imagen.setVehiculo(vehiculo);</span>
+<span class="fc" id="L62">        imagen.setRutaArchivo(almacenada.relativePath());</span>
+<span class="fc" id="L63">        imagen.setDescripcion(this.normalizarDescripcion(descripcion));</span>
+        // Una carga nueva no se expone hasta que un rol comercial revise y habilite su uso público.
+<span class="fc" id="L65">        imagen.setPublica(false);</span>
+<span class="fc" id="L66">        imagen.setPrincipal(false);</span>
+
+<span class="fc" id="L68">        ImagenVehiculo guardada = this.imagenVehiculoRepository.save(imagen);</span>
+<span class="fc" id="L69">        this.auditoriaService.registrar(</span>
+                &quot;ALTA&quot;,
+                &quot;ImagenVehiculo&quot;,
+<span class="fc" id="L72">                guardada.getId(),</span>
+                &quot;Imagen privada asociada al vehículo &quot; + vehiculoId,
+                null,
+                &quot;vehiculoId=&quot; + vehiculoId + &quot;, publica=false, principal=false&quot;);
+<span class="fc" id="L76">        return ImagenVehiculoMapper.toResponse(guardada);</span>
+    }
+
+    @Transactional
+    public ImagenVehiculoResponse actualizarVisibilidad(Long id, ActualizarVisibilidadImagenRequest request) {
+<span class="fc" id="L81">        this.usuarioActualService.exigirRoles(&quot;ADMINISTRADOR&quot;, &quot;DUENO&quot;, &quot;VENDEDOR&quot;);</span>
+<span class="fc" id="L82">        ImagenVehiculo imagen = this.buscarActiva(id);</span>
+<span class="fc" id="L83">        boolean publicaAnterior = Boolean.TRUE.equals(imagen.getPublica());</span>
+<span class="fc" id="L84">        boolean principalAnterior = Boolean.TRUE.equals(imagen.getPrincipal());</span>
+
+        // Una principal privada sería incoherente: el catálogo no podría mostrarla.
+<span class="fc bfc" id="L87" title="All 4 branches covered.">        if (Boolean.TRUE.equals(request.principal()) &amp;&amp; !Boolean.TRUE.equals(request.publica())) {</span>
+<span class="fc" id="L88">            throw new BusinessException(&quot;Una imagen principal debe ser pública.&quot;);</span>
+        }
+
+<span class="fc bfc" id="L91" title="All 2 branches covered.">        if (publicaAnterior != Boolean.TRUE.equals(request.publica())) {</span>
+<span class="fc" id="L92">            String nuevaRuta = this.fileStorageService.moverVisibilidad(</span>
+<span class="fc" id="L93">                    imagen.getRutaArchivo(),</span>
+<span class="fc" id="L94">                    imagen.getVehiculo().getId(),</span>
+<span class="fc" id="L95">                    Boolean.TRUE.equals(request.publica()));</span>
+<span class="fc" id="L96">            imagen.setRutaArchivo(nuevaRuta);</span>
+        }
+
+<span class="pc bpc" id="L99" title="1 of 4 branches missed.">        boolean seraPrincipal = Boolean.TRUE.equals(request.publica()) &amp;&amp; Boolean.TRUE.equals(request.principal());</span>
+<span class="fc bfc" id="L100" title="All 2 branches covered.">        if (seraPrincipal) {</span>
+<span class="fc" id="L101">            this.imagenVehiculoRepository.quitarPrincipalDeOtras(imagen.getVehiculo(), imagen.getId());</span>
+        }
+<span class="fc" id="L103">        imagen.setPublica(request.publica());</span>
+<span class="fc" id="L104">        imagen.setPrincipal(seraPrincipal);</span>
+<span class="fc" id="L105">        ImagenVehiculo guardada = this.imagenVehiculoRepository.saveAndFlush(imagen);</span>
+
+<span class="fc" id="L107">        this.auditoriaService.registrar(</span>
+                &quot;CAMBIO_VISIBILIDAD&quot;,
+                &quot;ImagenVehiculo&quot;,
+<span class="fc" id="L110">                guardada.getId(),</span>
+                &quot;Actualización de visibilidad de imagen&quot;,
+                &quot;publica=&quot; + publicaAnterior + &quot;, principal=&quot; + principalAnterior,
+<span class="fc" id="L113">                &quot;publica=&quot; + guardada.getPublica() + &quot;, principal=&quot; + guardada.getPrincipal());</span>
+<span class="fc" id="L114">        return ImagenVehiculoMapper.toResponse(this.buscarActiva(id));</span>
+    }
+
+    @Transactional(readOnly = true)
+    public FileStorageService.StoredResource cargarArchivoInterno(Long id) {
+<span class="fc" id="L119">        ImagenVehiculo imagen = this.buscarActiva(id);</span>
+<span class="fc" id="L120">        return this.fileStorageService.cargar(imagen.getRutaArchivo());</span>
+    }
+
+    @Transactional
+    public void eliminarDefinitivamente(Long id) {
+<span class="fc" id="L125">        this.usuarioActualService.exigirRoles(&quot;ADMINISTRADOR&quot;, &quot;DUENO&quot;);</span>
+<span class="fc" id="L126">        ImagenVehiculo imagen = this.buscarActiva(id);</span>
+<span class="fc" id="L127">        String ruta = imagen.getRutaArchivo();</span>
+<span class="fc" id="L128">        String anterior = &quot;vehiculoId=&quot; + imagen.getVehiculo().getId()</span>
+<span class="fc" id="L129">                + &quot;, publica=&quot; + imagen.getPublica()</span>
+<span class="fc" id="L130">                + &quot;, principal=&quot; + imagen.getPrincipal();</span>
+        // Se confirma primero la eliminación relacional; el archivo físico se borra únicamente tras el commit.
+<span class="fc" id="L132">        this.imagenVehiculoRepository.delete(imagen);</span>
+<span class="fc" id="L133">        this.imagenVehiculoRepository.flush();</span>
+<span class="fc" id="L134">        this.fileStorageService.eliminarTrasCommit(ruta);</span>
+<span class="fc" id="L135">        this.auditoriaService.registrar(</span>
+                &quot;ELIMINACION&quot;,
+                &quot;ImagenVehiculo&quot;,
+                id,
+                &quot;Eliminación definitiva de imagen y archivo físico&quot;,
+                anterior,
+                null
+        );
+<span class="fc" id="L143">    }</span>
+
+    private ImagenVehiculo buscarActiva(Long id) {
+<span class="fc" id="L146">        ImagenVehiculo imagen = this.imagenVehiculoRepository.findById(id)</span>
+<span class="fc" id="L147">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;No se encontró la imagen solicitada.&quot;));</span>
+<span class="fc bfc" id="L148" title="All 2 branches covered.">        if (!Boolean.TRUE.equals(imagen.getActivo())) {</span>
+<span class="fc" id="L149">            throw new ResourceNotFoundException(&quot;No se encontró una imagen activa con el identificador solicitado.&quot;);</span>
+        }
+<span class="fc" id="L151">        return imagen;</span>
+    }
+
+    private String normalizarDescripcion(String descripcion) {
+<span class="pc bpc" id="L155" title="1 of 2 branches missed.">        if (descripcion == null) {</span>
+<span class="nc" id="L156">            return null;</span>
+        }
+<span class="fc" id="L158">        String limpia = descripcion.trim();</span>
+<span class="pc bpc" id="L159" title="1 of 2 branches missed.">        return limpia.isEmpty() ? null : limpia;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

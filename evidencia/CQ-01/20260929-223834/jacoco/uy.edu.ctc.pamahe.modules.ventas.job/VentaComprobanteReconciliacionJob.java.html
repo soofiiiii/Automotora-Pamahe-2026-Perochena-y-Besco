@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VentaComprobanteReconciliacionJob.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.ventas.job</a> &gt; <span class="el_source">VentaComprobanteReconciliacionJob.java</span></div><h1>VentaComprobanteReconciliacionJob.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.ventas.job;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+import uy.edu.ctc.pamahe.modules.ventas.event.VentaComprobanteListener;
+import uy.edu.ctc.pamahe.modules.ventas.model.EstadoComprobanteVenta;
+import uy.edu.ctc.pamahe.modules.ventas.repository.VentaRepository;
+import uy.edu.ctc.pamahe.modules.ventas.service.VentaComprobanteService;
+
+/**
+ * Reconciliación durable de ventas sin comprobante. Se ejecuta al iniciar la
+ * aplicación y luego periódicamente para recuperar fallos transitorios o
+ * procesos interrumpidos después del commit de la venta.
+ */
+@Component
+public class VentaComprobanteReconciliacionJob {
+
+<span class="fc" id="L27">    private static final Logger log = LoggerFactory.getLogger(VentaComprobanteReconciliacionJob.class);</span>
+    private static final int LOTE = 25;
+<span class="fc" id="L29">    private static final List&lt;EstadoComprobanteVenta&gt; REINTENTABLES = List.of(</span>
+            EstadoComprobanteVenta.PENDIENTE,
+            EstadoComprobanteVenta.ERROR);
+
+    private final VentaRepository ventaRepository;
+    private final VentaComprobanteListener listener;
+
+    public VentaComprobanteReconciliacionJob(
+            VentaRepository ventaRepository,
+<span class="fc" id="L38">            VentaComprobanteListener listener) {</span>
+<span class="fc" id="L39">        this.ventaRepository = ventaRepository;</span>
+<span class="fc" id="L40">        this.listener = listener;</span>
+<span class="fc" id="L41">    }</span>
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void reconciliarAlArranque() {
+<span class="fc" id="L45">        reconciliar();</span>
+<span class="fc" id="L46">    }</span>
+
+    @Scheduled(
+            fixedDelayString = &quot;${app.comprobantes.reconciliacion-ms:60000}&quot;,
+            initialDelayString = &quot;${app.comprobantes.reconciliacion-inicial-ms:15000}&quot;)
+    public void reconciliarProgramado() {
+<span class="nc" id="L52">        reconciliar();</span>
+<span class="nc" id="L53">    }</span>
+
+    void reconciliar() {
+<span class="fc" id="L56">        List&lt;Long&gt; ventaIds = this.ventaRepository.findIdsComprobantesReintentables(</span>
+                REINTENTABLES,
+                VentaComprobanteService.MAX_INTENTOS,
+<span class="fc" id="L59">                LocalDateTime.now(),</span>
+<span class="fc" id="L60">                PageRequest.of(0, LOTE));</span>
+
+<span class="fc bfc" id="L62" title="All 2 branches covered.">        if (!ventaIds.isEmpty()) {</span>
+<span class="fc" id="L63">            log.info(&quot;Reprogramando {} comprobante(s) de venta pendiente(s).&quot;, ventaIds.size());</span>
+        }
+
+<span class="fc" id="L66">        ventaIds.forEach(this.listener::reintentar);</span>
+<span class="fc" id="L67">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

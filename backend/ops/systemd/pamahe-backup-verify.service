@@ -1,0 +1,14 @@
+[Unit]
+Description=Restauracion temporal y verificacion de backup Pamahe
+Wants=network-online.target
+After=network-online.target
+[Service]
+Type=oneshot
+User=pamahe-backup
+Group=pamahe-backup
+EnvironmentFile=/etc/pamahe/backup-verify.env
+ExecStart=/bin/bash /opt/pamahe/backend/ops/backup/verify-latest.sh
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStartSec=2h

@@ -18,6 +18,14 @@ import uy.edu.ctc.pamahe.modules.taller.model.Refaccion;
 import uy.edu.ctc.pamahe.modules.vehiculos.model.Vehiculo;
 
 public interface RefaccionRepository extends JpaRepository<Refaccion, Long> {
+    @Query("""
+            select coalesce(sum(r.costoRepuestos + r.costoManoObra + r.costoServiciosExternos), 0)
+            from Refaccion r
+            where r.vehiculo = :vehiculo and r.activo = true and r.estadoTarea <> :excluido
+            """)
+    java.math.BigDecimal sumarCostoActivo(@Param("vehiculo") Vehiculo vehiculo,
+            @Param("excluido") EstadoTarea excluido);
+
     List<Refaccion> findByActivoTrueOrderByFechaDesc();
 
     Page<Refaccion> findByActivoTrueOrderByFechaDesc(Pageable pageable);
@@ -26,31 +34,24 @@ public interface RefaccionRepository extends JpaRepository<Refaccion, Long> {
 
     List<Refaccion> findByVehiculoAndActivoTrueOrderByFechaDesc(Vehiculo vehiculo);
 
-    List<Refaccion> findByVehiculoAndActivoTrueAndEstadoTareaNotOrderByFechaDesc(Vehiculo vehiculo, EstadoTarea estadoTarea);
+    List<Refaccion> findByVehiculoAndActivoTrueAndEstadoTareaNotOrderByFechaDesc(Vehiculo vehiculo,
+            EstadoTarea estadoTarea);
 
     List<Refaccion> findByEstadoTareaAndActivoTrueOrderByFechaAsc(EstadoTarea estadoTarea);
 
-    Page<Refaccion> findByEstadoTareaAndActivoTrueOrderByFechaAsc(EstadoTarea estadoTarea, Pageable pageable);
-
     boolean existsByVehiculo(Vehiculo vehiculo);
+
+    boolean existsByVehiculoAndActivoTrue(Vehiculo vehiculo);
+
+    boolean existsByVehiculoAndActivoTrueAndEstadoTareaNot(Vehiculo vehiculo, EstadoTarea estadoTarea);
 
     boolean existsByVehiculoAndActivoTrueAndEstadoTareaIn(Vehiculo vehiculo, Collection<EstadoTarea> estados);
 
+    long countByActivoTrueAndEstadoTareaIn(Collection<EstadoTarea> estados);
+
     Optional<Refaccion> findByIdOperacionOffline(String idOperacionOffline);
 
-    /** Lectura sincronizada para asegurar la visibilidad de los cambios realizados por reintentos concurrentes. */
     @Lock(LockModeType.PESSIMISTIC_READ)
     @Query("select r from Refaccion r where r.id = :id")
     Optional<Refaccion> findByIdConBloqueoLectura(@Param("id") Long id);
-
-    @Query("""
-        select r
-        from Refaccion r
-        where r.activo = true
-          and (:desde is null or r.fecha >= :desde)
-          and (:hasta is null or r.fecha <= :hasta)
-        order by r.fecha desc
-        """)
-    List<Refaccion> findByActivoTrueAndPeriodo(@Param("desde") LocalDate desde, @Param("hasta") LocalDate hasta);
-
 }

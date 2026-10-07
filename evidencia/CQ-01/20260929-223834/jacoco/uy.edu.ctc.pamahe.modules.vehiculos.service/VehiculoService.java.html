@@ -1,0 +1,647 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VehiculoService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.vehiculos.service</a> &gt; <span class="el_source">VehiculoService.java</span></div><h1>VehiculoService.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.vehiculos.service;
+
+import org.springframework.data.domain.PageRequest;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import uy.edu.ctc.pamahe.common.exception.BusinessException;
+import uy.edu.ctc.pamahe.common.exception.ResourceNotFoundException;
+import uy.edu.ctc.pamahe.common.response.PageResponse;
+import uy.edu.ctc.pamahe.common.util.SecurityUtils;
+import uy.edu.ctc.pamahe.modules.auditoria.service.AuditoriaService;
+import uy.edu.ctc.pamahe.modules.compras.dto.response.CompraResponse;
+import uy.edu.ctc.pamahe.modules.compras.mapper.CompraMapper;
+import uy.edu.ctc.pamahe.modules.compras.model.Compra;
+import uy.edu.ctc.pamahe.modules.compras.repository.CompraRepository;
+import uy.edu.ctc.pamahe.modules.imagenes.mapper.ImagenVehiculoMapper;
+import uy.edu.ctc.pamahe.modules.imagenes.repository.ImagenVehiculoRepository;
+import uy.edu.ctc.pamahe.modules.parametros.repository.ParametroRepository;
+import uy.edu.ctc.pamahe.modules.taller.mapper.RefaccionMapper;
+import uy.edu.ctc.pamahe.modules.taller.model.EstadoTarea;
+import uy.edu.ctc.pamahe.modules.taller.repository.RefaccionRepository;
+import uy.edu.ctc.pamahe.modules.vehiculos.dto.request.CambiarEstadoVehiculoRequest;
+import uy.edu.ctc.pamahe.modules.vehiculos.dto.request.CambiarPublicacionVehiculoRequest;
+import uy.edu.ctc.pamahe.modules.vehiculos.dto.request.VehiculoRequest;
+import uy.edu.ctc.pamahe.modules.vehiculos.dto.response.historial.CompraHistorialComercialResponse;
+import uy.edu.ctc.pamahe.modules.vehiculos.dto.response.historial.RefaccionHistorialComercialResponse;
+import uy.edu.ctc.pamahe.modules.vehiculos.dto.response.historial.VehiculoHistorialComercialResponse;
+import uy.edu.ctc.pamahe.modules.vehiculos.dto.response.historial.VehiculoHistorialGerencialResponse;
+import uy.edu.ctc.pamahe.modules.vehiculos.dto.response.historial.VehiculoHistorialTallerResponse;
+import uy.edu.ctc.pamahe.modules.vehiculos.repository.VehiculoRepository;
+import uy.edu.ctc.pamahe.modules.ventas.dto.response.VentaDetalleGerencialResponse;
+import uy.edu.ctc.pamahe.modules.ventas.dto.response.VentaResponse;
+import uy.edu.ctc.pamahe.modules.ventas.mapper.VentaMapper;
+import uy.edu.ctc.pamahe.modules.ventas.model.Venta;
+import uy.edu.ctc.pamahe.modules.ventas.repository.VentaRepository;
+import uy.edu.ctc.pamahe.modules.vehiculos.mapper.VehiculoMapper;
+import uy.edu.ctc.pamahe.modules.vehiculos.model.EstadoVehiculo;
+import uy.edu.ctc.pamahe.modules.vehiculos.model.Vehiculo;
+
+import java.math.BigDecimal;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+/**
+ * Administra la entidad central del dominio y protege su ciclo de vida mediante
+ * una máquina de estados.
+ * Las transiciones se validan en backend para mantener sincronizados
+ * inventario, taller, catálogo y ventas
+ * incluso cuando una solicitud no proviene de la interfaz prevista.
+ */
+@Service
+public class VehiculoService {
+
+    // La tabla explícita documenta las rutas válidas y evita estados alcanzados por
+    // asignaciones aisladas.
+<span class="fc" id="L58">    private static final Map&lt;EstadoVehiculo, EnumSet&lt;EstadoVehiculo&gt;&gt; TRANSICIONES = Map.of(</span>
+            EstadoVehiculo.COMPRADO,
+<span class="fc" id="L60">            EnumSet.of(EstadoVehiculo.EN_TALLER, EstadoVehiculo.DISPONIBLE, EstadoVehiculo.DADO_DE_BAJA),</span>
+<span class="fc" id="L61">            EstadoVehiculo.EN_TALLER, EnumSet.of(EstadoVehiculo.DISPONIBLE, EstadoVehiculo.DADO_DE_BAJA),</span>
+            EstadoVehiculo.DISPONIBLE,
+<span class="fc" id="L63">            EnumSet.of(EstadoVehiculo.RESERVADO, EstadoVehiculo.EN_TALLER, EstadoVehiculo.VENDIDO,</span>
+                    EstadoVehiculo.DADO_DE_BAJA),
+<span class="fc" id="L65">            EstadoVehiculo.RESERVADO, EnumSet.of(EstadoVehiculo.DISPONIBLE, EstadoVehiculo.VENDIDO),</span>
+<span class="fc" id="L66">            EstadoVehiculo.VENDIDO, EnumSet.noneOf(EstadoVehiculo.class),</span>
+<span class="fc" id="L67">            EstadoVehiculo.DADO_DE_BAJA, EnumSet.noneOf(EstadoVehiculo.class));</span>
+
+<span class="fc" id="L69">    private static final Map&lt;String, Map&lt;EstadoVehiculo, EnumSet&lt;EstadoVehiculo&gt;&gt;&gt; TRANSICIONES_MANUALES = Map.of(</span>
+<span class="fc" id="L70">            &quot;VENDEDOR&quot;, Map.of(</span>
+<span class="fc" id="L71">                    EstadoVehiculo.COMPRADO, EnumSet.of(EstadoVehiculo.DISPONIBLE),</span>
+<span class="fc" id="L72">                    EstadoVehiculo.DISPONIBLE, EnumSet.of(EstadoVehiculo.RESERVADO, EstadoVehiculo.EN_TALLER),</span>
+<span class="fc" id="L73">                    EstadoVehiculo.RESERVADO, EnumSet.of(EstadoVehiculo.DISPONIBLE)),</span>
+<span class="fc" id="L74">            &quot;TALLER&quot;, Map.of(</span>
+<span class="fc" id="L75">                    EstadoVehiculo.COMPRADO, EnumSet.of(EstadoVehiculo.EN_TALLER),</span>
+<span class="fc" id="L76">                    EstadoVehiculo.DISPONIBLE, EnumSet.of(EstadoVehiculo.EN_TALLER),</span>
+<span class="fc" id="L77">                    EstadoVehiculo.EN_TALLER, EnumSet.of(EstadoVehiculo.DISPONIBLE)));</span>
+
+    private final VehiculoRepository vehiculoRepository;
+    private final CompraRepository compraRepository;
+    private final RefaccionRepository refaccionRepository;
+    private final AuditoriaService auditoriaService;
+    private final VentaRepository ventaRepository;
+    private final ImagenVehiculoRepository imagenVehiculoRepository;
+    private final ParametroRepository parametroRepository;
+
+    public VehiculoService(VehiculoRepository vehiculoRepository,
+            CompraRepository compraRepository,
+            RefaccionRepository refaccionRepository,
+            AuditoriaService auditoriaService,
+            VentaRepository ventaRepository,
+            ImagenVehiculoRepository imagenVehiculoRepository,
+<span class="fc" id="L93">            ParametroRepository parametroRepository) {</span>
+<span class="fc" id="L94">        this.vehiculoRepository = vehiculoRepository;</span>
+<span class="fc" id="L95">        this.compraRepository = compraRepository;</span>
+<span class="fc" id="L96">        this.refaccionRepository = refaccionRepository;</span>
+<span class="fc" id="L97">        this.auditoriaService = auditoriaService;</span>
+<span class="fc" id="L98">        this.ventaRepository = ventaRepository;</span>
+<span class="fc" id="L99">        this.imagenVehiculoRepository = imagenVehiculoRepository;</span>
+<span class="fc" id="L100">        this.parametroRepository = parametroRepository;</span>
+<span class="fc" id="L101">    }</span>
+
+    @Transactional(readOnly = true)
+    public List&lt;?&gt; listar(
+            EstadoVehiculo estado,
+            String marca,
+            String modelo,
+            String tipoVehiculo,
+            Integer anioDesde,
+            Integer anioHasta,
+            BigDecimal precioMin,
+            BigDecimal precioMax,
+            Boolean publicado,
+            Boolean disponibleComercial) {
+<span class="fc" id="L115">        validarFiltrosStock(anioDesde, anioHasta, precioMin, precioMax);</span>
+
+<span class="fc" id="L117">        List&lt;Vehiculo&gt; vehiculos = this.vehiculoRepository.buscarConFiltros(</span>
+<span class="fc" id="L118">                estado, normalizarFiltro(marca), normalizarFiltro(modelo), normalizarClave(tipoVehiculo),</span>
+                anioDesde, anioHasta, precioMin, precioMax, publicado, disponibleComercial);
+<span class="fc" id="L120">        return proyectarListaSegunRol(vehiculos);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse&lt;?&gt; listarPaginado(
+            EstadoVehiculo estado,
+            String marca,
+            String modelo,
+            String tipoVehiculo,
+            Integer anioDesde,
+            Integer anioHasta,
+            BigDecimal precioMin,
+            BigDecimal precioMax,
+            Boolean publicado,
+            Boolean disponibleComercial,
+            int page,
+            int size) {
+<span class="fc" id="L137">        validarFiltrosStock(anioDesde, anioHasta, precioMin, precioMax);</span>
+<span class="fc" id="L138">        validarPaginacion(page, size);</span>
+<span class="fc" id="L139">        var resultado = this.vehiculoRepository.buscarConFiltrosPaginado(</span>
+<span class="fc" id="L140">                estado, normalizarFiltro(marca), normalizarFiltro(modelo), normalizarClave(tipoVehiculo),</span>
+                anioDesde, anioHasta, precioMin, precioMax, publicado, disponibleComercial,
+<span class="fc" id="L142">                PageRequest.of(page, size));</span>
+
+<span class="fc" id="L144">        Map&lt;String, String&gt; etiquetas = etiquetasTipoVehiculo();</span>
+<span class="fc bfc" id="L145" title="All 2 branches covered.">        if (SecurityUtils.tieneAlgunRol(&quot;ADMINISTRADOR&quot;, &quot;DUENO&quot;)) {</span>
+<span class="fc" id="L146">            return PageResponse.from(resultado, v -&gt; VehiculoMapper.toResponse(v, etiquetaTipoVehiculo(v, etiquetas)));</span>
+        }
+<span class="fc bfc" id="L148" title="All 2 branches covered.">        if (SecurityUtils.tieneAlgunRol(&quot;VENDEDOR&quot;)) {</span>
+<span class="fc" id="L149">            return PageResponse.from(resultado, v -&gt; VehiculoMapper.toComercialResponse(v, etiquetaTipoVehiculo(v, etiquetas)));</span>
+        }
+<span class="fc bfc" id="L151" title="All 2 branches covered.">        if (SecurityUtils.tieneAlgunRol(&quot;TALLER&quot;)) {</span>
+<span class="fc" id="L152">            return PageResponse.from(resultado, v -&gt; VehiculoMapper.toTallerResponse(v, etiquetaTipoVehiculo(v, etiquetas)));</span>
+        }
+<span class="fc" id="L154">        throw new AccessDeniedException(&quot;El rol autenticado no puede consultar vehículos.&quot;);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public Object obtener(Long id) {
+<span class="fc" id="L159">        Vehiculo vehiculo = this.buscarActivoPorId(id);</span>
+
+<span class="fc" id="L161">        String tipoVehiculoLabel = etiquetaTipoVehiculo(vehiculo, etiquetasTipoVehiculo());</span>
+<span class="fc bfc" id="L162" title="All 2 branches covered.">        if (SecurityUtils.tieneAlgunRol(&quot;ADMINISTRADOR&quot;, &quot;DUENO&quot;)) {</span>
+<span class="fc" id="L163">            return VehiculoMapper.toResponse(vehiculo, tipoVehiculoLabel);</span>
+        }
+
+<span class="fc bfc" id="L166" title="All 2 branches covered.">        if (SecurityUtils.tieneAlgunRol(&quot;VENDEDOR&quot;)) {</span>
+<span class="fc" id="L167">            return VehiculoMapper.toComercialResponse(vehiculo, tipoVehiculoLabel);</span>
+        }
+
+<span class="fc bfc" id="L170" title="All 2 branches covered.">        if (SecurityUtils.tieneAlgunRol(&quot;TALLER&quot;)) {</span>
+<span class="fc" id="L171">            return VehiculoMapper.toTallerResponse(vehiculo, tipoVehiculoLabel);</span>
+        }
+
+<span class="fc" id="L174">        throw new AccessDeniedException(</span>
+                &quot;El rol autenticado no puede consultar vehículos.&quot;);
+    }
+
+    @Transactional
+    public Object crear(VehiculoRequest request) {
+<span class="fc" id="L180">        Vehiculo vehiculo = new Vehiculo();</span>
+<span class="fc" id="L181">        vehiculo.setEstado(EstadoVehiculo.COMPRADO);</span>
+<span class="fc" id="L182">        vehiculo.setPublicado(false);</span>
+<span class="fc" id="L183">        this.cargarDatosEditables(vehiculo, request);</span>
+<span class="fc" id="L184">        Vehiculo guardado = this.vehiculoRepository.save(vehiculo);</span>
+<span class="fc" id="L185">        this.auditoriaService.registrar(</span>
+                &quot;ALTA&quot;,
+                &quot;Vehiculo&quot;,
+<span class="fc" id="L188">                guardado.getId(),</span>
+                &quot;Creación de vehículo&quot;,
+                null,
+<span class="fc" id="L191">                this.resumenVehiculo(guardado));</span>
+<span class="fc" id="L192">        return this.proyectarSegunRol(guardado);</span>
+    }
+
+    @Transactional
+    public Object actualizar(Long id, VehiculoRequest request) {
+<span class="fc" id="L197">        Vehiculo vehiculo = this.buscarActivoPorIdConBloqueo(id);</span>
+<span class="fc" id="L198">        String anterior = this.resumenVehiculo(vehiculo);</span>
+<span class="fc" id="L199">        this.cargarDatosEditables(vehiculo, request);</span>
+<span class="fc" id="L200">        Vehiculo guardado = this.vehiculoRepository.save(vehiculo);</span>
+<span class="fc" id="L201">        this.auditoriaService.registrar(</span>
+                &quot;MODIFICACION&quot;,
+                &quot;Vehiculo&quot;,
+<span class="fc" id="L204">                guardado.getId(),</span>
+                &quot;Actualización de datos técnicos y comerciales del vehículo&quot;,
+                anterior,
+<span class="fc" id="L207">                this.resumenVehiculo(guardado));</span>
+<span class="fc" id="L208">        return this.proyectarSegunRol(guardado);</span>
+    }
+
+    @Transactional
+    public Object cambiarEstado(Long id, CambiarEstadoVehiculoRequest request) {
+        // VENDIDO necesita una venta persistida; permitirlo manualmente rompería el
+        // cierre económico.
+<span class="fc bfc" id="L215" title="All 2 branches covered.">        if (request.estado() == EstadoVehiculo.VENDIDO) {</span>
+<span class="fc" id="L216">            throw new BusinessException(&quot;El estado VENDIDO se asigna exclusivamente al registrar una venta válida.&quot;);</span>
+        }
+<span class="fc" id="L218">        Vehiculo vehiculo = this.buscarActivoPorIdConBloqueo(id);</span>
+<span class="fc" id="L219">        this.validarPermisoTransicionManual(vehiculo.getEstado(), request.estado());</span>
+<span class="fc" id="L220">        this.aplicarTransicion(vehiculo, request.estado(), request.motivo(), false);</span>
+<span class="fc" id="L221">        return this.proyectarSegunRol(vehiculo);</span>
+    }
+
+    @Transactional
+    public Object cambiarPublicacion(Long id, CambiarPublicacionVehiculoRequest request) {
+<span class="fc" id="L226">        Vehiculo vehiculo = this.buscarActivoPorIdConBloqueo(id);</span>
+<span class="fc" id="L227">        boolean anterior = Boolean.TRUE.equals(vehiculo.getPublicado());</span>
+        // La publicación es una consecuencia comercial del estado, no un estado
+        // paralelo independiente.
+<span class="fc bfc" id="L230" title="All 4 branches covered.">        if (Boolean.TRUE.equals(request.publicado()) &amp;&amp; vehiculo.getEstado() != EstadoVehiculo.DISPONIBLE) {</span>
+<span class="fc" id="L231">            throw new BusinessException(&quot;Solo se pueden publicar vehículos en estado DISPONIBLE.&quot;);</span>
+        }
+<span class="fc bfc" id="L233" title="All 2 branches covered.">        if (Boolean.TRUE.equals(request.publicado())</span>
+<span class="pc bpc" id="L234" title="1 of 2 branches missed.">                &amp;&amp; (vehiculo.getPrecioVentaEstimado() == null</span>
+<span class="fc bfc" id="L235" title="All 2 branches covered.">                        || vehiculo.getPrecioVentaEstimado().compareTo(BigDecimal.ZERO) &lt;= 0)) {</span>
+<span class="fc" id="L236">            throw new BusinessException(</span>
+                    &quot;Para publicar un vehículo debe existir un precio de venta estimado mayor que cero.&quot;);
+        }
+<span class="fc" id="L239">        vehiculo.setPublicado(request.publicado());</span>
+<span class="fc" id="L240">        this.vehiculoRepository.save(vehiculo);</span>
+<span class="fc" id="L241">        this.auditoriaService.registrar(</span>
+                &quot;CAMBIO_PUBLICACION&quot;,
+                &quot;Vehiculo&quot;,
+<span class="fc" id="L244">                vehiculo.getId(),</span>
+<span class="fc bfc" id="L245" title="All 2 branches covered.">                request.publicado() ? &quot;Vehículo habilitado para el catálogo&quot; : &quot;Vehículo retirado del catálogo&quot;,</span>
+                &quot;publicado=&quot; + anterior,
+<span class="fc" id="L247">                &quot;publicado=&quot; + request.publicado());</span>
+<span class="fc" id="L248">        return this.proyectarSegunRol(vehiculo);</span>
+    }
+
+    @Transactional
+    public void cambiarEstadoPorSistema(Vehiculo vehiculo, EstadoVehiculo destino, String motivo) {
+<span class="fc" id="L253">        this.aplicarTransicion(vehiculo, destino, motivo, true);</span>
+<span class="fc" id="L254">    }</span>
+
+    @Transactional
+    public void marcarVendidoPorVenta(Vehiculo vehiculo, Long ventaId) {
+<span class="fc bfc" id="L258" title="All 4 branches covered.">        if (vehiculo.getEstado() != EstadoVehiculo.DISPONIBLE &amp;&amp; vehiculo.getEstado() != EstadoVehiculo.RESERVADO) {</span>
+<span class="fc" id="L259">            throw new BusinessException(&quot;Solo un vehículo DISPONIBLE o RESERVADO puede cerrarse como vendido.&quot;);</span>
+        }
+<span class="fc" id="L261">        this.aplicarTransicion(vehiculo, EstadoVehiculo.VENDIDO, &quot;Venta registrada: &quot; + ventaId, true);</span>
+<span class="fc" id="L262">    }</span>
+
+    @Transactional
+    public void desactivar(Long id) {
+<span class="fc" id="L266">        Vehiculo vehiculo = this.buscarActivoPorIdConBloqueo(id);</span>
+<span class="fc bfc" id="L267" title="All 2 branches covered.">        if (vehiculo.getEstado() == EstadoVehiculo.VENDIDO</span>
+<span class="fc bfc" id="L268" title="All 2 branches covered.">                || this.compraRepository.existsByVehiculo(vehiculo)</span>
+<span class="fc bfc" id="L269" title="All 2 branches covered.">                || this.refaccionRepository.existsByVehiculo(vehiculo)</span>
+<span class="fc bfc" id="L270" title="All 2 branches covered.">                || this.ventaRepository.existsByVehiculo(vehiculo)) {</span>
+<span class="fc" id="L271">            throw new BusinessException(</span>
+                    &quot;No se puede desactivar un vehículo que forma parte del historial de operaciones. Utilizá DADO_DE_BAJA cuando corresponda comercialmente.&quot;);
+        }
+<span class="fc" id="L274">        String anterior = this.resumenVehiculo(vehiculo);</span>
+<span class="fc" id="L275">        vehiculo.setActivo(false);</span>
+<span class="fc" id="L276">        vehiculo.setPublicado(false);</span>
+<span class="fc" id="L277">        this.vehiculoRepository.save(vehiculo);</span>
+<span class="fc" id="L278">        this.auditoriaService.registrar(</span>
+                &quot;BAJA_LOGICA&quot;,
+                &quot;Vehiculo&quot;,
+<span class="fc" id="L281">                vehiculo.getId(),</span>
+                &quot;Desactivación de vehículo&quot;,
+                anterior,
+                &quot;activo=false, publicado=false&quot;);
+<span class="fc" id="L285">    }</span>
+
+    @Transactional(readOnly = true)
+    public Object historial(Long id) {
+<span class="fc" id="L289">        Vehiculo vehiculo = this.buscarPorId(id);</span>
+<span class="fc" id="L290">        Compra compra = this.compraRepository.findByVehiculoAndActivoTrue(vehiculo).orElse(null);</span>
+<span class="fc" id="L291">        var refacciones = this.refaccionRepository.findByVehiculoAndActivoTrueOrderByFechaDesc(vehiculo);</span>
+<span class="fc" id="L292">        Venta venta = this.ventaRepository.findByVehiculoAndActivoTrue(vehiculo).orElse(null);</span>
+<span class="fc" id="L293">        var imagenes = this.imagenVehiculoRepository.findByVehiculoAndActivoTrueOrderByPrincipalDescIdAsc(vehiculo)</span>
+<span class="fc" id="L294">                .stream().map(ImagenVehiculoMapper::toResponse).toList();</span>
+<span class="fc" id="L295">        var eventos = this.auditoriaService.eventosVehiculo(id);</span>
+<span class="fc" id="L296">        String tipoVehiculoLabel = etiquetaTipoVehiculo(vehiculo, etiquetasTipoVehiculo());</span>
+
+<span class="fc bfc" id="L298" title="All 2 branches covered.">        if (SecurityUtils.tieneAlgunRol(&quot;ADMINISTRADOR&quot;, &quot;DUENO&quot;)) {</span>
+<span class="fc" id="L299">            return new VehiculoHistorialGerencialResponse(</span>
+<span class="fc" id="L300">                    VehiculoMapper.toResponse(vehiculo, tipoVehiculoLabel),</span>
+<span class="fc" id="L301">                    compraGerencial(compra),</span>
+<span class="fc" id="L302">                    refacciones.stream().map(RefaccionMapper::toResponse).toList(),</span>
+<span class="fc" id="L303">                    ventaGerencial(venta),</span>
+                    imagenes,
+                    eventos);
+        }
+
+<span class="fc bfc" id="L308" title="All 2 branches covered.">        if (SecurityUtils.tieneAlgunRol(&quot;VENDEDOR&quot;)) {</span>
+<span class="fc" id="L309">            return new VehiculoHistorialComercialResponse(</span>
+<span class="fc" id="L310">                    VehiculoMapper.toComercialResponse(vehiculo, tipoVehiculoLabel),</span>
+<span class="fc" id="L311">                    compraComercial(compra),</span>
+<span class="fc" id="L312">                    refacciones.stream().map(r -&gt; new RefaccionHistorialComercialResponse(</span>
+<span class="fc" id="L313">                            r.getId(), r.getFecha(), r.getTipoTrabajo(), r.getDescripcion(), r.getEstadoTarea()))</span>
+<span class="fc" id="L314">                            .toList(),</span>
+<span class="fc" id="L315">                    ventaComercial(venta),</span>
+                    imagenes,
+                    eventos);
+        }
+
+<span class="fc bfc" id="L320" title="All 2 branches covered.">        if (SecurityUtils.tieneAlgunRol(&quot;TALLER&quot;)) {</span>
+<span class="fc" id="L321">            return new VehiculoHistorialTallerResponse(</span>
+<span class="fc" id="L322">                    VehiculoMapper.toTallerResponse(vehiculo, tipoVehiculoLabel),</span>
+<span class="fc" id="L323">                    fechaCompra(compra),</span>
+<span class="fc" id="L324">                    refacciones.stream().map(RefaccionMapper::toResponse).toList(),</span>
+<span class="fc" id="L325">                    fechaVenta(venta),</span>
+                    imagenes,
+                    eventos);
+        }
+
+<span class="fc" id="L330">        throw new AccessDeniedException(&quot;El rol autenticado no puede consultar el historial del vehículo.&quot;);</span>
+    }
+
+    private CompraResponse compraGerencial(Compra compra) {
+<span class="fc bfc" id="L334" title="All 2 branches covered.">        return compra == null ? null : CompraMapper.toResponse(compra);</span>
+    }
+
+    private VentaDetalleGerencialResponse ventaGerencial(Venta venta) {
+<span class="fc bfc" id="L338" title="All 2 branches covered.">        return venta == null ? null : VentaMapper.toDetalleGerencial(venta);</span>
+    }
+
+    private VentaResponse ventaComercial(Venta venta) {
+<span class="fc bfc" id="L342" title="All 2 branches covered.">        return venta == null ? null : VentaMapper.toResponse(venta);</span>
+    }
+
+    private CompraHistorialComercialResponse compraComercial(Compra compra) {
+<span class="fc bfc" id="L346" title="All 2 branches covered.">        if (compra == null) {</span>
+<span class="fc" id="L347">            return null;</span>
+        }
+<span class="fc" id="L349">        String nombreCliente = compra.getClienteVendedor().getNombre();</span>
+<span class="fc" id="L350">        String apellidoCliente = compra.getClienteVendedor().getApellido();</span>
+<span class="pc bpc" id="L351" title="3 of 4 branches missed.">        if (apellidoCliente != null &amp;&amp; !apellidoCliente.isBlank()) {</span>
+<span class="nc" id="L352">            nombreCliente = nombreCliente + &quot; &quot; + apellidoCliente.trim();</span>
+        }
+<span class="fc" id="L354">        return new CompraHistorialComercialResponse(</span>
+<span class="fc" id="L355">                compra.getId(), compra.getClienteVendedor().getId(), nombreCliente, compra.getFechaCompra());</span>
+    }
+
+    private java.time.LocalDate fechaCompra(Compra compra) {
+<span class="fc bfc" id="L359" title="All 2 branches covered.">        return compra == null ? null : compra.getFechaCompra();</span>
+    }
+
+    private java.time.LocalDate fechaVenta(Venta venta) {
+<span class="fc bfc" id="L363" title="All 2 branches covered.">        return venta == null ? null : venta.getFechaVenta();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public Vehiculo buscarPorId(Long id) {
+<span class="fc" id="L368">        return this.vehiculoRepository.findById(id)</span>
+<span class="fc" id="L369">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;No se encontró el vehículo solicitado.&quot;));</span>
+    }
+
+    @Transactional(readOnly = true)
+    public Vehiculo buscarActivoPorId(Long id) {
+<span class="fc" id="L374">        Vehiculo vehiculo = this.buscarPorId(id);</span>
+<span class="fc bfc" id="L375" title="All 2 branches covered.">        if (!Boolean.TRUE.equals(vehiculo.getActivo())) {</span>
+<span class="fc" id="L376">            throw new ResourceNotFoundException(&quot;No se encontró un vehículo activo con el identificador solicitado.&quot;);</span>
+        }
+<span class="fc" id="L378">        return vehiculo;</span>
+    }
+
+    @Transactional
+    /**
+     * Bloquea la fila durante operaciones que podrían competir por el mismo
+     * vehículo.
+     */
+    public Vehiculo buscarActivoPorIdConBloqueo(Long id) {
+<span class="fc" id="L387">        Vehiculo vehiculo = this.vehiculoRepository.findByIdForUpdate(id)</span>
+<span class="fc" id="L388">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;No se encontró el vehículo solicitado.&quot;));</span>
+<span class="fc bfc" id="L389" title="All 2 branches covered.">        if (!Boolean.TRUE.equals(vehiculo.getActivo())) {</span>
+<span class="fc" id="L390">            throw new ResourceNotFoundException(&quot;No se encontró un vehículo activo con el identificador solicitado.&quot;);</span>
+        }
+<span class="fc" id="L392">        return vehiculo;</span>
+    }
+
+    /**
+     * Restringe las transiciones manuales según la responsabilidad operativa de
+     * cada rol.
+     */
+    private void validarPermisoTransicionManual(EstadoVehiculo origen, EstadoVehiculo destino) {
+<span class="fc bfc" id="L400" title="All 2 branches covered.">        if (SecurityUtils.tieneAlgunRol(&quot;ADMINISTRADOR&quot;, &quot;DUENO&quot;)) {</span>
+<span class="fc" id="L401">            return;</span>
+        }
+<span class="fc bfc" id="L403" title="All 2 branches covered.">        if (transicionManualPermitida(&quot;VENDEDOR&quot;, origen, destino)) {</span>
+<span class="fc" id="L404">            return;</span>
+        }
+<span class="fc bfc" id="L406" title="All 2 branches covered.">        if (transicionManualPermitida(&quot;TALLER&quot;, origen, destino)) {</span>
+<span class="fc" id="L407">            return;</span>
+        }
+<span class="fc" id="L409">        throw new AccessDeniedException(&quot;El rol autenticado no puede realizar esta transición de estado.&quot;);</span>
+    }
+
+    private boolean transicionManualPermitida(String rol, EstadoVehiculo origen, EstadoVehiculo destino) {
+<span class="fc bfc" id="L413" title="All 2 branches covered.">        if (!SecurityUtils.tieneAlgunRol(rol)) {</span>
+<span class="fc" id="L414">            return false;</span>
+        }
+<span class="fc" id="L416">        Map&lt;EstadoVehiculo, EnumSet&lt;EstadoVehiculo&gt;&gt; porOrigen = TRANSICIONES_MANUALES.get(rol);</span>
+<span class="fc" id="L417">        return porOrigen.getOrDefault(origen, EnumSet.noneOf(EstadoVehiculo.class)).contains(destino);</span>
+    }
+
+    private void aplicarTransicion(Vehiculo vehiculo,
+            EstadoVehiculo destino,
+            String motivo,
+            boolean operacionInterna) {
+<span class="fc" id="L424">        EstadoVehiculo origen = vehiculo.getEstado();</span>
+<span class="fc" id="L425">        validarTransicionBasica(origen, destino, operacionInterna);</span>
+<span class="fc" id="L426">        validarCompraActivaParaAvance(vehiculo, origen, destino);</span>
+<span class="fc" id="L427">        validarTareasCerradasParaDisponible(vehiculo, origen, destino);</span>
+
+<span class="fc" id="L429">        vehiculo.setEstado(destino);</span>
+<span class="fc" id="L430">        despublicarSiNoDisponible(vehiculo, destino);</span>
+<span class="fc" id="L431">        this.vehiculoRepository.save(vehiculo);</span>
+<span class="fc" id="L432">        this.auditoriaService.registrar(</span>
+                &quot;CAMBIO_ESTADO&quot;,
+                &quot;Vehiculo&quot;,
+<span class="fc" id="L435">                vehiculo.getId(),</span>
+<span class="fc" id="L436">                normalizarMotivoTransicion(motivo),</span>
+                &quot;estado=&quot; + origen,
+<span class="fc" id="L438">                &quot;estado=&quot; + destino + &quot;, publicado=&quot; + vehiculo.getPublicado());</span>
+<span class="fc" id="L439">    }</span>
+
+    private void validarTransicionBasica(EstadoVehiculo origen, EstadoVehiculo destino, boolean operacionInterna) {
+<span class="fc bfc" id="L442" title="All 2 branches covered.">        if (origen == destino) {</span>
+<span class="fc" id="L443">            throw new BusinessException(&quot;El vehículo ya se encuentra en el estado &quot; + destino + &quot;.&quot;);</span>
+        }
+<span class="fc bfc" id="L445" title="All 2 branches covered.">        if (!TRANSICIONES.getOrDefault(origen, EnumSet.noneOf(EstadoVehiculo.class)).contains(destino)) {</span>
+<span class="fc" id="L446">            throw new BusinessException(&quot;La transición &quot; + origen + &quot; → &quot; + destino + &quot; no está permitida.&quot;);</span>
+        }
+<span class="pc bpc" id="L448" title="1 of 4 branches missed.">        if (destino == EstadoVehiculo.VENDIDO &amp;&amp; !operacionInterna) {</span>
+<span class="nc" id="L449">            throw new BusinessException(&quot;El estado VENDIDO solo puede asignarse desde el registro de venta.&quot;);</span>
+        }
+<span class="fc" id="L451">    }</span>
+
+    private void validarCompraActivaParaAvance(Vehiculo vehiculo, EstadoVehiculo origen, EstadoVehiculo destino) {
+<span class="fc bfc" id="L454" title="All 4 branches covered.">        if (origen == EstadoVehiculo.COMPRADO</span>
+                &amp;&amp; destino != EstadoVehiculo.DADO_DE_BAJA
+<span class="fc bfc" id="L456" title="All 2 branches covered.">                &amp;&amp; !this.compraRepository.existsByVehiculoAndActivoTrue(vehiculo)) {</span>
+<span class="fc" id="L457">            throw new BusinessException(</span>
+                    &quot;El vehículo debe tener una compra activa antes de avanzar en su ciclo operativo.&quot;);
+        }
+<span class="fc" id="L460">    }</span>
+
+    private void validarTareasCerradasParaDisponible(Vehiculo vehiculo, EstadoVehiculo origen, EstadoVehiculo destino) {
+<span class="fc bfc" id="L463" title="All 4 branches covered.">        if (origen != EstadoVehiculo.EN_TALLER || destino != EstadoVehiculo.DISPONIBLE) {</span>
+<span class="fc" id="L464">            return;</span>
+        }
+<span class="fc" id="L466">        boolean tieneTareasAbiertas = this.refaccionRepository.existsByVehiculoAndActivoTrueAndEstadoTareaIn(</span>
+<span class="fc" id="L467">                vehiculo, List.of(EstadoTarea.PENDIENTE, EstadoTarea.EN_CURSO));</span>
+<span class="fc bfc" id="L468" title="All 2 branches covered.">        if (tieneTareasAbiertas) {</span>
+<span class="fc" id="L469">            throw new BusinessException(</span>
+                    &quot;No se puede marcar el vehículo como DISPONIBLE mientras existan tareas pendientes o en curso.&quot;);
+        }
+<span class="fc" id="L472">    }</span>
+
+    private void despublicarSiNoDisponible(Vehiculo vehiculo, EstadoVehiculo destino) {
+<span class="fc bfc" id="L475" title="All 2 branches covered.">        if (destino != EstadoVehiculo.DISPONIBLE) {</span>
+<span class="fc" id="L476">            vehiculo.setPublicado(false);</span>
+        }
+<span class="fc" id="L478">    }</span>
+
+    private String normalizarMotivoTransicion(String motivo) {
+<span class="pc bpc" id="L481" title="1 of 4 branches missed.">        return motivo == null || motivo.isBlank() ? &quot;Cambio controlado de estado&quot; : motivo.trim();</span>
+    }
+
+    private void cargarDatosEditables(Vehiculo vehiculo, VehiculoRequest request) {
+<span class="fc" id="L485">        vehiculo.setMarca(request.marca().trim());</span>
+<span class="fc" id="L486">        vehiculo.setModelo(request.modelo().trim());</span>
+<span class="fc" id="L487">        vehiculo.setTipoVehiculo(validarTipoVehiculo(request.tipoVehiculo(), vehiculo.getTipoVehiculo()));</span>
+<span class="fc" id="L488">        vehiculo.setAnio(request.anio());</span>
+<span class="fc" id="L489">        vehiculo.setMatricula(this.normalizarOpcional(request.matricula()));</span>
+<span class="fc" id="L490">        vehiculo.setNumeroChasis(this.normalizarOpcional(request.numeroChasis()));</span>
+<span class="fc" id="L491">        vehiculo.setColor(this.normalizarOpcional(request.color()));</span>
+<span class="fc" id="L492">        vehiculo.setKilometraje(request.kilometraje());</span>
+<span class="fc" id="L493">        vehiculo.setPrecioVentaEstimado(</span>
+<span class="fc bfc" id="L494" title="All 2 branches covered.">                request.precioVentaEstimado() == null ? BigDecimal.ZERO : request.precioVentaEstimado());</span>
+<span class="fc" id="L495">        vehiculo.setDescripcionPublica(this.normalizarOpcional(request.descripcionPublica()));</span>
+
+<span class="fc" id="L497">        String observacionesSolicitadas = this.normalizarOpcional(request.observacionesInternas());</span>
+<span class="fc bfc" id="L498" title="All 2 branches covered.">        if (SecurityUtils.tieneAlgunRol(&quot;ADMINISTRADOR&quot;, &quot;DUENO&quot;)) {</span>
+<span class="fc" id="L499">            vehiculo.setObservacionesInternas(observacionesSolicitadas);</span>
+<span class="fc bfc" id="L500" title="All 2 branches covered.">        } else if (observacionesSolicitadas != null) {</span>
+<span class="fc" id="L501">            throw new AccessDeniedException(</span>
+                    &quot;Solo ADMINISTRADOR o DUENO pueden modificar observaciones internas del vehículo.&quot;);
+        }
+<span class="fc" id="L504">    }</span>
+
+    private Object proyectarSegunRol(Vehiculo vehiculo) {
+<span class="fc" id="L507">        String tipoVehiculoLabel = etiquetaTipoVehiculo(vehiculo, etiquetasTipoVehiculo());</span>
+<span class="fc bfc" id="L508" title="All 2 branches covered.">        if (SecurityUtils.tieneAlgunRol(&quot;ADMINISTRADOR&quot;, &quot;DUENO&quot;)) {</span>
+<span class="fc" id="L509">            return VehiculoMapper.toResponse(vehiculo, tipoVehiculoLabel);</span>
+        }
+<span class="fc bfc" id="L511" title="All 2 branches covered.">        if (SecurityUtils.tieneAlgunRol(&quot;VENDEDOR&quot;)) {</span>
+<span class="fc" id="L512">            return VehiculoMapper.toComercialResponse(vehiculo, tipoVehiculoLabel);</span>
+        }
+<span class="pc bpc" id="L514" title="1 of 2 branches missed.">        if (SecurityUtils.tieneAlgunRol(&quot;TALLER&quot;)) {</span>
+<span class="fc" id="L515">            return VehiculoMapper.toTallerResponse(vehiculo, tipoVehiculoLabel);</span>
+        }
+<span class="nc" id="L517">        throw new AccessDeniedException(&quot;El rol autenticado no puede recibir información del vehículo.&quot;);</span>
+    }
+
+    private String normalizarOpcional(String valor) {
+<span class="fc bfc" id="L521" title="All 2 branches covered.">        if (valor == null) {</span>
+<span class="fc" id="L522">            return null;</span>
+        }
+<span class="fc" id="L524">        String limpio = valor.trim();</span>
+<span class="fc bfc" id="L525" title="All 2 branches covered.">        return limpio.isEmpty() ? null : limpio;</span>
+    }
+
+    private List&lt;?&gt; proyectarListaSegunRol(List&lt;Vehiculo&gt; vehiculos) {
+<span class="fc" id="L529">        Map&lt;String, String&gt; etiquetas = etiquetasTipoVehiculo();</span>
+<span class="fc bfc" id="L530" title="All 2 branches covered.">        if (SecurityUtils.tieneAlgunRol(&quot;ADMINISTRADOR&quot;, &quot;DUENO&quot;)) {</span>
+<span class="fc" id="L531">            return vehiculos.stream()</span>
+<span class="fc" id="L532">                    .map(v -&gt; VehiculoMapper.toResponse(v, etiquetaTipoVehiculo(v, etiquetas)))</span>
+<span class="fc" id="L533">                    .toList();</span>
+        }
+<span class="fc bfc" id="L535" title="All 2 branches covered.">        if (SecurityUtils.tieneAlgunRol(&quot;VENDEDOR&quot;)) {</span>
+<span class="fc" id="L536">            return vehiculos.stream()</span>
+<span class="fc" id="L537">                    .map(v -&gt; VehiculoMapper.toComercialResponse(v, etiquetaTipoVehiculo(v, etiquetas)))</span>
+<span class="fc" id="L538">                    .toList();</span>
+        }
+<span class="fc bfc" id="L540" title="All 2 branches covered.">        if (SecurityUtils.tieneAlgunRol(&quot;TALLER&quot;)) {</span>
+<span class="fc" id="L541">            return vehiculos.stream()</span>
+<span class="fc" id="L542">                    .map(v -&gt; VehiculoMapper.toTallerResponse(v, etiquetaTipoVehiculo(v, etiquetas)))</span>
+<span class="fc" id="L543">                    .toList();</span>
+        }
+<span class="fc" id="L545">        throw new AccessDeniedException(&quot;El rol autenticado no puede consultar vehículos.&quot;);</span>
+    }
+
+    /**
+     * Incluye parámetros inactivos para que los registros históricos conserven el
+     * texto de negocio con el que fueron configurados, sin volver a ofrecerlos en
+     * nuevas selecciones.
+     */
+    private Map&lt;String, String&gt; etiquetasTipoVehiculo() {
+<span class="fc" id="L554">        return this.parametroRepository.findByCategoriaOrderByClaveAsc(&quot;TIPO_VEHICULO&quot;).stream()</span>
+<span class="fc" id="L555">                .collect(Collectors.toMap(</span>
+<span class="fc" id="L556">                        p -&gt; p.getClave().trim().toUpperCase(java.util.Locale.ROOT),</span>
+<span class="pc bpc" id="L557" title="2 of 4 branches missed.">                        p -&gt; p.getValor() == null || p.getValor().isBlank() ? p.getClave() : p.getValor().trim(),</span>
+<span class="nc" id="L558">                        (primero, segundo) -&gt; primero));</span>
+    }
+
+    private String etiquetaTipoVehiculo(Vehiculo vehiculo, Map&lt;String, String&gt; etiquetas) {
+<span class="fc" id="L562">        String clave = normalizarClave(vehiculo.getTipoVehiculo());</span>
+<span class="fc bfc" id="L563" title="All 2 branches covered.">        return clave == null ? null : etiquetas.getOrDefault(clave, clave);</span>
+    }
+
+    private void validarFiltrosStock(Integer anioDesde, Integer anioHasta, BigDecimal precioMin, BigDecimal precioMax) {
+<span class="fc" id="L567">        validarRangoAnios(anioDesde, anioHasta);</span>
+<span class="fc" id="L568">        validarPrecioNoNegativo(precioMin);</span>
+<span class="fc" id="L569">        validarPrecioNoNegativo(precioMax);</span>
+<span class="fc" id="L570">        validarRangoPrecios(precioMin, precioMax);</span>
+<span class="fc" id="L571">    }</span>
+
+    private void validarRangoAnios(Integer anioDesde, Integer anioHasta) {
+<span class="pc bpc" id="L574" title="2 of 6 branches missed.">        if (anioDesde != null &amp;&amp; anioHasta != null &amp;&amp; anioDesde &gt; anioHasta) {</span>
+<span class="fc" id="L575">            throw new BusinessException(&quot;El año desde no puede ser mayor que el año hasta.&quot;);</span>
+        }
+<span class="fc" id="L577">    }</span>
+
+    private void validarPrecioNoNegativo(BigDecimal precio) {
+<span class="fc bfc" id="L580" title="All 4 branches covered.">        if (precio != null &amp;&amp; precio.compareTo(BigDecimal.ZERO) &lt; 0) {</span>
+<span class="fc" id="L581">            throw new BusinessException(&quot;Los filtros de precio no pueden ser negativos.&quot;);</span>
+        }
+<span class="fc" id="L583">    }</span>
+
+    private void validarRangoPrecios(BigDecimal precioMin, BigDecimal precioMax) {
+<span class="pc bpc" id="L586" title="2 of 6 branches missed.">        if (precioMin != null &amp;&amp; precioMax != null &amp;&amp; precioMin.compareTo(precioMax) &gt; 0) {</span>
+<span class="fc" id="L587">            throw new BusinessException(&quot;El precio mínimo no puede ser mayor que el precio máximo.&quot;);</span>
+        }
+<span class="fc" id="L589">    }</span>
+
+    private void validarPaginacion(int page, int size) {
+<span class="fc bfc" id="L592" title="All 2 branches covered.">        if ((long) page * size &gt; Integer.MAX_VALUE) {</span>
+<span class="fc" id="L593">            throw new BusinessException(&quot;La página solicitada excede el offset admitido.&quot;);</span>
+        }
+<span class="fc bfc" id="L595" title="All 2 branches covered.">        if (page &lt; 0) {</span>
+<span class="fc" id="L596">            throw new BusinessException(&quot;La página no puede ser negativa.&quot;);</span>
+        }
+<span class="fc bfc" id="L598" title="All 4 branches covered.">        if (size &lt; 1 || size &gt; 100) {</span>
+<span class="fc" id="L599">            throw new BusinessException(&quot;El tamaño de página debe estar entre 1 y 100.&quot;);</span>
+        }
+<span class="fc" id="L601">    }</span>
+
+    private String validarTipoVehiculo(String tipoVehiculo, String tipoActual) {
+<span class="fc" id="L604">        String clave = normalizarClave(tipoVehiculo);</span>
+<span class="fc bfc" id="L605" title="All 2 branches covered.">        if (clave == null) {</span>
+<span class="fc" id="L606">            return null;</span>
+        }
+
+        // Un tipo desactivado sigue siendo válido para el registro histórico que ya
+        // lo utiliza. Solo una selección nueva debe requerir que el parámetro esté activo.
+<span class="fc bfc" id="L611" title="All 2 branches covered.">        if (clave.equals(normalizarClave(tipoActual))) {</span>
+<span class="fc" id="L612">            return clave;</span>
+        }
+
+<span class="fc bfc" id="L615" title="All 2 branches covered.">        if (this.parametroRepository.findByCategoriaAndClaveAndActivoTrue(&quot;TIPO_VEHICULO&quot;, clave).isEmpty()) {</span>
+<span class="fc" id="L616">            throw new BusinessException(&quot;El tipo de vehículo indicado no está habilitado en parámetros.&quot;);</span>
+        }
+<span class="fc" id="L618">        return clave;</span>
+    }
+
+    private String normalizarClave(String valor) {
+<span class="fc" id="L622">        String limpio = normalizarFiltro(valor);</span>
+<span class="fc bfc" id="L623" title="All 2 branches covered.">        return limpio == null ? null : limpio.toUpperCase(java.util.Locale.ROOT);</span>
+    }
+
+    private String resumenVehiculo(Vehiculo vehiculo) {
+<span class="fc" id="L627">        return &quot;marca=&quot; + vehiculo.getMarca()</span>
+<span class="fc" id="L628">                + &quot;, modelo=&quot; + vehiculo.getModelo()</span>
+<span class="fc" id="L629">                + &quot;, anio=&quot; + vehiculo.getAnio()</span>
+<span class="fc" id="L630">                + &quot;, kilometraje=&quot; + vehiculo.getKilometraje()</span>
+<span class="fc" id="L631">                + &quot;, precioVentaEstimado=&quot; + vehiculo.getPrecioVentaEstimado()</span>
+<span class="fc" id="L632">                + &quot;, estado=&quot; + vehiculo.getEstado()</span>
+<span class="fc" id="L633">                + &quot;, publicado=&quot; + vehiculo.getPublicado();</span>
+    }
+
+    private String normalizarFiltro(String valor) {
+<span class="fc bfc" id="L637" title="All 2 branches covered.">        if (valor == null) {</span>
+<span class="fc" id="L638">            return null;</span>
+        }
+
+<span class="fc" id="L641">        String limpio = valor.trim();</span>
+
+<span class="fc bfc" id="L643" title="All 2 branches covered.">        return limpio.isEmpty() ? null : limpio;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

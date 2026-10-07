@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LoginAttemptService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.auth.service</a> &gt; <span class="el_source">LoginAttemptService.java</span></div><h1>LoginAttemptService.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.auth.service;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Locale;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import uy.edu.ctc.pamahe.common.exception.RateLimitExceededException;
+
+/**
+ * Protección en memoria para una instancia de la API. En producción se complementa
+ * con el rate limiting del reverse proxy para cubrir múltiples procesos/nodos.
+ */
+@Service
+public class LoginAttemptService {
+
+<span class="fc" id="L22">    private static final Logger LOGGER = LoggerFactory.getLogger(LoginAttemptService.class);</span>
+
+<span class="fc" id="L24">    private final ConcurrentHashMap&lt;String, AttemptState&gt; userAttempts = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="fc" id="L25">    private final ConcurrentHashMap&lt;String, AttemptState&gt; ipAttempts = new ConcurrentHashMap&lt;&gt;();</span>
+
+    private final int maxUserAttempts;
+    private final int maxIpAttempts;
+    private final Duration window;
+    private final Duration blockDuration;
+
+    public LoginAttemptService(
+            @Value(&quot;${app.security.login-rate-limit.max-attempts-user:5}&quot;) int maxUserAttempts,
+            @Value(&quot;${app.security.login-rate-limit.max-attempts-ip:20}&quot;) int maxIpAttempts,
+            @Value(&quot;${app.security.login-rate-limit.window-seconds:300}&quot;) long windowSeconds,
+<span class="fc" id="L36">            @Value(&quot;${app.security.login-rate-limit.block-seconds:900}&quot;) long blockSeconds) {</span>
+<span class="fc" id="L37">        this.maxUserAttempts = maxUserAttempts;</span>
+<span class="fc" id="L38">        this.maxIpAttempts = maxIpAttempts;</span>
+<span class="fc" id="L39">        this.window = Duration.ofSeconds(windowSeconds);</span>
+<span class="fc" id="L40">        this.blockDuration = Duration.ofSeconds(blockSeconds);</span>
+<span class="fc" id="L41">    }</span>
+
+    public void assertAllowed(String username, String ip) {
+<span class="fc" id="L44">        Instant now = Instant.now();</span>
+<span class="fc" id="L45">        assertAllowed(userAttempts, normalizeUser(username), now);</span>
+<span class="fc" id="L46">        assertAllowed(ipAttempts, normalizeIp(ip), now);</span>
+<span class="fc" id="L47">    }</span>
+
+    public void recordFailure(String username, String ip) {
+<span class="fc" id="L50">        Instant now = Instant.now();</span>
+<span class="fc" id="L51">        recordFailure(userAttempts, normalizeUser(username), maxUserAttempts, now);</span>
+<span class="fc" id="L52">        recordFailure(ipAttempts, normalizeIp(ip), maxIpAttempts, now);</span>
+<span class="fc" id="L53">    }</span>
+
+    public void recordSuccess(String username) {
+<span class="fc" id="L56">        userAttempts.remove(normalizeUser(username));</span>
+<span class="fc" id="L57">    }</span>
+
+    private void assertAllowed(ConcurrentHashMap&lt;String, AttemptState&gt; store, String key, Instant now) {
+<span class="fc" id="L60">        AttemptState state = store.get(key);</span>
+<span class="fc bfc" id="L61" title="All 2 branches covered.">        if (state == null) {</span>
+<span class="fc" id="L62">            return;</span>
+        }
+<span class="fc" id="L64">        synchronized (state) {</span>
+<span class="fc" id="L65">            resetExpiredWindow(state, now);</span>
+<span class="pc bpc" id="L66" title="2 of 4 branches missed.">            if (state.blockedUntil != null &amp;&amp; now.isBefore(state.blockedUntil)) {</span>
+<span class="fc" id="L67">                long retry = Duration.between(now, state.blockedUntil).toSeconds() + 1;</span>
+<span class="fc" id="L68">                throw new RateLimitExceededException(</span>
+                        &quot;Se alcanzó el límite temporal de intentos de inicio de sesión.&quot;, retry);
+            }
+<span class="nc" id="L71">        }</span>
+<span class="nc" id="L72">    }</span>
+
+    private void recordFailure(ConcurrentHashMap&lt;String, AttemptState&gt; store, String key, int threshold, Instant now) {
+<span class="fc" id="L75">        AttemptState state = store.computeIfAbsent(key, ignored -&gt; new AttemptState(now));</span>
+<span class="fc" id="L76">        synchronized (state) {</span>
+<span class="fc" id="L77">            resetExpiredWindow(state, now);</span>
+<span class="fc" id="L78">            state.failures++;</span>
+<span class="fc bfc" id="L79" title="All 2 branches covered.">            if (state.failures &gt;= threshold) {</span>
+<span class="fc" id="L80">                state.blockedUntil = now.plus(blockDuration);</span>
+<span class="fc" id="L81">                LOGGER.warn(&quot;Bloqueo temporal de autenticación aplicado a clave {} tras {} fallos.&quot;, key, state.failures);</span>
+            }
+<span class="fc" id="L83">        }</span>
+<span class="fc" id="L84">    }</span>
+
+    private void resetExpiredWindow(AttemptState state, Instant now) {
+<span class="pc bpc" id="L87" title="1 of 2 branches missed.">        if (Duration.between(state.windowStarted, now).compareTo(window) &gt;= 0) {</span>
+<span class="nc" id="L88">            state.windowStarted = now;</span>
+<span class="nc" id="L89">            state.failures = 0;</span>
+<span class="nc bnc" id="L90" title="All 4 branches missed.">            if (state.blockedUntil != null &amp;&amp; !now.isBefore(state.blockedUntil)) {</span>
+<span class="nc" id="L91">                state.blockedUntil = null;</span>
+            }
+        }
+<span class="pc bpc" id="L94" title="1 of 4 branches missed.">        if (state.blockedUntil != null &amp;&amp; !now.isBefore(state.blockedUntil)) {</span>
+<span class="nc" id="L95">            state.blockedUntil = null;</span>
+<span class="nc" id="L96">            state.failures = 0;</span>
+<span class="nc" id="L97">            state.windowStarted = now;</span>
+        }
+<span class="fc" id="L99">    }</span>
+
+    private String normalizeUser(String username) {
+<span class="pc bpc" id="L102" title="1 of 2 branches missed.">        return username == null ? &quot;&lt;empty&gt;&quot; : username.trim().toLowerCase(Locale.ROOT);</span>
+    }
+
+    private String normalizeIp(String ip) {
+<span class="pc bpc" id="L106" title="2 of 4 branches missed.">        return ip == null || ip.isBlank() ? &quot;unknown&quot; : ip.trim();</span>
+    }
+
+    private static final class AttemptState {
+        private Instant windowStarted;
+        private int failures;
+        private Instant blockedUntil;
+
+<span class="fc" id="L114">        private AttemptState(Instant windowStarted) {</span>
+<span class="fc" id="L115">            this.windowStarted = windowStarted;</span>
+<span class="fc" id="L116">        }</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

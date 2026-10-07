@@ -1,0 +1,11 @@
+{
+  "url": "http://127.0.0.1:15173/app/clientes/nuevo",
+  "timestamp": "2026-10-04T20:59:41.420Z",
+  "testEngine": {
+    "name": "axe-core",
+    "version": "4.13.0"
+  },
+  "violations": [],
+  "passes": 27,
+  "incomplete": 1
+}

@@ -26,7 +26,7 @@ public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
                          HttpServletResponse response,
                          AuthenticationException authException) throws IOException, ServletException {
         String codigo = "AUTH_REQUIRED";
-        String mensaje = "Debes autenticarte para acceder a este recurso.";
+        String mensaje = "Tu sesión no está activa. Iniciá sesión nuevamente.";
 
         if (authException instanceof JwtAuthenticationException jwtException) {
             codigo = jwtException.getCodigo();

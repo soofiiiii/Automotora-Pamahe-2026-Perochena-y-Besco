@@ -1,128 +1,168 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+/** @vitest-environment jsdom */
 
+import "@testing-library/jest-dom/vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { PAGE_SIZE } from "../../../config/appConfig";
+import { auditoriaService } from "../../../services/api";
+import type { PageResult } from "../../../types/api.types";
+import type { Auditoria } from "../../../types/domain.types";
 import AuditoriaPage from "./AuditoriaPage";
-
-const mockList = vi.hoisted(() => vi.fn());
-const mockShow = vi.hoisted(() => vi.fn());
 
 vi.mock("../../../services/api", () => ({
   auditoriaService: {
-    list: mockList,
+    page: vi.fn(),
   },
 }));
 
-vi.mock("../../../shared/feedback/useToast", () => ({
-  useToast: () => ({
-    show: mockShow,
-  }),
-}));
+const pageMock = vi.mocked(auditoriaService.page);
 
-const auditRows = [
-  {
-    id: 1,
-    creadoEn: "2026-09-18T10:30:00",
-    usuario: "admin",
-    accion: "CREAR",
-    entidad: "VEHICULO",
-    entidadId: 15,
-    detalle: "Vehículo creado",
-  },
-  {
-    id: 2,
-    creadoEn: "2026-09-18T11:00:00",
-    usuario: "vendedor",
-    accion: "ACTUALIZAR",
-    entidad: "VENTA",
-    entidadId: 8,
-    detalle: "Venta actualizada",
-  },
-];
-
-function renderPage() {
-  return render(<AuditoriaPage />);
+function page(number = 0): PageResult<Auditoria> {
+  return {
+    content: [
+      {
+        id: number + 1,
+        usuario: "admin",
+        accion: "CAMBIO_ESTADO",
+        entidad: "Vehiculo",
+        entidadId: 7,
+        detalle: `Página ${number + 1}`,
+        creadoEn: "2026-09-20T10:30:00",
+      },
+    ],
+    number,
+    size: PAGE_SIZE,
+    totalElements: PAGE_SIZE + 1,
+    totalPages: 2,
+    serverPaged: true,
+  };
 }
 
-beforeEach(() => {
-  vi.clearAllMocks();
-
-  mockList.mockResolvedValue(auditRows);
+afterEach(() => {
+  pageMock.mockReset();
 });
 
 describe("AuditoriaPage", () => {
-  it("carga y muestra los registros de auditoría", async () => {
-    renderPage();
+  it("envía filtros combinados y fechas desde/hasta de forma independiente", async () => {
+    pageMock.mockResolvedValue(page(0));
+    render(<AuditoriaPage />);
 
-    expect(await screen.findByText("Vehículo creado")).toBeInTheDocument();
-    expect(screen.getByText("Venta actualizada")).toBeInTheDocument();
+    await screen.findByText("Página 1");
 
-    expect(mockList).toHaveBeenCalledWith(undefined);
-  });
-
-  it("envía los filtros seleccionados al servicio", async () => {
-    const user = userEvent.setup();
-
-    renderPage();
-
-    await screen.findByText("Vehículo creado");
-
-    await user.type(screen.getByLabelText("Usuario"), "admin");
-    await user.type(screen.getByLabelText("Acción"), "CREAR");
-    await user.type(screen.getByLabelText("Entidad"), "VEHICULO");
-    await user.type(screen.getByLabelText("Fecha"), "2026-09-18");
-
-    await user.click(screen.getByRole("button", { name: "Buscar" }));
+    fireEvent.change(screen.getByLabelText("Usuario"), {
+      target: { value: "admin" },
+    });
+    fireEvent.change(screen.getByLabelText("Acción"), {
+      target: { value: "CAMBIO_ESTADO" },
+    });
+    fireEvent.change(screen.getByLabelText("Entidad"), {
+      target: { value: "Vehiculo" },
+    });
+    fireEvent.change(screen.getByLabelText("ID de entidad"), {
+      target: { value: "7" },
+    });
+    fireEvent.change(screen.getByLabelText("Desde"), {
+      target: { value: "2026-09-01" },
+    });
+    fireEvent.change(screen.getByLabelText("Hasta"), {
+      target: { value: "2026-09-20" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Buscar" }));
 
     await waitFor(() => {
-      expect(mockList).toHaveBeenLastCalledWith({
-        usuario: "admin",
-        accion: "CREAR",
-        entidad: "VEHICULO",
-        desde: "2026-09-18",
-        hasta: "2026-09-18",
-      });
+      expect(pageMock).toHaveBeenLastCalledWith(
+        {
+          usuario: "admin",
+          accion: "CAMBIO_ESTADO",
+          entidad: "Vehiculo",
+          entidadId: 7,
+          desde: "2026-09-01",
+          hasta: "2026-09-20",
+          page: 0,
+          size: PAGE_SIZE,
+        },
+        expect.any(AbortSignal),
+      );
     });
   });
 
-  it("limpia los filtros y vuelve a cargar la auditoría", async () => {
-    const user = userEvent.setup();
+  it("permite enviar solo uno de los extremos del rango sin duplicarlo", async () => {
+    pageMock.mockResolvedValue(page(0));
+    render(<AuditoriaPage />);
 
-    renderPage();
+    await screen.findByText("Página 1");
 
-    await screen.findByText("Vehículo creado");
-
-    const userInput = screen.getByLabelText("Usuario");
-    const actionInput = screen.getByLabelText("Acción");
-    const entityInput = screen.getByLabelText("Entidad");
-    const dateInput = screen.getByLabelText("Fecha");
-
-    await user.type(userInput, "admin");
-    await user.type(actionInput, "CREAR");
-    await user.type(entityInput, "VEHICULO");
-    await user.type(dateInput, "2026-09-18");
-
-    await user.click(screen.getByRole("button", { name: "Limpiar" }));
+    fireEvent.change(screen.getByLabelText("Desde"), {
+      target: { value: "2026-09-10" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Buscar" }));
 
     await waitFor(() => {
-      expect(mockList).toHaveBeenLastCalledWith(undefined);
+      expect(pageMock).toHaveBeenLastCalledWith(
+        {
+          desde: "2026-09-10",
+          page: 0,
+          size: PAGE_SIZE,
+        },
+        expect.any(AbortSignal),
+      );
     });
-
-    expect(userInput).toHaveValue("");
-    expect(actionInput).toHaveValue("");
-    expect(entityInput).toHaveValue("");
-    expect(dateInput).toHaveValue("");
   });
 
-  it("muestra un error cuando falla la consulta de auditoría", async () => {
-    mockList.mockRejectedValue(new Error("No se pudo cargar la auditoría."));
+  it("impide consultar cuando desde es posterior a hasta", async () => {
+    pageMock.mockResolvedValue(page(0));
+    render(<AuditoriaPage />);
 
-    renderPage();
+    await screen.findByText("Página 1");
+    const callsBeforeInvalidSearch = pageMock.mock.calls.length;
+
+    fireEvent.change(screen.getByLabelText("Desde"), {
+      target: { value: "2026-09-21" },
+    });
+    fireEvent.change(screen.getByLabelText("Hasta"), {
+      target: { value: "2026-09-20" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Buscar" }));
+
+    expect(
+      screen.getByText(
+        'La fecha "Desde" no puede ser posterior a la fecha "Hasta".',
+      ),
+    ).toBeInTheDocument();
+    expect(pageMock).toHaveBeenCalledTimes(callsBeforeInvalidSearch);
+  });
+
+  it("solicita page=1 al navegar a la segunda página", async () => {
+    pageMock.mockImplementation(async (params) => page(params.page ?? 0));
+    render(<AuditoriaPage />);
+
+    await screen.findByText("Página 1");
+    fireEvent.click(screen.getByRole("button", { name: "Siguiente" }));
 
     await waitFor(() => {
-      expect(mockShow).toHaveBeenCalledWith(
-        "No se pudo cargar la auditoría.",
-        "error",
+      expect(pageMock).toHaveBeenLastCalledWith(
+        {
+          page: 1,
+          size: PAGE_SIZE,
+        },
+        expect.any(AbortSignal),
+      );
+    });
+    expect(await screen.findByText("Página 2")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Usuario"), {
+      target: { value: "admin" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Buscar" }));
+
+    await waitFor(() => {
+      expect(pageMock).toHaveBeenLastCalledWith(
+        {
+          usuario: "admin",
+          page: 0,
+          size: PAGE_SIZE,
+        },
+        expect.any(AbortSignal),
       );
     });
   });

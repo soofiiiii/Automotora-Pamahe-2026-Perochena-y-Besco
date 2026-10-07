@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MonitoringAccess.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.security.config</a> &gt; <span class="el_source">MonitoringAccess.java</span></div><h1>MonitoringAccess.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.security.config;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import jakarta.servlet.http.HttpServletRequest;
+
+/** Acceso del collector local; credencial independiente de sesiones y roles de negocio. */
+@Component
+public class MonitoringAccess {
+    public static final String HEADER = &quot;X-Monitoring-Token&quot;;
+    private final byte[] expected;
+
+<span class="fc" id="L15">    public MonitoringAccess(@Value(&quot;${app.monitoring.scrape-token:}&quot;) String token) {</span>
+<span class="pc bpc" id="L16" title="1 of 4 branches missed.">        if (!token.isEmpty() &amp;&amp; !token.matches(&quot;[A-Za-z0-9_-]{43,128}&quot;)) {</span>
+<span class="nc" id="L17">            throw new IllegalStateException(&quot;MONITORING_SCRAPE_TOKEN debe ser aleatorio y contener 43..128 caracteres Base64URL/hex.&quot;);</span>
+        }
+<span class="fc" id="L19">        this.expected = token.getBytes(StandardCharsets.UTF_8);</span>
+<span class="fc" id="L20">    }</span>
+
+    public boolean allowed(HttpServletRequest request) {
+<span class="fc" id="L23">        String peer = request.getRemoteAddr();</span>
+<span class="pc bpc" id="L24" title="2 of 6 branches missed.">        boolean local = &quot;127.0.0.1&quot;.equals(peer) || &quot;::1&quot;.equals(peer) || &quot;0:0:0:0:0:0:0:1&quot;.equals(peer);</span>
+<span class="fc" id="L25">        String supplied = request.getHeader(HEADER);</span>
+<span class="pc bpc" id="L26" title="2 of 8 branches missed.">        return local &amp;&amp; expected.length &gt; 0 &amp;&amp; supplied != null &amp;&amp; supplied.length() &lt;= 128</span>
+<span class="fc bfc" id="L27" title="All 2 branches covered.">                &amp;&amp; MessageDigest.isEqual(expected, supplied.getBytes(StandardCharsets.UTF_8));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

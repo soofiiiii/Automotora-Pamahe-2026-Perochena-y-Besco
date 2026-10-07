@@ -1,12 +1,19 @@
 server:
   address: ${SERVER_ADDRESS:127.0.0.1}
-  forward-headers-strategy: framework
+  # El filtro HTTPS verifica el peer real antes de confiar en X-Forwarded-Proto.
+  forward-headers-strategy: none
 
 spring:
   datasource:
-    url: ${DB_URL}
+    url: ${DB_URL:jdbc:mysql://localhost:3307/pamahe_db?useSSL=false&serverTimezone=America/Montevideo&allowPublicKeyRetrieval=true}
     username: ${DB_USER}
     password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:50}
+      minimum-idle: ${DB_POOL_MIN_IDLE:10}
+      connection-timeout: 30000
 
 security:
   jwt:

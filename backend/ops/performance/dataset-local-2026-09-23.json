@@ -1,0 +1,13 @@
+{
+  "id": "LOCAL-BE12-20260923-01",
+  "counts": {
+    "vehiculos": 120,
+    "clientes": 220,
+    "compras": 120,
+    "ventas": 35,
+    "refacciones": 150,
+    "auditoria": 121,
+    "catalogo_publicado": 35
+  },
+  "notes": "Dataset local controlado para pruebas BE-12 / O-06"
+}

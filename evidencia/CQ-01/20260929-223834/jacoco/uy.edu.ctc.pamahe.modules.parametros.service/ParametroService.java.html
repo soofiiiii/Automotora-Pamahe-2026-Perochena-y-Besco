@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ParametroService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.parametros.service</a> &gt; <span class="el_source">ParametroService.java</span></div><h1>ParametroService.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.parametros.service;
+
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import uy.edu.ctc.pamahe.common.exception.BusinessException;
+import uy.edu.ctc.pamahe.common.exception.ResourceNotFoundException;
+import uy.edu.ctc.pamahe.modules.auditoria.service.AuditoriaService;
+import uy.edu.ctc.pamahe.modules.parametros.dto.request.ParametroRequest;
+import uy.edu.ctc.pamahe.modules.parametros.dto.response.ParametroResponse;
+import uy.edu.ctc.pamahe.modules.parametros.model.Parametro;
+import uy.edu.ctc.pamahe.modules.parametros.repository.ParametroRepository;
+
+@Service
+public class ParametroService {
+<span class="fc" id="L20">    private static final Set&lt;String&gt; CATEGORIAS_CONSUMIBLES = Set.of(&quot;TIPO_VEHICULO&quot;);</span>
+    private final ParametroRepository repository;
+    private final AuditoriaService auditoriaService;
+
+<span class="fc" id="L24">    public ParametroService(ParametroRepository repository, AuditoriaService auditoriaService) {</span>
+<span class="fc" id="L25">        this.repository = repository;</span>
+<span class="fc" id="L26">        this.auditoriaService = auditoriaService;</span>
+<span class="fc" id="L27">    }</span>
+
+    @Transactional(readOnly = true)
+    public List&lt;ParametroResponse&gt; listar() {
+<span class="fc" id="L31">        return repository.findByActivoTrueOrderByCategoriaAscClaveAsc().stream().map(this::map).toList();</span>
+    }
+
+
+    @Transactional(readOnly = true)
+    public List&lt;ParametroResponse&gt; listarPorCategoria(String categoria) {
+<span class="fc" id="L37">        String categoriaNormalizada = key(categoria);</span>
+<span class="fc bfc" id="L38" title="All 2 branches covered.">        if (!CATEGORIAS_CONSUMIBLES.contains(categoriaNormalizada)) {</span>
+<span class="fc" id="L39">            throw new BusinessException(&quot;La categoría solicitada no expone opciones de dominio configurables.&quot;);</span>
+        }
+<span class="fc" id="L41">        return repository.findByCategoriaAndActivoTrueOrderByClaveAsc(categoriaNormalizada).stream()</span>
+<span class="fc" id="L42">                .map(this::map)</span>
+<span class="fc" id="L43">                .toList();</span>
+    }
+
+    @Transactional
+    public ParametroResponse crear(ParametroRequest r) {
+<span class="fc" id="L48">        String c = key(r.categoria());</span>
+<span class="fc" id="L49">        String k = key(r.clave());</span>
+<span class="fc bfc" id="L50" title="All 2 branches covered.">        if (repository.existsByCategoriaAndClave(c, k))</span>
+<span class="fc" id="L51">            throw new BusinessException(&quot;Ya existe un parámetro con esa categoría y clave.&quot;);</span>
+<span class="fc" id="L52">        Parametro p = new Parametro();</span>
+<span class="fc" id="L53">        cargar(p, r, c, k);</span>
+<span class="fc" id="L54">        p = repository.save(p);</span>
+<span class="fc" id="L55">        auditoriaService.registrar(&quot;ALTA&quot;, &quot;Parametro&quot;, p.getId(), &quot;Creación de parámetro &quot; + c + &quot;/&quot; + k);</span>
+<span class="fc" id="L56">        return map(p);</span>
+    }
+
+    @Transactional
+    public ParametroResponse actualizar(Long id, ParametroRequest r) {
+<span class="fc" id="L61">        Parametro p = buscar(id);</span>
+<span class="fc" id="L62">        String c = key(r.categoria());</span>
+<span class="fc" id="L63">        String k = key(r.clave());</span>
+<span class="fc bfc" id="L64" title="All 2 branches covered.">        if (repository.existsByCategoriaAndClaveAndIdNot(c, k, id))</span>
+<span class="fc" id="L65">            throw new BusinessException(&quot;Ya existe otro parámetro con esa categoría y clave.&quot;);</span>
+<span class="fc" id="L66">        cargar(p, r, c, k);</span>
+<span class="fc" id="L67">        p.setActivo(true);</span>
+<span class="fc" id="L68">        p = repository.save(p);</span>
+<span class="fc" id="L69">        auditoriaService.registrar(&quot;MODIFICACION&quot;, &quot;Parametro&quot;, p.getId(), &quot;Actualización de parámetro &quot; + c + &quot;/&quot; + k);</span>
+<span class="fc" id="L70">        return map(p);</span>
+    }
+
+    @Transactional
+    public void desactivar(Long id) {
+<span class="fc" id="L75">        Parametro p = buscar(id);</span>
+<span class="fc" id="L76">        p.setActivo(false);</span>
+<span class="fc" id="L77">        repository.save(p);</span>
+<span class="fc" id="L78">        auditoriaService.registrar(&quot;BAJA_LOGICA&quot;, &quot;Parametro&quot;, p.getId(),</span>
+<span class="fc" id="L79">                &quot;Desactivación de parámetro &quot; + p.getCategoria() + &quot;/&quot; + p.getClave());</span>
+<span class="fc" id="L80">    }</span>
+
+    private Parametro buscar(Long id) {
+<span class="fc" id="L83">        return repository.findById(id)</span>
+<span class="fc" id="L84">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;No se encontró el parámetro solicitado.&quot;));</span>
+    }
+
+    private void cargar(Parametro p, ParametroRequest r, String c, String k) {
+<span class="fc" id="L88">        p.setCategoria(c);</span>
+<span class="fc" id="L89">        p.setClave(k);</span>
+<span class="fc" id="L90">        p.setValor(r.valor().trim());</span>
+<span class="fc" id="L91">        p.setDescripcion(opt(r.descripcion()));</span>
+<span class="fc" id="L92">    }</span>
+
+    private String key(String v) {
+<span class="fc" id="L95">        return v.trim().toUpperCase(Locale.ROOT);</span>
+    }
+
+    private String opt(String v) {
+<span class="pc bpc" id="L99" title="1 of 2 branches missed.">        if (v == null)</span>
+<span class="nc" id="L100">            return null;</span>
+<span class="fc" id="L101">        String x = v.trim();</span>
+<span class="fc bfc" id="L102" title="All 2 branches covered.">        return x.isEmpty() ? null : x;</span>
+    }
+
+    private ParametroResponse map(Parametro p) {
+<span class="fc" id="L106">        return new ParametroResponse(p.getId(), p.getCategoria(), p.getClave(), p.getValor(), p.getDescripcion(),</span>
+<span class="fc" id="L107">                p.getActivo());</span>
+    }
+    
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

@@ -56,9 +56,19 @@ public class FileStorageService {
     @Value("${app.storage.images.max-pixels:24000000}")
     private long maxPixels;
 
-   public StoredImage guardarImagenPrivada(Long vehiculoId, MultipartFile file) {
+    public StoredImage guardarImagenPrivada(Long vehiculoId, MultipartFile file) {
+        return guardarImagenEnDirectorio("private/vehiculos/" + vehiculoId, file,
+                "No se pudo guardar la imagen del vehículo.");
+    }
+
+    public StoredImage guardarImagenSolicitudVenta(Long solicitudId, MultipartFile file) {
+        return guardarImagenEnDirectorio("private/solicitudes-venta/" + solicitudId, file,
+                "No se pudo guardar una de las fotografías de la solicitud.");
+    }
+
+    private StoredImage guardarImagenEnDirectorio(String directorioRelativo, MultipartFile file, String mensajeError) {
         if (file == null || file.isEmpty()) {
-            throw new BusinessException("Debe seleccionar una imagen.");
+            throw new BusinessException("Seleccioná una imagen.");
         }
         if (file.getSize() > this.maxBytes) {
             throw new BusinessException("La imagen supera el tamaño máximo permitido.");
@@ -66,24 +76,21 @@ public class FileStorageService {
 
         try {
             byte[] contenido = file.getBytes();
-            // La firma y la decodificación real se validan antes de aceptar el archivo como imagen.
             DetectedFormat formato = this.detectarFormato(contenido);
             BufferedImage original = this.leerImagenValidada(contenido);
 
-            // WebP y PNG se normalizan a PNG; JPEG conserva un formato sin canal alfa.
             OutputFormat salida = formato == DetectedFormat.JPEG ? OutputFormat.JPEG : OutputFormat.PNG;
             BufferedImage procesada = this.redimensionar(original, salida);
             String nombreArchivo = UUID.randomUUID() + salida.extension;
-            String rutaRelativa = "private/vehiculos/" + vehiculoId + "/" + nombreArchivo;
+            String rutaRelativa = directorioRelativo + "/" + nombreArchivo;
             Path destino = this.resolverRutaSegura(rutaRelativa);
             Files.createDirectories(destino.getParent());
 
-            // La escritura temporal evita dejar una imagen parcial con el nombre definitivo.
             Path temporal = Files.createTempFile(destino.getParent(), ".upload-", ".tmp");
             try {
                 boolean escrita = ImageIO.write(procesada, salida.imageIoFormat, temporal.toFile());
                 if (!escrita) {
-                    throw new BusinessException("No se pudo reprocesar la imagen en un formato seguro.");
+                    throw new BusinessException("No pudimos procesar la imagen seleccionada. Probá con otro archivo JPG, PNG o WebP.");
                 }
                 this.moverReemplazando(temporal, destino);
             } finally {
@@ -95,11 +102,10 @@ public class FileStorageService {
         } catch (BusinessException exception) {
             throw exception;
         } catch (IOException exception) {
-            throw new BusinessException("No se pudo guardar la imagen del vehículo.");
+            throw new BusinessException(mensajeError);
         }
     }
 
-    // Mueve el archivo porque la visibilidad también debe cumplirse a nivel físico, no solo en la tabla.
     public String moverVisibilidad(String rutaActual, Long vehiculoId, boolean publica) {
         Path origen = this.resolverRutaSegura(rutaActual);
         if (!Files.isRegularFile(origen)) {
@@ -117,7 +123,7 @@ public class FileStorageService {
             this.revertirMovimientoSiRollback(origen, destino);
             return nuevaRuta;
         } catch (IOException exception) {
-            throw new BusinessException("No se pudo cambiar la visibilidad física de la imagen.");
+            throw new BusinessException("No pudimos actualizar la visibilidad de la imagen.");
         }
     }
 
@@ -133,7 +139,6 @@ public class FileStorageService {
         );
     }
 
-    // El archivo se elimina después del commit para no perderlo si la eliminación de metadatos se revierte.
     public void eliminarTrasCommit(String rutaRelativa) {
         Path archivo = this.resolverRutaSegura(rutaRelativa);
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -155,7 +160,7 @@ public class FileStorageService {
             }
             Iterator<ImageReader> lectores = ImageIO.getImageReaders(input);
             if (!lectores.hasNext()) {
-                throw new BusinessException("El archivo no contiene una imagen JPEG, PNG o WebP decodificable.");
+                throw new BusinessException("El archivo no contiene una imagen válida. Usá JPG, PNG o WebP.");
             }
 
             ImageReader lector = lectores.next();
@@ -169,7 +174,7 @@ public class FileStorageService {
                 if (ancho <= 0 || alto <= 0
                         || ancho > this.maxWidth || alto > this.maxHeight
                         || pixeles > this.maxPixels) {
-                    throw new BusinessException("Las dimensiones de la imagen no están permitidas.");
+                    throw new BusinessException("La imagen tiene dimensiones demasiado grandes. Probá con una imagen de menor resolución.");
                 }
                 BufferedImage imagen = lector.read(0);
                 if (imagen == null) {
@@ -237,12 +242,12 @@ public class FileStorageService {
     // Restringe todas las operaciones al directorio raíz y bloquea intentos de path traversal.
     private Path resolverRutaSegura(String rutaRelativa) {
         if (rutaRelativa == null || rutaRelativa.isBlank()) {
-            throw new BusinessException("La ruta del archivo no es válida.");
+            throw new BusinessException("No pudimos acceder al archivo de la imagen.");
         }
         Path base = Path.of(this.storageRoot).toAbsolutePath().normalize();
         Path archivo = base.resolve(rutaRelativa).normalize();
         if (!archivo.startsWith(base)) {
-            throw new BusinessException("La ruta del archivo no es válida.");
+            throw new BusinessException("No pudimos acceder al archivo de la imagen.");
         }
         return archivo;
     }

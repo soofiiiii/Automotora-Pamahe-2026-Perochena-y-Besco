@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -31,7 +32,7 @@ public class PasswordRotationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || isAllowedPath(request.getRequestURI())) {
+        if (authentication == null || authentication instanceof AnonymousAuthenticationToken || !authentication.isAuthenticated() || isAllowedPath(request.getRequestURI())) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -43,7 +44,7 @@ public class PasswordRotationFilter extends OncePerRequestFilter {
                     response,
                     HttpStatus.FORBIDDEN.value(),
                     "PASSWORD_CHANGE_REQUIRED",
-                    "Debes cambiar la contraseña antes de continuar.",
+                    "Tenés que cambiar tu contraseña antes de continuar.",
                     new IllegalStateException("Password rotation required"));
             return;
         }

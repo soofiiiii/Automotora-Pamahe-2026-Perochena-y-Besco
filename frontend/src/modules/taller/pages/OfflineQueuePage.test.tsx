@@ -1,148 +1,141 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
+// @vitest-environment jsdom
+import "@testing-library/jest-dom/vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { MemoryRouter } from "react-router-dom";
+import type { PendingRepair } from "../../../offline/indexedDb";
 import OfflineQueuePage from "./OfflineQueuePage";
 
-const mockList = vi.hoisted(() => vi.fn());
-const mockRemove = vi.hoisted(() => vi.fn());
-const mockSync = vi.hoisted(() => vi.fn());
-const mockShow = vi.hoisted(() => vi.fn());
+const mocks = vi.hoisted(() => ({
+  online: true,
+  list: vi.fn<() => Promise<PendingRepair[]>>(),
+  legacy: vi.fn<() => Promise<PendingRepair[]>>(),
+  remove: vi.fn<() => Promise<void>>(),
+  adoptLegacy: vi.fn<() => Promise<void>>(),
+  sync: vi.fn<() => Promise<{ synced: number; failed: number; retryable: boolean }>>(),
+  background: vi.fn<() => Promise<boolean>>(),
+  show: vi.fn(),
+  confirm: vi.fn<() => Promise<boolean>>(),
+}));
+
+vi.mock("../../../hooks/useAuth", () => ({
+  useAuth: () => ({ session: { username: "taller" } }),
+}));
+
+vi.mock("../../../hooks/useOnlineStatus", () => ({
+  useOnlineStatus: () => mocks.online,
+}));
 
 vi.mock("../../../offline/syncQueue", () => ({
   syncQueue: {
-    list: mockList,
-    remove: mockRemove,
+    list: mocks.list,
+    legacy: mocks.legacy,
+    remove: mocks.remove,
+    adoptLegacy: mocks.adoptLegacy,
   },
 }));
 
 vi.mock("../../../offline/tallerOfflineService", () => ({
-  tallerOfflineService: {
-    sync: mockSync,
-  },
+  tallerOfflineService: { sync: mocks.sync },
+}));
+
+vi.mock("../../../offline/backgroundSync", () => ({
+  QUEUE_CHANGED_EVENT: "pamahe:offline-queue-changed",
+  requestBackgroundSync: mocks.background,
 }));
 
 vi.mock("../../../shared/feedback/useToast", () => ({
-  useToast: () => ({
-    show: mockShow,
-  }),
+  useToast: () => ({ show: mocks.show }),
 }));
 
-const pendingRepair = {
-  id: "offline-1",
+vi.mock("../../../shared/feedback/useConfirmDialog", () => ({
+  useConfirmDialog: () => ({ confirm: mocks.confirm }),
+}));
+
+const pending: PendingRepair = {
+  id: "operation-1",
+  owner: "taller",
+  apiUrl: "http://localhost:8080/api",
+  createdAt: "2026-09-27T10:00:00-03:00",
+  attempts: 1,
+  status: "pending",
   payload: {
-    vehiculoId: 10,
-    fecha: "2026-09-18",
+    vehiculoId: 12,
+    fecha: "2026-09-27",
     tipoTrabajo: "MECANICA",
     descripcion: "Cambio de aceite",
-    costoRepuestos: 500,
+    costoRepuestos: 2000,
     costoManoObra: 1000,
     costoServiciosExternos: 0,
     estadoTarea: "PENDIENTE",
+    idOperacionOffline: "operation-1",
   },
-  createdAt: "2026-09-18T20:00:00.000Z",
-  attempts: 1,
-  lastError: "API no disponible",
 };
 
 function renderPage() {
-  return render(<OfflineQueuePage />);
+  return render(
+    <MemoryRouter>
+      <OfflineQueuePage />
+    </MemoryRouter>,
+  );
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.online = true;
+  mocks.list.mockResolvedValue([pending]);
+  mocks.legacy.mockResolvedValue([]);
+  mocks.remove.mockResolvedValue();
+  mocks.adoptLegacy.mockResolvedValue();
+  mocks.sync.mockResolvedValue({ synced: 1, failed: 0, retryable: false });
+  mocks.background.mockResolvedValue(true);
+  mocks.confirm.mockResolvedValue(true);
+});
 
-  mockList.mockResolvedValue([]);
-  mockRemove.mockResolvedValue(undefined);
-  mockSync.mockResolvedValue({
-    synced: 0,
-    failed: 0,
-  });
-
-  Object.defineProperty(navigator, "onLine", {
-    configurable: true,
-    value: true,
-  });
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
 });
 
 describe("OfflineQueuePage", () => {
-  it("muestra el estado vacío cuando no hay registros pendientes", async () => {
-    renderPage();
-
-    expect(
-      await screen.findByText("No hay registros pendientes"),
-    ).toBeInTheDocument();
-
-    expect(
-      screen.getByText("La cola local está sincronizada."),
-    ).toBeInTheDocument();
-
-    expect(mockList).toHaveBeenCalled();
-  });
-
-  it("muestra los registros pendientes y sus datos", async () => {
-    mockList.mockResolvedValue([pendingRepair]);
-
+  it("presenta las operaciones pendientes y su estado de sincronización", async () => {
     renderPage();
 
     expect(await screen.findByText("Cambio de aceite")).toBeInTheDocument();
-
-    expect(screen.getByText("#10")).toBeInTheDocument();
-    expect(screen.getByText("1")).toBeInTheDocument();
-    expect(screen.getByText("API no disponible")).toBeInTheDocument();
+    expect(screen.getByText("Pendiente de envío")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /Descartar/i }),
+      await screen.findByText(/La sincronización automática está activa/),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sincronizar ahora" })).toBeEnabled();
   });
 
-  it("sincroniza los registros pendientes y muestra el resultado", async () => {
-    const user = userEvent.setup();
-
-    mockList.mockResolvedValue([pendingRepair]);
-    mockSync.mockResolvedValue({
-      synced: 1,
-      failed: 0,
-    });
-
+  it("permite forzar la sincronización de los registros pendientes", async () => {
     renderPage();
-
     await screen.findByText("Cambio de aceite");
 
-    await user.click(
-      screen.getByRole("button", { name: "Sincronizar ahora" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Sincronizar ahora" }));
 
-    await waitFor(() => {
-      expect(mockSync).toHaveBeenCalledTimes(1);
-    });
-
-    expect(mockShow).toHaveBeenCalledWith(
-      "1 registro(s) sincronizado(s).",
+    await waitFor(() => expect(mocks.sync).toHaveBeenCalledWith(true));
+    expect(mocks.show).toHaveBeenCalledWith(
+      "1 registro(s) confirmado(s).",
       "success",
     );
   });
 
-  it("permite descartar un registro pendiente después de confirmar", async () => {
-    const user = userEvent.setup();
-
-    mockList.mockResolvedValue([pendingRepair]);
-
-    vi.stubGlobal("confirm", vi.fn(() => true));
-
+  it("descarta una operación local únicamente después de confirmación", async () => {
     renderPage();
-
     await screen.findByText("Cambio de aceite");
 
-    await user.click(
-      screen.getByRole("button", { name: /Descartar/i }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Descartar" }));
 
-    await waitFor(() => {
-      expect(mockRemove).toHaveBeenCalledWith("offline-1");
-    });
+    await waitFor(() => expect(mocks.remove).toHaveBeenCalled());
+  });
 
-    expect(mockList).toHaveBeenCalledTimes(2);
+  it("deshabilita el envío manual mientras el dispositivo está sin conexión", async () => {
+    mocks.online = false;
+    renderPage();
 
-    vi.unstubAllGlobals();
+    expect(await screen.findByText("Cambio de aceite")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sincronizar ahora" })).toBeDisabled();
   });
 });

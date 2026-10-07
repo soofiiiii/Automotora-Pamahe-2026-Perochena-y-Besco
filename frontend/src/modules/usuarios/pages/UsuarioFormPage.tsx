@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
+import { passwordValidation } from "../../../utils/passwordValidation";
 import { usuarioService } from "../../../services/api";
 import type {
   Role,
@@ -15,12 +16,12 @@ import { useToast } from "../../../shared/feedback/useToast";
 import { errorMessage } from "../../../utils/errorMessage";
 
 const schema = z.object({
-  username: z.string().trim().min(3).max(60),
-  email: z.string().trim().email("Email inválido").max(120),
-  nombre: z.string().trim().min(2).max(120),
-  telefono: z.string().trim().max(30).optional(),
-  password: z.string().max(120).optional(),
-  roles: z.array(z.string()).min(1, "Elegí al menos un rol"),
+  username: z.string().trim().min(3, "El usuario debe tener al menos 3 caracteres.").max(60, "El usuario no puede superar los 60 caracteres."),
+  email: z.string().trim().email("Ingresá un email válido.").max(120, "El email no puede superar los 120 caracteres."),
+  nombre: z.string().trim().min(2, "El nombre debe tener al menos 2 caracteres.").max(120, "El nombre no puede superar los 120 caracteres."),
+  telefono: z.string().trim().max(30, "El teléfono no puede superar los 30 caracteres.").optional(),
+  password: z.string().max(72, "La contraseña no puede superar los 72 caracteres.").optional(),
+  roles: z.array(z.string()).min(1, "Elegí al menos un rol."),
   activo: z.boolean(),
 });
 
@@ -79,7 +80,7 @@ export default function UsuarioFormPage() {
             activo: u.activo,
           }),
         )
-        .catch((e) => show(errorMessage(e), "error"));
+        .catch((e) => show(errorMessage(e, "No pudimos cargar los datos del usuario."), "error"));
   }, [id, reset, show]);
 
   const selected = useWatch({
@@ -93,7 +94,7 @@ export default function UsuarioFormPage() {
         title={editing ? "Editar usuario" : "Nuevo usuario"}
         description={
           editing
-            ? "El backend actual permite modificar nombre, email, teléfono, roles y estado; el username no cambia desde esta operación."
+            ? "Podés modificar los datos personales, roles y estado de la cuenta. El nombre de usuario no se puede cambiar."
             : "La contraseña inicial debe tener al menos 8 caracteres."
         }
       />
@@ -111,11 +112,9 @@ export default function UsuarioFormPage() {
               };
               await usuarioService.update(Number(id), body);
             } else {
-              if (!v.password || v.password.length < 8) {
-                show(
-                  "La contraseña debe tener al menos 8 caracteres.",
-                  "error",
-                );
+              const passwordError = passwordValidation(v.password ?? "");
+              if (passwordError || !v.password) {
+                show(passwordError || "Ingresá una contraseña.", "error");
                 return;
               }
               const body: UsuarioCreateRequest = {
@@ -134,7 +133,7 @@ export default function UsuarioFormPage() {
             );
             nav("/app/usuarios");
           } catch (e) {
-            show(errorMessage(e), "error");
+            show(errorMessage(e, editing ? "No pudimos actualizar el usuario." : "No pudimos crear el usuario."), "error");
           }
         })}
       >
@@ -154,7 +153,7 @@ export default function UsuarioFormPage() {
           <FormField label="Email" error={errors.email?.message}>
             <input type="email" autoComplete="email" {...register("email")} />
           </FormField>
-          <FormField label="Teléfono">
+          <FormField label="Teléfono" error={errors.telefono?.message}>
             <input type="tel" autoComplete="tel" {...register("telefono")} />
           </FormField>
           {!editing && (
@@ -162,6 +161,7 @@ export default function UsuarioFormPage() {
               <input
                 type="password"
                 autoComplete="new-password"
+                maxLength={72}
                 {...register("password")}
               />
             </FormField>

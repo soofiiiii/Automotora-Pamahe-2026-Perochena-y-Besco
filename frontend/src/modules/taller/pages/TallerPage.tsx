@@ -1,16 +1,17 @@
 import { Cloud, Plus, RefreshCw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { tallerService } from "../../../services/api";
-import type { EstadoRefaccion, Refaccion } from "../../../types/domain.types";
+import type { EstadoRefaccion } from "../../../types/domain.types";
+import { useApiQuery } from "../../../hooks/useApiQuery";
+import { QUEUE_CHANGED_EVENT } from "../../../offline/backgroundSync";
 import { LoadingState } from "../../../shared/feedback/LoadingState";
 import { EmptyState } from "../../../shared/feedback/EmptyState";
+import { ErrorState } from "../../../shared/feedback/ErrorState";
 import { PageHeader } from "../../../shared/ui/PageHeader";
 import { StatusBadge } from "../../../shared/ui/StatusBadge";
-import { useToast } from "../../../shared/feedback/useToast";
 import { formatCurrency } from "../../../utils/formatCurrency";
 import { formatDate } from "../../../utils/formatDate";
-import { errorMessage } from "../../../utils/errorMessage";
 
 const states: Array<EstadoRefaccion | ""> = [
   "",
@@ -21,56 +22,27 @@ const states: Array<EstadoRefaccion | ""> = [
 ];
 
 export default function TallerPage() {
-  const [rows, setRows] = useState<Refaccion[]>([]);
   const [state, setState] = useState("");
-  const [loading, setLoading] = useState(true);
-  const { show } = useToast();
-
-  const load = () => {
-    setLoading(true);
-    tallerService
-      .list(state || undefined)
-      .then(setRows)
-      .catch((e) => show(errorMessage(e), "error"))
-      .finally(() => setLoading(false));
-  };
-
+  const load = useCallback(
+    (signal: AbortSignal) => tallerService.list(state || undefined, signal),
+    [state],
+  );
+  const { data: rows = [], loading, error, retry } = useApiQuery(load);
   useEffect(() => {
-    let cancelled = false;
-
-    tallerService
-      .list(state || undefined)
-      .then((data) => {
-        if (!cancelled) {
-          setRows(data);
-        }
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          show(errorMessage(error), "error");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [state, show]);
+    window.addEventListener(QUEUE_CHANGED_EVENT, retry);
+    return () => window.removeEventListener(QUEUE_CHANGED_EVENT, retry);
+  }, [retry]);
 
   return (
     <>
       <PageHeader
         title="Taller"
-        description="Vista touch-first para registrar y seguir los trabajos de reacondicionamiento."
+        description="Trabajos de reacondicionamiento, responsables y evidencia registrada."
         actions={
           <>
             <Link className="button button--secondary" to="/app/taller/offline">
               <Cloud size={17} />
-              Cola offline
+              Operaciones pendientes
             </Link>
             <Link className="button button--accent" to="/app/taller/nueva">
               <Plus size={18} />
@@ -84,14 +56,11 @@ export default function TallerPage() {
           <span>Estado de tarea</span>
           <select
             value={state}
-            onChange={(e) => {
-              setLoading(true);
-              setState(e.target.value);
-            }}
+            onChange={(event) => setState(event.target.value)}
           >
-            {states.map((s) => (
-              <option key={s || "all"} value={s}>
-                {s ? s.replaceAll("_", " ") : "Todas"}
+            {states.map((value) => (
+              <option key={value || "all"} value={value}>
+                {value ? value.replaceAll("_", " ") : "Todas"}
               </option>
             ))}
           </select>
@@ -99,7 +68,8 @@ export default function TallerPage() {
         <button
           className="button button--secondary"
           type="button"
-          onClick={load}
+          disabled={loading}
+          onClick={retry}
         >
           <RefreshCw size={17} />
           Actualizar
@@ -107,39 +77,60 @@ export default function TallerPage() {
       </div>
       {loading ? (
         <LoadingState />
+      ) : error ? (
+        <ErrorState description={error} onRetry={retry} />
       ) : rows.length ? (
         <div className="workshop-grid">
-          {rows.map((r) => (
-            <article className="work-card" key={r.id}>
+          {rows.map((repair) => (
+            <article className="work-card" key={repair.id}>
               <div className="work-card__top">
-                <StatusBadge value={r.estadoTarea} />
-                <span>{formatDate(r.fecha)}</span>
+                <StatusBadge value={repair.estadoTarea} />
+                <span>{formatDate(repair.fecha)}</span>
               </div>
-              <h2>{r.tipoTrabajo.replaceAll("_", " ")}</h2>
-              <p>{r.descripcion}</p>
+              <h2>{repair.tipoTrabajo.replaceAll("_", " ")}</h2>
+              <p>{repair.descripcion}</p>
               <div className="work-card__meta">
                 <span>
-                  Vehículo <b>{r.vehiculo || `#${r.vehiculoId}`}</b>
+                  Vehículo <b>{repair.vehiculo || `#${repair.vehiculoId}`}</b>
                 </span>
                 <span>
-                  Repuestos <b>{formatCurrency(r.costoRepuestos)}</b>
+                  Responsable{" "}
+                  <b>{repair.responsableOperativo || "Sin asignar"}</b>
                 </span>
                 <span>
-                  Mano de obra <b>{formatCurrency(r.costoManoObra)}</b>
+                  Registrado por{" "}
+                  <b>{repair.usuarioQueRegistra || "No informado"}</b>
                 </span>
                 <span>
-                  Servicios <b>{formatCurrency(r.costoServiciosExternos)}</b>
+                  Evidencia{" "}
+                  <b>
+                    {repair.registroFotograficoUrl
+                      ? "Referencia disponible"
+                      : "Sin referencia"}
+                  </b>
                 </span>
                 <span>
-                  Total <b>{formatCurrency(r.costoTotal)}</b>
+                  Repuestos <b>{formatCurrency(repair.costoRepuestos)}</b>
+                </span>
+                <span>
+                  Mano de obra <b>{formatCurrency(repair.costoManoObra)}</b>
+                </span>
+                <span>
+                  Servicios{" "}
+                  <b>{formatCurrency(repair.costoServiciosExternos)}</b>
+                </span>
+                <span>
+                  Total <b>{formatCurrency(repair.costoTotal)}</b>
                 </span>
               </div>
-              <Link
-                className="button button--secondary"
-                to={`/app/taller/${r.id}/editar`}
-              >
-                Abrir tarea
-              </Link>
+              <div className="actions-row">
+                <Link
+                  className="button button--secondary"
+                  to={`/app/taller/${repair.id}?vehiculoId=${repair.vehiculoId}`}
+                >
+                  Abrir tarea
+                </Link>
+              </div>
             </article>
           ))}
         </div>

@@ -1,0 +1,45 @@
+server:
+  port: ${E2E_BACKEND_PORT:18080}
+  address: 127.0.0.1
+
+spring:
+  datasource:
+    url: ${E2E_DB_URL:jdbc:mysql://127.0.0.1:13307/pamahe_e2e?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Montevideo}
+    username: ${E2E_DB_USER:pamahe_e2e}
+    password: ${E2E_DB_PASSWORD:pamahe_e2e_2026}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration,filesystem:ops/e2e/db
+
+security:
+  jwt:
+    issuer: pamahe-e2e
+    secret: ${E2E_JWT_SECRET:UEFNQUhFLUNRLTAzLTA0LUVURS1KV1QtU0VDUkVULTIwMjYtMzItQllURVM=}
+    expiration-minutes: ${E2E_JWT_EXPIRATION_MINUTES:120}
+    renewal-mode: REAUTHENTICATE
+    refresh-enabled: false
+
+app:
+  cors:
+    allowed-origins: ${E2E_FRONTEND_URL:http://127.0.0.1:15173}
+  storage:
+    root: ${E2E_STORAGE_ROOT:target/e2e-storage}
+  security:
+    login-rate-limit:
+      max-attempts-user: 100
+      max-attempts-ip: 500
+      window-seconds: 60
+      block-seconds: 10
+
+logging:
+  file:
+    name: ${E2E_LOG_FILE:target/e2e-logs/backend.log}
+  level:
+    root: INFO
+    uy.edu.ctc.pamahe: INFO

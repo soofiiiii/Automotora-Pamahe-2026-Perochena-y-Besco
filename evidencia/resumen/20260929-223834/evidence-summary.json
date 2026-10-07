@@ -1,0 +1,65 @@
+{
+  "surefire": {
+    "tests": 322,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "suites": 39
+  },
+  "cq02": {
+    "present": true,
+    "suite": "uy.edu.ctc.pamahe.integration.RefaccionOfflineConcurrencyMySqlIntegrationTest",
+    "tests": 10,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "jacoco_critical": [
+    {
+      "package": "uy.edu.ctc.pamahe.modules.vehiculos.service",
+      "line_missed": 4,
+      "line_covered": 294,
+      "line_ratio": 0.986577,
+      "passes_80_percent": true
+    },
+    {
+      "package": "uy.edu.ctc.pamahe.modules.compras.service",
+      "line_missed": 2,
+      "line_covered": 128,
+      "line_ratio": 0.984615,
+      "passes_80_percent": true
+    },
+    {
+      "package": "uy.edu.ctc.pamahe.modules.ventas.service",
+      "line_missed": 5,
+      "line_covered": 210,
+      "line_ratio": 0.976744,
+      "passes_80_percent": true
+    },
+    {
+      "package": "uy.edu.ctc.pamahe.modules.costos.service",
+      "line_missed": 0,
+      "line_covered": 37,
+      "line_ratio": 1.0,
+      "passes_80_percent": true
+    },
+    {
+      "package": "uy.edu.ctc.pamahe.modules.taller.service",
+      "line_missed": 3,
+      "line_covered": 200,
+      "line_ratio": 0.985222,
+      "passes_80_percent": true
+    },
+    {
+      "package": "uy.edu.ctc.pamahe.modules.reportes.service",
+      "line_missed": 10,
+      "line_covered": 219,
+      "line_ratio": 0.956332,
+      "passes_80_percent": true
+    }
+  ],
+  "pmd": {
+    "present": true,
+    "violations": 0
+  }
+}

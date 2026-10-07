@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GlobalExceptionHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.common.exception</a> &gt; <span class="el_source">GlobalExceptionHandler.java</span></div><h1>GlobalExceptionHandler.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.common.exception;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
+import uy.edu.ctc.pamahe.common.response.ApiErrorResponse;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
+
+/** 
+ * Unifica los errores de la API para que el frontend reciba códigos estables y mensajes seguros.
+ * Cada incidente obtiene un identificador que permite relacionar la respuesta con el registro técnico
+ * sin devolver detalles internos ni trazas al cliente.
+ */
+@RestControllerAdvice
+<span class="fc" id="L32">public class GlobalExceptionHandler {</span>
+
+<span class="fc" id="L34">        private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);</span>
+
+        @ExceptionHandler(ResourceNotFoundException.class)
+        public ResponseEntity&lt;ApiErrorResponse&gt; handleNotFound(ResourceNotFoundException exception,
+                        HttpServletRequest request) {
+<span class="fc" id="L39">                return this.response(HttpStatus.NOT_FOUND, &quot;RESOURCE_NOT_FOUND&quot;, exception.getMessage(), request, null,</span>
+                                exception, false);
+        }
+
+        @ExceptionHandler(BusinessException.class)
+        public ResponseEntity&lt;ApiErrorResponse&gt; handleBusiness(BusinessException exception,
+                        HttpServletRequest request) {
+<span class="fc" id="L46">                return this.response(HttpStatus.BAD_REQUEST, &quot;BUSINESS_RULE&quot;, exception.getMessage(), request, null,</span>
+                                exception,
+                                false);
+        }
+
+        @ExceptionHandler(RateLimitExceededException.class)
+        public ResponseEntity&lt;ApiErrorResponse&gt; handleRateLimit(RateLimitExceededException exception,
+                        HttpServletRequest request) {
+<span class="nc" id="L54">                String incidenteId = org.slf4j.MDC.get(uy.edu.ctc.pamahe.common.filter.CorrelationIdFilter.MDC_KEY);</span>
+<span class="nc bnc" id="L55" title="All 4 branches missed.">                if (incidenteId == null || incidenteId.isBlank()) {</span>
+<span class="nc" id="L56">                        incidenteId = UUID.randomUUID().toString();</span>
+                }
+<span class="nc" id="L58">                LOGGER.warn(&quot;Incidente {} - límite temporal de login en {}&quot;, incidenteId, request.getRequestURI());</span>
+<span class="nc" id="L59">                return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)</span>
+<span class="nc" id="L60">                                .header(&quot;Retry-After&quot;, String.valueOf(exception.getRetryAfterSeconds()))</span>
+<span class="nc" id="L61">                                .body(ApiErrorResponse.of(&quot;LOGIN_RATE_LIMIT&quot;, exception.getMessage(),</span>
+<span class="nc" id="L62">                                                request.getRequestURI(), incidenteId,</span>
+<span class="nc" id="L63">                                                Map.of(&quot;retryAfterSeconds&quot;, exception.getRetryAfterSeconds())));</span>
+        }
+
+        @ExceptionHandler(AuthenticationException.class)
+        public ResponseEntity&lt;ApiErrorResponse&gt; handleAuthentication(AuthenticationException exception,
+                        HttpServletRequest request) {
+<span class="nc" id="L69">                return this.response(HttpStatus.UNAUTHORIZED, &quot;INVALID_CREDENTIALS&quot;,</span>
+                                &quot;Usuario o contraseña incorrectos.&quot;,
+                                request, null, exception, false);
+        }
+
+        @ExceptionHandler(AccessDeniedException.class)
+        public ResponseEntity&lt;ApiErrorResponse&gt; handleAccessDenied(AccessDeniedException exception,
+                        HttpServletRequest request) {
+<span class="nc" id="L77">                return this.response(HttpStatus.FORBIDDEN, &quot;ACCESS_DENIED&quot;,</span>
+                                &quot;No tienes permisos para realizar esta operación.&quot;,
+                                request, null, exception, false);
+        }
+
+        @ExceptionHandler(ExpiredJwtException.class)
+        public ResponseEntity&lt;ApiErrorResponse&gt; handleExpiredJwt(ExpiredJwtException exception,
+                        HttpServletRequest request) {
+<span class="nc" id="L85">                return this.response(HttpStatus.UNAUTHORIZED, &quot;AUTH_TOKEN_EXPIRED&quot;, &quot;El token de acceso está vencido.&quot;,</span>
+                                request,
+                                null, exception, false);
+        }
+
+        @ExceptionHandler(JwtException.class)
+        public ResponseEntity&lt;ApiErrorResponse&gt; handleJwt(JwtException exception,
+                        HttpServletRequest request) {
+<span class="nc" id="L93">                return this.response(HttpStatus.UNAUTHORIZED, &quot;AUTH_TOKEN_INVALID&quot;, &quot;El token de acceso es inválido.&quot;,</span>
+                                request,
+                                null, exception, false);
+        }
+
+        @ExceptionHandler(MethodArgumentNotValidException.class)
+        public ResponseEntity&lt;ApiErrorResponse&gt; handleValidation(MethodArgumentNotValidException exception,
+                        HttpServletRequest request) {
+<span class="fc" id="L101">                Map&lt;String, String&gt; errores = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L102">                exception.getBindingResult().getFieldErrors()</span>
+<span class="fc" id="L103">                                .forEach(error -&gt; errores.put(error.getField(), error.getDefaultMessage()));</span>
+<span class="fc" id="L104">                return this.response(HttpStatus.BAD_REQUEST, &quot;VALIDATION_ERROR&quot;,</span>
+                                &quot;Hay campos inválidos en la solicitud.&quot;,
+                                request, errores, exception, false);
+        }
+
+        @ExceptionHandler(ConstraintViolationException.class)
+        public ResponseEntity&lt;ApiErrorResponse&gt; handleConstraintViolation(ConstraintViolationException exception,
+                        HttpServletRequest request) {
+<span class="nc" id="L112">                Map&lt;String, String&gt; errores = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc" id="L113">                exception.getConstraintViolations()</span>
+<span class="nc" id="L114">                                .forEach(violation -&gt; errores.put(violation.getPropertyPath().toString(),</span>
+<span class="nc" id="L115">                                                violation.getMessage()));</span>
+<span class="nc" id="L116">                return this.response(HttpStatus.BAD_REQUEST, &quot;VALIDATION_ERROR&quot;,</span>
+                                &quot;Hay parámetros inválidos en la solicitud.&quot;,
+                                request, errores, exception, false);
+        }
+
+        @ExceptionHandler(HttpMessageNotReadableException.class)
+        public ResponseEntity&lt;ApiErrorResponse&gt; handleUnreadable(HttpMessageNotReadableException exception,
+                        HttpServletRequest request) {
+<span class="nc" id="L124">                return this.response(HttpStatus.BAD_REQUEST, &quot;MALFORMED_REQUEST&quot;,</span>
+                                &quot;El JSON enviado está malformado o contiene un valor no permitido.&quot;, request, null,
+                                exception, false);
+        }
+
+        @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+        public ResponseEntity&lt;ApiErrorResponse&gt; handleTypeMismatch(MethodArgumentTypeMismatchException exception,
+                        HttpServletRequest request) {
+<span class="nc" id="L132">                String mensaje = &quot;El parámetro '&quot; + exception.getName() + &quot;' contiene un valor incompatible.&quot;;</span>
+<span class="nc" id="L133">                return this.response(HttpStatus.BAD_REQUEST, &quot;INVALID_PARAMETER&quot;, mensaje, request, null, exception,</span>
+                                false);
+        }
+
+        @ExceptionHandler(MissingServletRequestParameterException.class)
+        public ResponseEntity&lt;ApiErrorResponse&gt; handleMissingParameter(
+                        MissingServletRequestParameterException exception,
+                        HttpServletRequest request) {
+<span class="nc" id="L141">                String mensaje = &quot;Falta el parámetro obligatorio '&quot; + exception.getParameterName() + &quot;'.&quot;;</span>
+<span class="nc" id="L142">                return this.response(HttpStatus.BAD_REQUEST, &quot;MISSING_PARAMETER&quot;, mensaje, request, null, exception,</span>
+                                false);
+        }
+
+        @ExceptionHandler(IdempotencyConflictException.class)
+        public ResponseEntity&lt;ApiErrorResponse&gt; handleIdempotencyConflict(IdempotencyConflictException exception,
+                        HttpServletRequest request) {
+<span class="fc" id="L149">                return this.response(HttpStatus.CONFLICT, &quot;IDEMPOTENCY_CONFLICT&quot;, exception.getMessage(),</span>
+                                request, null, exception, false);
+        }
+
+        @ExceptionHandler(DataIntegrityViolationException.class)
+        public ResponseEntity&lt;ApiErrorResponse&gt; handleDataIntegrity(DataIntegrityViolationException exception,
+                        HttpServletRequest request) {
+<span class="fc" id="L156">                return this.response(HttpStatus.CONFLICT, &quot;DATA_CONFLICT&quot;,</span>
+                                &quot;La operación entra en conflicto con datos existentes o restricciones de integridad.&quot;,
+                                request, null,
+                                exception, true);
+        }
+
+        @ExceptionHandler(MaxUploadSizeExceededException.class)
+        public ResponseEntity&lt;ApiErrorResponse&gt; handleUploadSize(MaxUploadSizeExceededException exception,
+                        HttpServletRequest request) {
+<span class="nc" id="L165">                return this.response(HttpStatus.CONTENT_TOO_LARGE, &quot;FILE_TOO_LARGE&quot;,</span>
+                                &quot;El archivo supera el tamaño máximo permitido.&quot;, request, null, exception, false);
+        }
+
+        @ExceptionHandler(Exception.class)
+        public ResponseEntity&lt;ApiErrorResponse&gt; handleGeneral(Exception exception,
+                        HttpServletRequest request) {
+<span class="fc" id="L172">                return this.response(HttpStatus.INTERNAL_SERVER_ERROR, &quot;INTERNAL_ERROR&quot;,</span>
+                                &quot;Ocurrió un error interno en el servidor.&quot;, request, null, exception, true);
+        }
+
+        private ResponseEntity&lt;ApiErrorResponse&gt; response(HttpStatus status,
+                        String codigo,
+                        String mensaje,
+                        HttpServletRequest request,
+                        Object detalles,
+                        Throwable exception,
+                        boolean includeStackTrace) {
+                // El mismo identificador aparece en la respuesta y en el log para facilitar el diagnóstico. 
+<span class="fc" id="L184">                String incidenteId = org.slf4j.MDC.get(uy.edu.ctc.pamahe.common.filter.CorrelationIdFilter.MDC_KEY);</span>
+<span class="pc bpc" id="L185" title="2 of 4 branches missed.">                if (incidenteId == null || incidenteId.isBlank()) {</span>
+<span class="nc" id="L186">                        incidenteId = UUID.randomUUID().toString();</span>
+                }
+<span class="fc bfc" id="L188" title="All 2 branches covered.">                if (includeStackTrace) {</span>
+<span class="fc" id="L189">                        LOGGER.error(&quot;Incidente {} - {} {} - {}&quot;, incidenteId, request.getMethod(),</span>
+<span class="fc" id="L190">                                        request.getRequestURI(), mensaje, exception);</span>
+                } else {
+<span class="fc" id="L192">                        LOGGER.warn(&quot;Incidente {} - {} {} - {} ({})&quot;, incidenteId, request.getMethod(),</span>
+<span class="fc" id="L193">                                        request.getRequestURI(), mensaje, exception.getClass().getSimpleName());</span>
+                }
+
+<span class="fc" id="L196">                return ResponseEntity.status(status)</span>
+<span class="fc" id="L197">                                .body(ApiErrorResponse.of(codigo, mensaje, request.getRequestURI(), incidenteId,</span>
+                                                detalles));
+        }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

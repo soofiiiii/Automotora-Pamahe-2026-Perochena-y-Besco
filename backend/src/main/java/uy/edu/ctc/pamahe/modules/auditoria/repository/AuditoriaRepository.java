@@ -21,7 +21,7 @@ public interface AuditoriaRepository extends JpaRepository<Auditoria, Long> {
                           and (:entidadId is null or a.entidadId = :entidadId)
                           and (:desde is null or a.creadoEn >= :desde)
                           and (:hastaExclusivo is null or a.creadoEn < :hastaExclusivo)
-                        order by a.creadoEn desc
+                        order by a.creadoEn desc, a.id desc
                         """)
         List<Auditoria> buscar(@Param("usuario") String usuario,
                         @Param("accion") String accion,
@@ -48,6 +48,17 @@ public interface AuditoriaRepository extends JpaRepository<Auditoria, Long> {
                         @Param("desde") LocalDateTime desde,
                         @Param("hastaExclusivo") LocalDateTime hastaExclusivo,
                         Pageable pageable);
+
+
+        @Query("""
+                        select a from Auditoria a
+                        where a.activo = true
+                          and upper(a.entidad) = 'VEHICULO'
+                          and a.entidadId = :vehiculoId
+                          and upper(a.accion) in ('CAMBIO_ESTADO', 'CAMBIO_PUBLICACION')
+                        order by a.creadoEn asc, a.id asc
+                        """)
+        List<Auditoria> buscarEventosVehiculo(@Param("vehiculoId") Long vehiculoId);
 
       /** Recupera en orden cronológico los cambios auditados de los vehículos indicados
        * hasta el cierre solicitado. Se utiliza para reconstruir estado y publicación

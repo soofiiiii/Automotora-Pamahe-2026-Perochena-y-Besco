@@ -1,0 +1,15 @@
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: ${PERF_DB_POOL_SIZE:10}
+      minimum-idle: ${PERF_DB_POOL_SIZE:10}
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        generate_statistics: false
+logging:
+  level:
+    root: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN

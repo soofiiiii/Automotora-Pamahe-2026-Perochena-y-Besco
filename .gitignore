@@ -32,3 +32,12 @@ backend/uploads/
 
 # Archivos subidos localmente
 uploads/
+
+# Runtime
+backend/logs/
+storage/
+
+# Temporales
+tmp-*/
+**/__pycache__/
+*.pyc

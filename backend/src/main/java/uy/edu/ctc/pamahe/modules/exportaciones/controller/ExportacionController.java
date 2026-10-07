@@ -1,9 +1,18 @@
 package uy.edu.ctc.pamahe.modules.exportaciones.controller;
 
-import java.time.LocalDate;
 import java.nio.charset.StandardCharsets;
-import org.springframework.http.*;
-import org.springframework.web.bind.annotation.*;
+import java.time.LocalDate;
+
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import uy.edu.ctc.pamahe.modules.exportaciones.service.CsvExportService;
 
 @RestController
@@ -27,25 +36,22 @@ public class ExportacionController {
 
     @GetMapping("/ventas.csv")
     public ResponseEntity<byte[]> ventas(
-            @RequestParam(required = false) LocalDate desde,
-            @RequestParam(required = false) LocalDate hasta) {
-
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
         return csv("ventas.csv", service.ventas(desde, hasta));
     }
 
     @GetMapping("/compras.csv")
     public ResponseEntity<byte[]> compras(
-            @RequestParam(required = false) LocalDate desde,
-            @RequestParam(required = false) LocalDate hasta) {
-
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
         return csv("compras.csv", service.compras(desde, hasta));
     }
 
     @GetMapping("/refacciones.csv")
     public ResponseEntity<byte[]> refacciones(
-            @RequestParam(required = false) LocalDate desde,
-            @RequestParam(required = false) LocalDate hasta) {
-
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
         return csv("refacciones.csv", service.refacciones(desde, hasta));
     }
 
@@ -55,7 +61,8 @@ public class ExportacionController {
     }
 
     private ResponseEntity<byte[]> csv(String filename, String content) {
-        ContentDisposition disposition = ContentDisposition.attachment().filename(filename, StandardCharsets.UTF_8)
+        ContentDisposition disposition = ContentDisposition.attachment()
+                .filename(filename, StandardCharsets.UTF_8)
                 .build();
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())

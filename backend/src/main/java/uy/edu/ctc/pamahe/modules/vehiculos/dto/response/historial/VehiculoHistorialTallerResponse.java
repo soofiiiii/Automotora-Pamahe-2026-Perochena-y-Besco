@@ -12,6 +12,6 @@ public record VehiculoHistorialTallerResponse(
         LocalDate fechaCompra,
         List<RefaccionResponse> refacciones,
         LocalDate fechaVenta,
-        List<ImagenVehiculoResponse> imagenes
-) {
+        List<ImagenVehiculoResponse> imagenes,
+        List<HistorialEventoVehiculoResponse> eventos) {
 }

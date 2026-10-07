@@ -66,7 +66,7 @@ public class LoginAttemptService {
             if (state.blockedUntil != null && now.isBefore(state.blockedUntil)) {
                 long retry = Duration.between(now, state.blockedUntil).toSeconds() + 1;
                 throw new RateLimitExceededException(
-                        "Se alcanzó el límite temporal de intentos de inicio de sesión.", retry);
+                        "Demasiados intentos de inicio de sesión. Esperá unos minutos antes de volver a intentar.", retry);
             }
         }
     }

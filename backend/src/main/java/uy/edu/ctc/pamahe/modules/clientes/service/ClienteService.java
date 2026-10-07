@@ -1,6 +1,7 @@
 package uy.edu.ctc.pamahe.modules.clientes.service;
 
 import java.util.List;
+import uy.edu.ctc.pamahe.modules.clientes.model.TipoCliente;
 import java.util.Locale;
 
 import org.springframework.data.domain.PageRequest;
@@ -49,16 +50,19 @@ public class ClienteService {
         return ClienteMapper.toResponse(this.buscarPorId(id));
     }
 
+    @Transactional(readOnly = true)
+    public ClienteResponse buscarActivoPorDocumento(String documento) {
+        String normalizado = normalizarDocumento(documento);
+        if (normalizado == null) {
+            return null;
+        }
+        return this.clienteRepository.findFirstByDocumentoAndActivoTrueOrderByIdAsc(normalizado)
+                .map(ClienteMapper::toResponse)
+                .orElse(null);
+    }
+
     @Transactional
     public ClienteResponse crear(ClienteRequest request) {
-
-        String documentoNormalizado = normalizarDocumento(request.documento());
-
-        if (this.clienteRepository.existsByDocumento(documentoNormalizado)) {
-            throw new BusinessException(
-                    "Ya existe un cliente con ese documento."
-            );
-        }
 
         Cliente cliente = new Cliente();
         this.cargarDatos(cliente, request);
@@ -70,17 +74,6 @@ public class ClienteService {
     @Transactional
     public ClienteResponse actualizar(Long id, ClienteRequest request) {
         Cliente cliente = this.buscarPorId(id);
-
-        String documentoNormalizado = normalizarDocumento(request.documento());
-
-        if (this.clienteRepository.existsByDocumentoAndIdNot(
-                documentoNormalizado,
-                id
-        )) {
-            throw new BusinessException(
-                    "Ya existe otro cliente con ese documento."
-            );
-        }
 
         this.cargarDatos(cliente, request);
         Cliente guardado = this.clienteRepository.save(cliente);
@@ -104,7 +97,7 @@ public class ClienteService {
     public Cliente buscarActivoPorId(Long id) {
         Cliente cliente = this.buscarPorId(id);
         if (!Boolean.TRUE.equals(cliente.getActivo())) {
-            throw new ResourceNotFoundException("No se encontró un cliente activo con el identificador solicitado.");
+            throw new ResourceNotFoundException("El cliente solicitado no existe o ya no está disponible.");
         }
         return cliente;
     }
@@ -196,11 +189,27 @@ public class ClienteService {
     }
 
     private void validarPaginacion(int page, int size) {
+        if ((long) page * size > Integer.MAX_VALUE) {
+            throw new BusinessException("La página solicitada no es válida.");
+        }
         if (page < 0) {
-            throw new BusinessException("La página no puede ser negativa.");
+            throw new BusinessException("La página solicitada no es válida.");
         }
         if (size < 1 || size > 100) {
-            throw new BusinessException("El tamaño de página debe estar entre 1 y 100.");
+            throw new BusinessException("No pudimos mostrar esa página. Actualizá la vista e intentá nuevamente.");
         }
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<ClienteResponse> listarPaginado(int page, int size, String q, TipoCliente tipoCliente) {
+        validarPaginacion(page, size);
+        String termino = q == null || q.isBlank() ? null : q.trim().toLowerCase(Locale.ROOT);
+        if (termino != null && termino.length() > 120) {
+            throw new BusinessException("La búsqueda no puede superar los 120 caracteres.");
+        }
+        String patron = termino == null ? null : "%" + termino.replace("!", "!!")
+                .replace("%", "!%").replace("_", "!_") + "%";
+        return PageResponse.from(this.clienteRepository.buscarPaginado(patron, tipoCliente,
+                PageRequest.of(page, size)), ClienteMapper::toResponse);
     }
 }

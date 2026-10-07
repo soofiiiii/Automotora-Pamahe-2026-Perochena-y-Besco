@@ -1,0 +1,119 @@
+{
+  "validation": "FE-18 - Paginación server-side",
+  "mode": "static",
+  "generatedAt": "2026-10-05T21:39:47.458Z",
+  "status": "OK",
+  "summary": {
+    "total": 14,
+    "passed": 14,
+    "failed": 0,
+    "message": "14/14 controles correctos"
+  },
+  "evidenceDirectory": "evidencias/paginacion-server-side",
+  "inspectedFiles": [
+    "src/services/api.ts",
+    "src/services/apiClient.ts",
+    "src/modules/clientes/pages/ClientesPage.tsx",
+    "src/modules/catalogo/pages/CatalogoPage.tsx"
+  ],
+  "controls": [
+    {
+      "id": "PAG-01",
+      "description": "Clientes utiliza el endpoint paginado",
+      "passed": true,
+      "status": "OK",
+      "detail": "clienteService.page() debe consultar /clientes/paginado."
+    },
+    {
+      "id": "PAG-02",
+      "description": "Vehículos utiliza el endpoint paginado",
+      "passed": true,
+      "status": "OK",
+      "detail": "vehiculoService.page() debe consultar /vehiculos/paginado."
+    },
+    {
+      "id": "PAG-03",
+      "description": "Compras utiliza el endpoint paginado",
+      "passed": true,
+      "status": "OK",
+      "detail": "compraService.page() debe consultar /compras/paginado."
+    },
+    {
+      "id": "PAG-04",
+      "description": "Ventas utiliza el endpoint paginado",
+      "passed": true,
+      "status": "OK",
+      "detail": "ventaService.page() debe consultar /ventas/paginado."
+    },
+    {
+      "id": "PAG-05",
+      "description": "Catálogo utiliza el endpoint paginado",
+      "passed": true,
+      "status": "OK",
+      "detail": "catalogoService.page() debe consultar /catalogo/vehiculos/paginado."
+    },
+    {
+      "id": "PAG-06",
+      "description": "El contrato paginado de clientes admite búsqueda server-side",
+      "passed": true,
+      "status": "OK",
+      "detail": "ClientePageRequest debe exponer q?: string junto con page y size heredados de PageRequest."
+    },
+    {
+      "id": "PAG-07",
+      "description": "ClientesPage consulta una página real y no descarga el listado completo",
+      "passed": true,
+      "status": "OK",
+      "detail": "La vista debe usar clienteService.page() y no clienteService.list()."
+    },
+    {
+      "id": "PAG-08",
+      "description": "ClientesPage no filtra el listado completo con useMemo",
+      "passed": true,
+      "status": "OK",
+      "detail": "La búsqueda no debe resolverse mediante useMemo sobre una colección completa."
+    },
+    {
+      "id": "PAG-09",
+      "description": "ClientesPage transmite q al backend",
+      "passed": true,
+      "status": "OK",
+      "detail": "El criterio de búsqueda aplicado debe viajar como parámetro q."
+    },
+    {
+      "id": "PAG-10",
+      "description": "ClientesPage transmite page y size al backend",
+      "passed": true,
+      "status": "OK",
+      "detail": "La consulta debe enviar el número de página actual y PAGE_SIZE."
+    },
+    {
+      "id": "PAG-11",
+      "description": "Una nueva búsqueda reinicia la paginación",
+      "passed": true,
+      "status": "OK",
+      "detail": "applySearch() debe ejecutar setPage(0) después de aplicar el criterio."
+    },
+    {
+      "id": "PAG-12",
+      "description": "PaginationControls utiliza metadatos devueltos por el servidor",
+      "passed": true,
+      "status": "OK",
+      "detail": "La navegación debe basarse en number, totalPages y totalElements de la respuesta paginada."
+    },
+    {
+      "id": "PAG-13",
+      "description": "Catálogo delega el orden al servidor y no ordena localmente la página recibida",
+      "passed": true,
+      "status": "OK",
+      "detail": "CatalogoPage debe enviar sort al backend y no ejecutar Array.sort() sobre data.content."
+    },
+    {
+      "id": "PAG-14",
+      "description": "asPage exige una respuesta paginada real",
+      "passed": true,
+      "status": "OK",
+      "detail": "asPage() debe rechazar arreglos y exigir content/items más metadatos de paginación válidos."
+    }
+  ]
+}

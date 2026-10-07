@@ -1,0 +1,85 @@
+{
+  "generatedAt": "2026-10-05T21:39:48.352Z",
+  "passed": 18,
+  "total": 18,
+  "generatedRoutes": [
+    "/",
+    "/catalogo",
+    "/catalogo/12",
+    "/catalogo/13"
+  ],
+  "checks": [
+    {
+      "name": "El build ejecuta la generación SEO",
+      "ok": true
+    },
+    {
+      "name": "Existe comando de validación SEO",
+      "ok": true
+    },
+    {
+      "name": "Inicio tiene title estático específico",
+      "ok": true
+    },
+    {
+      "name": "Inicio tiene canonical absoluto",
+      "ok": true
+    },
+    {
+      "name": "Catálogo tiene HTML propio",
+      "ok": true
+    },
+    {
+      "name": "Catálogo tiene canonical propio",
+      "ok": true
+    },
+    {
+      "name": "Detalle 12 tiene title del vehículo",
+      "ok": true
+    },
+    {
+      "name": "Detalle 12 tiene descripción del vehículo",
+      "ok": true
+    },
+    {
+      "name": "Detalle 12 tiene Open Graph image absoluta",
+      "ok": true
+    },
+    {
+      "name": "Detalle 12 tiene JSON-LD Vehicle",
+      "ok": true
+    },
+    {
+      "name": "Detalle 13 se genera desde la segunda página API",
+      "ok": true
+    },
+    {
+      "name": "Sitemap incluye inicio",
+      "ok": true
+    },
+    {
+      "name": "Sitemap incluye catálogo",
+      "ok": true
+    },
+    {
+      "name": "Sitemap incluye vehículos públicos",
+      "ok": true
+    },
+    {
+      "name": "Sitemap no publica rutas internas",
+      "ok": true
+    },
+    {
+      "name": "robots.txt publica la ubicación del sitemap",
+      "ok": true
+    },
+    {
+      "name": "robots.txt mantiene bloqueadas rutas internas",
+      "ok": true
+    },
+    {
+      "name": "Los metadatos estáticos no dependen de ejecutar React",
+      "ok": true
+    }
+  ]
+}

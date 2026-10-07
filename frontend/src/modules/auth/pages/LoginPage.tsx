@@ -9,8 +9,8 @@ import { FormField } from "../../../shared/forms/FormField";
 import { errorMessage } from "../../../utils/errorMessage";
 
 const schema = z.object({
-  username: z.string().trim().min(1, "Ingresá tu usuario").max(80),
-  password: z.string().min(1, "Ingresá tu contraseña").max(120),
+  username: z.string().trim().min(1, "Ingresá tu usuario.").max(60, "El usuario no puede superar los 60 caracteres."),
+  password: z.string().min(1, "Ingresá tu contraseña.").max(72, "La contraseña no puede superar los 72 caracteres."),
 });
 
 type Values = z.infer<typeof schema>;
@@ -32,7 +32,7 @@ export default function LoginPage() {
 
   return (
     <section>
-      <span className="eyebrow">Acceso del personal</span>
+      <span className="eyebrow login-eyebrow">Acceso del personal</span>
       <h1 style={{ marginTop: 8 }}>Ingresar</h1>
       <p className="muted">Usá únicamente las credenciales asignadas a tu cuenta.</p>
       <div className="login-security-note"><ShieldCheck size={17} />La sesión se cierra automáticamente tras un período de inactividad.</div>
@@ -70,7 +70,7 @@ export default function LoginPage() {
               onClick={() => setShowPassword((value) => !value)}
               aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
             >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
             </button>
           </div>
         </FormField>

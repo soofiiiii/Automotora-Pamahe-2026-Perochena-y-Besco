@@ -26,6 +26,14 @@ class JwtServiceTest {
         assertThrows(JwtException.class, () -> otraApi.obtenerUsername(token));
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(longs = {0, -1, Long.MAX_VALUE})
+    void rechazaDuracionNoUtilizable(long minutes) {
+        var service = servicio("pamahe-api");
+        ReflectionTestUtils.setField(service, "expirationMinutes", minutes);
+        assertThrows(IllegalStateException.class, service::validarConfiguracion);
+    }
+
     private JwtService servicio(String issuer) {
         JwtService service = new JwtService();
         ReflectionTestUtils.setField(service, "secret", SECRET);

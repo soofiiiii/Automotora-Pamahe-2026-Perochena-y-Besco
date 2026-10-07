@@ -16,7 +16,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import uy.edu.ctc.pamahe.security.handler.SecurityErrorWriter;
 
 /**
- * Defensa en profundidad para producción. El backend se publica detrás de un reverse proxy TLS;
+ * Defensa en profundidad para producción. El backend se publica detrás de un reverse proxy TLS,
  * cualquier solicitud que llegue sin HTTPS (directa o sin X-Forwarded-Proto=https) se rechaza.
  * En producción el puerto de Spring se enlaza por defecto a loopback, por lo que el encabezado
  * reenviado solo debe provenir del proxy de confianza del mismo host.
@@ -57,8 +57,8 @@ public class HttpsEnforcementFilter extends OncePerRequestFilter {
         if (forwardedProto == null || forwardedProto.isBlank()) {
             return false;
         }
-        String firstValue = forwardedProto.split(",", 2)[0].trim();
-        return "https".equalsIgnoreCase(firstValue) && isLoopback(request.getRemoteAddr());
+        // Nginx debe sobrescribir el encabezado, listas ambiguas no son aceptables.
+        return "https".equalsIgnoreCase(forwardedProto.trim()) && isLoopback(request.getRemoteAddr());
     }
 
     private boolean isLoopback(String remoteAddress) {

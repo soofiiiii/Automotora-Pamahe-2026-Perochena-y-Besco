@@ -9,11 +9,14 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record UsuarioUpdateRequest(
-        @NotBlank @Size(max = 120) String nombre,
-        @Email @NotBlank @Size(max = 120) String email,
+        @NotBlank(message = "El nombre es obligatorio.")
+        @Size(max = 120, message = "El nombre no puede superar los 120 caracteres.") String nombre,
+        @Email(message = "Ingresá un email válido.")
+        @NotBlank(message = "El email es obligatorio.")
+        @Size(max = 120, message = "El email no puede superar los 120 caracteres.") String email,
         @Pattern(regexp = "^\\+?[0-9 ()-]{8,40}$", message = "El teléfono no tiene un formato válido.")
-        @Size(max = 40) String telefono,
-        @NotEmpty Set<@NotBlank @Size(max = 50) String> roles,
+        @Size(max = 40, message = "El teléfono no puede superar los 40 caracteres.") String telefono,
+        @NotEmpty(message = "Elegí al menos un rol.")
+        Set<@NotBlank(message = "El rol no puede estar vacío.") @Size(max = 50, message = "El rol seleccionado no es válido.") String> roles,
         Boolean activo) {
 }
-

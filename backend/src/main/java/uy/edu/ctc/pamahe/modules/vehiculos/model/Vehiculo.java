@@ -41,11 +41,19 @@ public class Vehiculo extends BaseEntity {
     @Column(nullable = false, length = 30)
     private EstadoVehiculo estado = EstadoVehiculo.COMPRADO;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ubicacion_actual", nullable = false, length = 30)
+    private UbicacionVehiculo ubicacionActual = UbicacionVehiculo.LOCAL;
+
     @Column(name = "costo_inicial", precision = 14, scale = 2)
     private BigDecimal costoInicial = BigDecimal.ZERO;
 
     @Column(name = "precio_venta_estimado", precision = 14, scale = 2)
     private BigDecimal precioVentaEstimado = BigDecimal.ZERO;
+
+    // USD es la moneda principal del precio comercial; UYU se conserva por compatibilidad histórica.
+    @Column(name = "precio_venta_usd", precision = 16, scale = 6)
+    private BigDecimal precioVentaUsd = BigDecimal.ZERO;
 
     @Column(nullable = false)
     private Boolean publicado = false;
@@ -129,6 +137,14 @@ public class Vehiculo extends BaseEntity {
         this.estado = estado;
     }
 
+    public UbicacionVehiculo getUbicacionActual() {
+        return this.ubicacionActual;
+    }
+
+    public void setUbicacionActual(UbicacionVehiculo ubicacionActual) {
+        this.ubicacionActual = ubicacionActual;
+    }
+
     public BigDecimal getCostoInicial() {
         return this.costoInicial;
     }
@@ -143,6 +159,14 @@ public class Vehiculo extends BaseEntity {
 
     public void setPrecioVentaEstimado(BigDecimal precioVentaEstimado) {
         this.precioVentaEstimado = precioVentaEstimado;
+    }
+
+    public BigDecimal getPrecioVentaUsd() {
+        return this.precioVentaUsd;
+    }
+
+    public void setPrecioVentaUsd(BigDecimal precioVentaUsd) {
+        this.precioVentaUsd = precioVentaUsd;
     }
 
     public Boolean getPublicado() {

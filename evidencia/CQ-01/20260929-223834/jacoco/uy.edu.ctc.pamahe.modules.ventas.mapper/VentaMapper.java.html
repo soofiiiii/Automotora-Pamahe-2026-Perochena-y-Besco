@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VentaMapper.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.ventas.mapper</a> &gt; <span class="el_source">VentaMapper.java</span></div><h1>VentaMapper.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.ventas.mapper;
+
+import uy.edu.ctc.pamahe.modules.ventas.dto.response.VentaDetalleGerencialResponse;
+import uy.edu.ctc.pamahe.modules.ventas.dto.response.VentaResponse;
+import uy.edu.ctc.pamahe.modules.ventas.model.Venta;
+
+public final class VentaMapper {
+    private VentaMapper() {}
+
+
+    public static VentaResponse toResponse(Venta venta) {
+<span class="fc" id="L12">        return new VentaResponse(</span>
+<span class="fc" id="L13">                venta.getId(),</span>
+<span class="fc" id="L14">                venta.getVehiculo().getId(),</span>
+<span class="fc" id="L15">                nombreVehiculo(venta),</span>
+<span class="fc" id="L16">                venta.getClienteComprador().getId(),</span>
+<span class="fc" id="L17">                nombreCliente(venta),</span>
+<span class="fc" id="L18">                venta.getVendedor().getId(),</span>
+<span class="fc" id="L19">                venta.getVendedor().getNombre(),</span>
+<span class="fc" id="L20">                venta.getFechaVenta(),</span>
+<span class="fc" id="L21">                venta.getPrecioFinal(),</span>
+<span class="fc" id="L22">                venta.getEstadoComprobante(),</span>
+<span class="fc" id="L23">                venta.getIntentosComprobante(),</span>
+<span class="fc" id="L24">                venta.getUltimoIntentoComprobante(),</span>
+<span class="fc" id="L25">                venta.getProximoIntentoComprobante(),</span>
+<span class="fc" id="L26">                comprobanteUrl(venta),</span>
+<span class="fc" id="L27">                venta.getObservaciones()</span>
+        );
+    }
+
+    public static VentaDetalleGerencialResponse toDetalleGerencial(Venta venta) {
+<span class="fc" id="L32">        return new VentaDetalleGerencialResponse(</span>
+<span class="fc" id="L33">                venta.getId(),</span>
+<span class="fc" id="L34">                venta.getVehiculo().getId(),</span>
+<span class="fc" id="L35">                nombreVehiculo(venta),</span>
+<span class="fc" id="L36">                venta.getClienteComprador().getId(),</span>
+<span class="fc" id="L37">                nombreCliente(venta),</span>
+<span class="fc" id="L38">                venta.getVendedor().getId(),</span>
+<span class="fc" id="L39">                venta.getVendedor().getNombre(),</span>
+<span class="fc" id="L40">                venta.getFechaVenta(),</span>
+<span class="fc" id="L41">                venta.getCostoCompraAlVender(),</span>
+<span class="fc" id="L42">                venta.getCostoRefaccionesAlVender(),</span>
+<span class="fc" id="L43">                venta.getCostoTotalAlVender(),</span>
+<span class="fc" id="L44">                venta.getPrecioFinal(),</span>
+<span class="fc" id="L45">                venta.getRentabilidadCalculada(),</span>
+<span class="fc" id="L46">                venta.getEstadoComprobante(),</span>
+<span class="fc" id="L47">                venta.getIntentosComprobante(),</span>
+<span class="fc" id="L48">                venta.getUltimoIntentoComprobante(),</span>
+<span class="fc" id="L49">                venta.getProximoIntentoComprobante(),</span>
+<span class="fc" id="L50">                venta.getErrorComprobante(),</span>
+<span class="fc" id="L51">                comprobanteUrl(venta),</span>
+<span class="fc" id="L52">                venta.getObservaciones()</span>
+        );
+    }
+
+    private static String nombreVehiculo(Venta venta) {
+<span class="fc" id="L57">        return (venta.getVehiculo().getMarca() + &quot; &quot;</span>
+<span class="fc" id="L58">                + venta.getVehiculo().getModelo() + &quot; &quot;</span>
+<span class="fc" id="L59">                + venta.getVehiculo().getAnio()).trim();</span>
+    }
+
+    private static String nombreCliente(Venta venta) {
+<span class="fc" id="L63">        return (venta.getClienteComprador().getNombre() + &quot; &quot;</span>
+<span class="fc bfc" id="L64" title="All 2 branches covered.">                + (venta.getClienteComprador().getApellido() == null ? &quot;&quot; : venta.getClienteComprador().getApellido())).trim();</span>
+    }
+
+    private static String comprobanteUrl(Venta venta) {
+<span class="fc bfc" id="L68" title="All 2 branches covered.">        return venta.getComprobantePath() == null ? null : &quot;/api/ventas/&quot; + venta.getId() + &quot;/comprobante&quot;;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

@@ -75,6 +75,52 @@ class CostoServiceTest {
         verifyNoInteractions(compraRepository, refaccionRepository);
     }
 
+    @Test
+    void sinVentaCalculaCostosActualesConCentavos() {
+        Vehiculo v = vehiculo(1L);
+        Compra compra = new Compra();
+        compra.setCostoAdquisicion(new BigDecimal("10000.01"));
+        when(vehiculoService.buscarActivoPorId(1L)).thenReturn(v);
+        when(compraRepository.findByVehiculoAndActivoTrue(v)).thenReturn(Optional.of(compra));
+        when(refaccionRepository.findByVehiculoAndActivoTrueAndEstadoTareaNotOrderByFechaDesc(v, EstadoTarea.CANCELADA))
+                .thenReturn(List.of(refaccion("0.10", "0.20", "0.01")));
+        var result = service.calcular(1L);
+        assertFalse(result.historicoCerrado());
+        assertEquals(new BigDecimal("10000.32"), result.costoTotal());
+        assertNull(result.rentabilidad());
+    }
+
+    @Test
+    void sinRefaccionesElCostoEsSoloLaCompra() {
+        Vehiculo v = vehiculo(1L);
+        Compra compra = new Compra();
+        compra.setCostoAdquisicion(new BigDecimal("12500.50"));
+        when(compraRepository.findByVehiculoAndActivoTrue(v)).thenReturn(Optional.of(compra));
+        var result = service.calcularActualParaVenta(v);
+        assertEquals(BigDecimal.ZERO, result.costoRefacciones());
+        assertEquals(new BigDecimal("12500.50"), result.costoTotal());
+        verify(refaccionRepository).findByVehiculoAndActivoTrueAndEstadoTareaNotOrderByFechaDesc(v, EstadoTarea.CANCELADA);
+    }
+
+    @Test
+    void sinCompraNoInventaCostoCero() {
+        assertThrows(uy.edu.ctc.pamahe.common.exception.BusinessException.class,
+                () -> service.calcularActualParaVenta(vehiculo(1L)));
+        verifyNoInteractions(refaccionRepository);
+    }
+
+    @Test
+    void ventaReutilizaCompraValidadaYAgregaEnBase() {
+        Vehiculo v = vehiculo(1L);
+        Compra compra = new Compra();
+        compra.setCostoAdquisicion(new BigDecimal("10000.01"));
+        when(refaccionRepository.sumarCostoActivo(v, EstadoTarea.CANCELADA))
+                .thenReturn(new BigDecimal("0.31"));
+        var result = service.calcularActualParaVenta(v, compra);
+        assertEquals(new BigDecimal("10000.32"), result.costoTotal());
+        verifyNoInteractions(compraRepository);
+    }
+
     private Vehiculo vehiculo(Long id) {
         Vehiculo v = new Vehiculo(); v.setId(id); v.setMarca("Test"); v.setModelo("V1"); v.setAnio(2022); return v;
     }

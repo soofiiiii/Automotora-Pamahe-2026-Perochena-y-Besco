@@ -9,6 +9,7 @@ public record DashboardResponse(
         long vehiculosEnTaller,
         long vehiculosDisponibles,
         long vehiculosVendidos,
+        long tareasTallerPendientes,
         long clientesActivos,
         long ventasRegistradas,
         BigDecimal ingresosVentas,

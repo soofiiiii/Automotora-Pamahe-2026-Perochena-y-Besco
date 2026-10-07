@@ -1,0 +1,404 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RefaccionService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.taller.service</a> &gt; <span class="el_source">RefaccionService.java</span></div><h1>RefaccionService.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.taller.service;
+
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.LocalDate;
+import java.util.HexFormat;
+import java.util.List;
+import java.util.Objects;
+
+import org.springframework.stereotype.Service;
+
+import org.springframework.transaction.annotation.Transactional;
+
+import uy.edu.ctc.pamahe.common.exception.BusinessException;
+import uy.edu.ctc.pamahe.common.exception.ResourceNotFoundException;
+import uy.edu.ctc.pamahe.common.exception.IdempotencyConflictException;
+import uy.edu.ctc.pamahe.modules.auditoria.service.AuditoriaService;
+import uy.edu.ctc.pamahe.modules.taller.dto.request.RefaccionRequest;
+import uy.edu.ctc.pamahe.modules.taller.dto.request.RefaccionUpdateRequest;
+import uy.edu.ctc.pamahe.modules.taller.dto.response.RefaccionResponse;
+import uy.edu.ctc.pamahe.modules.taller.idempotency.RefaccionOperacionOffline;
+import uy.edu.ctc.pamahe.modules.taller.idempotency.RefaccionOperacionOfflineRepository;
+import uy.edu.ctc.pamahe.modules.taller.mapper.RefaccionMapper;
+import uy.edu.ctc.pamahe.modules.taller.model.EstadoTarea;
+import uy.edu.ctc.pamahe.modules.taller.model.Refaccion;
+import uy.edu.ctc.pamahe.modules.taller.repository.RefaccionRepository;
+import uy.edu.ctc.pamahe.modules.usuarios.model.Usuario;
+import uy.edu.ctc.pamahe.modules.usuarios.repository.UsuarioRepository;
+import uy.edu.ctc.pamahe.modules.usuarios.service.UsuarioActualService;
+import uy.edu.ctc.pamahe.modules.vehiculos.model.EstadoVehiculo;
+import uy.edu.ctc.pamahe.modules.vehiculos.model.Vehiculo;
+import uy.edu.ctc.pamahe.modules.vehiculos.service.VehiculoService;
+import uy.edu.ctc.pamahe.modules.compras.model.Compra;
+import uy.edu.ctc.pamahe.modules.compras.repository.CompraRepository;
+
+/**
+ * Gestiona trabajos de taller y su impacto en el costo y estado operativo del vehículo.
+ * Distingue al usuario que registra del responsable que ejecuta y admite una clave idempotente
+ * para que la sincronización offline no duplique refacciones al reintentar.
+ */
+@Service
+public class RefaccionService {
+    private final RefaccionRepository refaccionRepository;
+    private final RefaccionOperacionOfflineRepository operacionOfflineRepository;
+    private final VehiculoService vehiculoService;
+    private final UsuarioRepository usuarioRepository;
+    private final UsuarioActualService usuarioActualService;
+    private final AuditoriaService auditoriaService;
+    private final CompraRepository compraRepository;
+
+    public RefaccionService(RefaccionRepository refaccionRepository,
+            RefaccionOperacionOfflineRepository operacionOfflineRepository,
+            VehiculoService vehiculoService,
+            UsuarioRepository usuarioRepository,
+            UsuarioActualService usuarioActualService,
+            AuditoriaService auditoriaService,
+<span class="fc" id="L59">            CompraRepository compraRepository) {</span>
+<span class="fc" id="L60">        this.refaccionRepository = refaccionRepository;</span>
+<span class="fc" id="L61">        this.operacionOfflineRepository = operacionOfflineRepository;</span>
+<span class="fc" id="L62">        this.vehiculoService = vehiculoService;</span>
+<span class="fc" id="L63">        this.usuarioRepository = usuarioRepository;</span>
+<span class="fc" id="L64">        this.usuarioActualService = usuarioActualService;</span>
+<span class="fc" id="L65">        this.auditoriaService = auditoriaService;</span>
+<span class="fc" id="L66">        this.compraRepository = compraRepository;</span>
+<span class="fc" id="L67">    }</span>
+
+    @Transactional(readOnly = true)
+    public List&lt;RefaccionResponse&gt; listar() {
+<span class="fc" id="L71">        return this.refaccionRepository.findByActivoTrueOrderByFechaDesc().stream()</span>
+<span class="fc" id="L72">                .map(RefaccionMapper::toResponse)</span>
+<span class="fc" id="L73">                .toList();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;RefaccionResponse&gt; listarPorEstado(EstadoTarea estado) {
+<span class="fc" id="L78">        return this.refaccionRepository.findByEstadoTareaAndActivoTrueOrderByFechaAsc(estado).stream()</span>
+<span class="fc" id="L79">                .map(RefaccionMapper::toResponse)</span>
+<span class="fc" id="L80">                .toList();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;RefaccionResponse&gt; listarPorVehiculo(Long vehiculoId) {
+<span class="fc" id="L85">        Vehiculo vehiculo = this.vehiculoService.buscarActivoPorId(vehiculoId);</span>
+<span class="fc" id="L86">        return this.refaccionRepository.findByVehiculoAndActivoTrueOrderByFechaDesc(vehiculo).stream()</span>
+<span class="fc" id="L87">                .map(RefaccionMapper::toResponse)</span>
+<span class="fc" id="L88">                .toList();</span>
+    }
+
+    @Transactional
+    public RefaccionResponse crear(RefaccionRequest request) {
+<span class="fc" id="L93">        Usuario usuarioQueRegistra = this.usuarioActualService.exigirRoles(&quot;ADMINISTRADOR&quot;, &quot;DUENO&quot;, &quot;TALLER&quot;);</span>
+<span class="fc" id="L94">        String idOffline = this.normalizarOpcional(request.idOperacionOffline());</span>
+
+<span class="fc bfc" id="L96" title="All 2 branches covered.">        if (idOffline != null) {</span>
+<span class="fc" id="L97">            var existente = this.refaccionRepository.findByIdOperacionOffline(idOffline);</span>
+<span class="fc bfc" id="L98" title="All 2 branches covered.">            if (existente.isPresent()) {</span>
+<span class="fc" id="L99">                validarMismoPayload(existente.get(), request);</span>
+<span class="fc" id="L100">                return RefaccionMapper.toResponse(existente.get());</span>
+            }
+        }
+
+<span class="fc bfc" id="L104" title="All 2 branches covered.">        RefaccionOperacionOffline reserva = idOffline == null ? null : reservarOperacion(idOffline, request);</span>
+<span class="fc bfc" id="L105" title="All 4 branches covered.">        if (reserva != null &amp;&amp; reserva.getRefaccionId() != null) {</span>
+<span class="fc" id="L106">            Refaccion existente = this.refaccionRepository.findByIdConBloqueoLectura(reserva.getRefaccionId())</span>
+<span class="pc" id="L107">                    .orElseThrow(() -&gt; new IllegalStateException(</span>
+                            &quot;La reserva idempotente referencia una refacción inexistente. Revisar integridad de la base.&quot;));
+<span class="fc" id="L109">            validarMismoPayload(existente, request);</span>
+<span class="fc" id="L110">            return RefaccionMapper.toResponse(existente);</span>
+        }
+
+<span class="fc" id="L113">        Vehiculo vehiculo = this.vehiculoService.buscarActivoPorIdConBloqueo(request.vehiculoId());</span>
+<span class="fc" id="L114">        this.validarVehiculoEditable(vehiculo);</span>
+<span class="fc" id="L115">        this.validarFecha(vehiculo, request.fecha());</span>
+<span class="fc" id="L116">        Usuario responsable = this.buscarResponsableActivo(request.responsableOperativoId());</span>
+
+<span class="fc" id="L118">        Refaccion refaccion = new Refaccion();</span>
+<span class="fc" id="L119">        refaccion.setVehiculo(vehiculo);</span>
+<span class="fc" id="L120">        refaccion.setUsuarioQueRegistra(usuarioQueRegistra);</span>
+<span class="fc" id="L121">        refaccion.setIdOperacionOffline(idOffline);</span>
+<span class="fc" id="L122">        this.cargarDatos(</span>
+                refaccion,
+                responsable,
+<span class="fc" id="L125">                request.fecha(),</span>
+<span class="fc" id="L126">                request.tipoTrabajo(),</span>
+<span class="fc" id="L127">                request.descripcion(),</span>
+<span class="fc" id="L128">                request.costoRepuestos(),</span>
+<span class="fc" id="L129">                request.costoManoObra(),</span>
+<span class="fc" id="L130">                request.costoServiciosExternos(),</span>
+<span class="fc bfc" id="L131" title="All 2 branches covered.">                request.estadoTarea() == null ? EstadoTarea.PENDIENTE : request.estadoTarea(),</span>
+<span class="fc" id="L132">                request.observaciones(),</span>
+<span class="fc" id="L133">                request.registroFotograficoUrl(),</span>
+<span class="pc bpc" id="L134" title="1 of 4 branches missed.">                Boolean.TRUE.equals(request.sincronizadoDesdeOffline()) || idOffline != null);</span>
+
+<span class="fc" id="L136">        Refaccion guardada = this.refaccionRepository.save(refaccion);</span>
+<span class="fc bfc" id="L137" title="All 2 branches covered.">        if (reserva != null) {</span>
+<span class="fc" id="L138">            reserva.setRefaccionId(guardada.getId());</span>
+<span class="fc" id="L139">            this.operacionOfflineRepository.save(reserva);</span>
+        }
+<span class="fc" id="L141">        this.sincronizarEstadoVehiculoPorTarea(vehiculo, guardada);</span>
+
+<span class="fc" id="L143">        this.auditoriaService.registrar(</span>
+                &quot;ALTA&quot;,
+                &quot;Refaccion&quot;,
+<span class="fc" id="L146">                guardada.getId(),</span>
+<span class="fc" id="L147">                &quot;Registro de refacción del vehículo &quot; + vehiculo.getId(),</span>
+                null,
+<span class="fc" id="L149">                this.resumen(guardada));</span>
+<span class="fc" id="L150">        return RefaccionMapper.toResponse(guardada);</span>
+    }
+
+    @Transactional
+    public RefaccionResponse actualizar(Long id, RefaccionUpdateRequest request) {
+<span class="fc" id="L155">        this.usuarioActualService.exigirRoles(&quot;ADMINISTRADOR&quot;, &quot;DUENO&quot;, &quot;TALLER&quot;);</span>
+<span class="fc" id="L156">        Refaccion refaccion = this.buscarActiva(id);</span>
+<span class="fc" id="L157">        Vehiculo vehiculo = this.vehiculoService.buscarActivoPorIdConBloqueo(refaccion.getVehiculo().getId());</span>
+<span class="fc" id="L158">        this.validarVehiculoEditable(vehiculo);</span>
+<span class="fc" id="L159">        this.validarFecha(vehiculo, request.fecha());</span>
+<span class="fc" id="L160">        Usuario responsable = this.buscarResponsableActivo(request.responsableOperativoId());</span>
+<span class="fc" id="L161">        String anterior = this.resumen(refaccion);</span>
+
+<span class="fc" id="L163">        this.cargarDatos(</span>
+                refaccion,
+                responsable,
+<span class="fc" id="L166">                request.fecha(),</span>
+<span class="fc" id="L167">                request.tipoTrabajo(),</span>
+<span class="fc" id="L168">                request.descripcion(),</span>
+<span class="fc" id="L169">                request.costoRepuestos(),</span>
+<span class="fc" id="L170">                request.costoManoObra(),</span>
+<span class="fc" id="L171">                request.costoServiciosExternos(),</span>
+<span class="fc" id="L172">                request.estadoTarea(),</span>
+<span class="fc" id="L173">                request.observaciones(),</span>
+<span class="fc" id="L174">                request.registroFotograficoUrl(),</span>
+<span class="fc" id="L175">                refaccion.getSincronizadoDesdeOffline());</span>
+<span class="fc" id="L176">        Refaccion guardada = this.refaccionRepository.save(refaccion);</span>
+<span class="fc" id="L177">        this.sincronizarEstadoVehiculoPorTarea(vehiculo, guardada);</span>
+
+<span class="fc" id="L179">        this.auditoriaService.registrar(</span>
+                &quot;MODIFICACION&quot;,
+                &quot;Refaccion&quot;,
+<span class="fc" id="L182">                guardada.getId(),</span>
+                &quot;Actualización de refacción sin reasignar el vehículo&quot;,
+                anterior,
+<span class="fc" id="L185">                this.resumen(guardada));</span>
+<span class="fc" id="L186">        return RefaccionMapper.toResponse(guardada);</span>
+    }
+
+    private RefaccionOperacionOffline reservarOperacion(String idOffline, RefaccionRequest request) {
+<span class="fc" id="L190">        String requestHash = hashOperacion(request);</span>
+<span class="fc" id="L191">        this.operacionOfflineRepository.reservarSiAusente(idOffline, requestHash);</span>
+<span class="fc" id="L192">        RefaccionOperacionOffline reserva = this.operacionOfflineRepository.bloquearPorId(idOffline)</span>
+<span class="pc" id="L193">                .orElseThrow(() -&gt; new IllegalStateException(</span>
+                        &quot;No fue posible adquirir la reserva idempotente para la operación offline.&quot;));
+<span class="fc bfc" id="L195" title="All 2 branches covered.">        if (!Objects.equals(reserva.getRequestHash(), requestHash)) {</span>
+<span class="fc" id="L196">            throw new IdempotencyConflictException(</span>
+                    &quot;El identificador de operación offline ya fue utilizado con datos diferentes.&quot;);
+        }
+<span class="fc" id="L199">        return reserva;</span>
+    }
+
+    private void validarMismoPayload(Refaccion existente, RefaccionRequest request) {
+<span class="fc bfc" id="L203" title="All 2 branches covered.">        if (!mismaOperacionOffline(existente, request)) {</span>
+<span class="fc" id="L204">            throw new IdempotencyConflictException(</span>
+                    &quot;El identificador de operación offline ya fue utilizado con datos diferentes.&quot;);
+        }
+<span class="fc" id="L207">    }</span>
+
+    private void sincronizarEstadoVehiculoPorTarea(Vehiculo vehiculo, Refaccion refaccion) {
+<span class="fc bfc" id="L210" title="All 2 branches covered.">        boolean tareaAbierta = refaccion.getEstadoTarea() == EstadoTarea.PENDIENTE</span>
+<span class="pc bpc" id="L211" title="1 of 2 branches missed.">                || refaccion.getEstadoTarea() == EstadoTarea.EN_CURSO;</span>
+<span class="fc bfc" id="L212" title="All 2 branches covered.">        if (tareaAbierta</span>
+<span class="fc bfc" id="L213" title="All 2 branches covered.">                &amp;&amp; (vehiculo.getEstado() == EstadoVehiculo.COMPRADO</span>
+<span class="fc bfc" id="L214" title="All 2 branches covered.">                        || vehiculo.getEstado() == EstadoVehiculo.DISPONIBLE)) {</span>
+<span class="fc" id="L215">            this.vehiculoService.cambiarEstadoPorSistema(</span>
+                    vehiculo,
+                    EstadoVehiculo.EN_TALLER,
+<span class="fc" id="L218">                    &quot;Ingreso automático a taller por la refacción &quot; + refaccion.getId());</span>
+        }
+<span class="fc" id="L220">    }</span>
+
+    private Refaccion buscarActiva(Long id) {
+<span class="fc" id="L223">        Refaccion refaccion = this.refaccionRepository.findById(id)</span>
+<span class="fc" id="L224">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;No se encontró la refacción solicitada.&quot;));</span>
+<span class="fc bfc" id="L225" title="All 2 branches covered.">        if (!Boolean.TRUE.equals(refaccion.getActivo())) {</span>
+<span class="fc" id="L226">            throw new ResourceNotFoundException(&quot;No se encontró una refacción activa con el identificador solicitado.&quot;);</span>
+        }
+<span class="fc" id="L228">        return refaccion;</span>
+    }
+
+    private void validarVehiculoEditable(Vehiculo vehiculo) {
+<span class="fc bfc" id="L232" title="All 2 branches covered.">        if (vehiculo.getEstado() == EstadoVehiculo.VENDIDO) {</span>
+<span class="fc" id="L233">            throw new BusinessException(</span>
+                    &quot;No se pueden crear ni modificar refacciones después de cerrar la venta del vehículo.&quot;);
+        }
+<span class="fc bfc" id="L236" title="All 2 branches covered.">        if (vehiculo.getEstado() == EstadoVehiculo.DADO_DE_BAJA) {</span>
+<span class="fc" id="L237">            throw new BusinessException(&quot;No se pueden crear ni modificar refacciones de un vehículo dado de baja.&quot;);</span>
+        }
+<span class="fc bfc" id="L239" title="All 2 branches covered.">        if (vehiculo.getEstado() == EstadoVehiculo.RESERVADO) {</span>
+<span class="fc" id="L240">            throw new BusinessException(&quot;El vehículo reservado debe volver a DISPONIBLE antes de ingresar al taller.&quot;);</span>
+        }
+<span class="fc" id="L242">    }</span>
+
+    private void validarFecha(Vehiculo vehiculo, LocalDate fecha) {
+<span class="fc bfc" id="L245" title="All 2 branches covered.">        if (fecha == null) {</span>
+<span class="fc" id="L246">            throw new BusinessException(&quot;La fecha de la refacción es obligatoria.&quot;);</span>
+        }
+<span class="fc bfc" id="L248" title="All 2 branches covered.">        if (fecha.isAfter(LocalDate.now())) {</span>
+<span class="fc" id="L249">            throw new BusinessException(</span>
+                    &quot;La fecha de la refacción no puede ser futura.&quot;);
+        }
+
+<span class="fc" id="L253">        Compra compra = this.compraRepository.findByVehiculoAndActivoTrue(vehiculo)</span>
+<span class="fc" id="L254">                .orElseThrow(() -&gt; new BusinessException(</span>
+                        &quot;No se puede registrar una refacción porque el vehículo no tiene una compra activa.&quot;));
+
+<span class="fc bfc" id="L257" title="All 2 branches covered.">        if (fecha.isBefore(compra.getFechaCompra())) {</span>
+<span class="fc" id="L258">            throw new BusinessException(</span>
+                    &quot;La fecha de la refacción no puede ser anterior a la fecha de compra del vehículo.&quot;);
+        }
+<span class="fc" id="L261">    }</span>
+
+    private Usuario buscarResponsableActivo(Long responsableId) {
+<span class="fc bfc" id="L264" title="All 2 branches covered.">        if (responsableId == null) {</span>
+<span class="fc" id="L265">            return null;</span>
+        }
+<span class="fc" id="L267">        Usuario responsable = this.usuarioRepository.findById(responsableId)</span>
+<span class="fc" id="L268">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;No se encontró el responsable operativo indicado.&quot;));</span>
+<span class="fc bfc" id="L269" title="All 2 branches covered.">        if (!Boolean.TRUE.equals(responsable.getActivo())) {</span>
+<span class="fc" id="L270">            throw new BusinessException(&quot;El responsable operativo seleccionado se encuentra inactivo.&quot;);</span>
+        }
+<span class="fc" id="L272">        boolean rolPermitido = responsable.getRoles().stream()</span>
+<span class="fc bfc" id="L273" title="All 2 branches covered.">                .anyMatch(rol -&gt; rol.getNombre().equals(&quot;TALLER&quot;)</span>
+<span class="pc bpc" id="L274" title="1 of 2 branches missed.">                        || rol.getNombre().equals(&quot;ADMINISTRADOR&quot;)</span>
+<span class="pc bpc" id="L275" title="1 of 2 branches missed.">                        || rol.getNombre().equals(&quot;DUENO&quot;));</span>
+<span class="fc bfc" id="L276" title="All 2 branches covered.">        if (!rolPermitido) {</span>
+<span class="fc" id="L277">            throw new BusinessException(&quot;El responsable operativo debe tener rol taller, administrador o dueño.&quot;);</span>
+        }
+<span class="fc" id="L279">        return responsable;</span>
+    }
+
+    private void cargarDatos(Refaccion refaccion,
+            Usuario responsable,
+            LocalDate fecha,
+            uy.edu.ctc.pamahe.modules.taller.model.TipoTrabajo tipoTrabajo,
+            String descripcion,
+            BigDecimal costoRepuestos,
+            BigDecimal costoManoObra,
+            BigDecimal costoServiciosExternos,
+            EstadoTarea estadoTarea,
+            String observaciones,
+            String registroFotograficoUrl,
+            Boolean sincronizadoDesdeOffline) {
+<span class="fc" id="L294">        refaccion.setResponsableOperativo(responsable);</span>
+<span class="fc" id="L295">        refaccion.setFecha(fecha);</span>
+<span class="fc" id="L296">        refaccion.setTipoTrabajo(tipoTrabajo);</span>
+<span class="fc" id="L297">        refaccion.setDescripcion(descripcion.trim());</span>
+<span class="fc bfc" id="L298" title="All 2 branches covered.">        refaccion.setCostoRepuestos(costoRepuestos == null ? BigDecimal.ZERO : costoRepuestos);</span>
+<span class="fc bfc" id="L299" title="All 2 branches covered.">        refaccion.setCostoManoObra(costoManoObra == null ? BigDecimal.ZERO : costoManoObra);</span>
+<span class="fc bfc" id="L300" title="All 2 branches covered.">        refaccion.setCostoServiciosExternos(costoServiciosExternos == null ? BigDecimal.ZERO : costoServiciosExternos);</span>
+<span class="fc" id="L301">        refaccion.setEstadoTarea(estadoTarea);</span>
+<span class="fc" id="L302">        refaccion.setObservaciones(this.normalizarOpcional(observaciones));</span>
+<span class="fc" id="L303">        refaccion.setRegistroFotograficoUrl(this.normalizarOpcional(registroFotograficoUrl));</span>
+<span class="fc" id="L304">        refaccion.setSincronizadoDesdeOffline(Boolean.TRUE.equals(sincronizadoDesdeOffline));</span>
+<span class="fc" id="L305">    }</span>
+
+    private String normalizarOpcional(String valor) {
+<span class="fc bfc" id="L308" title="All 2 branches covered.">        if (valor == null) {</span>
+<span class="fc" id="L309">            return null;</span>
+        }
+<span class="fc" id="L311">        String limpio = valor.trim();</span>
+<span class="fc bfc" id="L312" title="All 2 branches covered.">        return limpio.isEmpty() ? null : limpio;</span>
+    }
+
+    private String resumen(Refaccion refaccion) {
+<span class="fc" id="L316">        return &quot;vehiculoId=&quot; + refaccion.getVehiculo().getId()</span>
+<span class="fc" id="L317">                + &quot;, estadoTarea=&quot; + refaccion.getEstadoTarea()</span>
+<span class="fc" id="L318">                + &quot;, costoRepuestos=&quot; + refaccion.getCostoRepuestos()</span>
+<span class="fc" id="L319">                + &quot;, costoManoObra=&quot; + refaccion.getCostoManoObra()</span>
+<span class="fc" id="L320">                + &quot;, costoServiciosExternos=&quot; + refaccion.getCostoServiciosExternos()</span>
+<span class="fc" id="L321">                + &quot;, costoTotal=&quot; + refaccion.costoTotal();</span>
+    }
+
+    private boolean mismaOperacionOffline(Refaccion existente, RefaccionRequest request) {
+<span class="pc bpc" id="L325" title="1 of 2 branches missed.">        return mismaIdentidadOperacion(existente, request)</span>
+<span class="fc bfc" id="L326" title="All 2 branches covered.">                &amp;&amp; mismosDatosTrabajo(existente, request)</span>
+<span class="pc bpc" id="L327" title="1 of 2 branches missed.">                &amp;&amp; mismosCostos(existente, request)</span>
+<span class="pc bpc" id="L328" title="1 of 2 branches missed.">                &amp;&amp; mismosDatosOpcionales(existente, request);</span>
+    }
+
+    private boolean mismaIdentidadOperacion(Refaccion existente, RefaccionRequest request) {
+<span class="pc bpc" id="L332" title="1 of 2 branches missed.">        Long responsableExistente = existente.getResponsableOperativo() == null</span>
+<span class="fc" id="L333">                ? null</span>
+<span class="pc" id="L334">                : existente.getResponsableOperativo().getId();</span>
+<span class="pc bpc" id="L335" title="1 of 2 branches missed.">        return existente.getVehiculo().getId().equals(request.vehiculoId())</span>
+<span class="pc bpc" id="L336" title="1 of 2 branches missed.">                &amp;&amp; Objects.equals(responsableExistente, request.responsableOperativoId());</span>
+    }
+
+    private boolean mismosDatosTrabajo(Refaccion existente, RefaccionRequest request) {
+<span class="pc bpc" id="L340" title="1 of 2 branches missed.">        EstadoTarea estadoSolicitado = request.estadoTarea() == null ? EstadoTarea.PENDIENTE : request.estadoTarea();</span>
+<span class="pc bpc" id="L341" title="1 of 2 branches missed.">        return Objects.equals(existente.getFecha(), request.fecha())</span>
+<span class="pc bpc" id="L342" title="1 of 2 branches missed.">                &amp;&amp; Objects.equals(existente.getTipoTrabajo(), request.tipoTrabajo())</span>
+<span class="fc bfc" id="L343" title="All 2 branches covered.">                &amp;&amp; Objects.equals(existente.getDescripcion(), normalizarRequerido(request.descripcion()))</span>
+<span class="pc bpc" id="L344" title="1 of 2 branches missed.">                &amp;&amp; Objects.equals(existente.getEstadoTarea(), estadoSolicitado);</span>
+    }
+
+    private boolean mismosCostos(Refaccion existente, RefaccionRequest request) {
+<span class="pc bpc" id="L348" title="1 of 2 branches missed.">        return compararMoneda(existente.getCostoRepuestos(), costo(request.costoRepuestos()))</span>
+<span class="pc bpc" id="L349" title="1 of 2 branches missed.">                &amp;&amp; compararMoneda(existente.getCostoManoObra(), costo(request.costoManoObra()))</span>
+<span class="pc bpc" id="L350" title="1 of 2 branches missed.">                &amp;&amp; compararMoneda(existente.getCostoServiciosExternos(), costo(request.costoServiciosExternos()));</span>
+    }
+
+    private boolean mismosDatosOpcionales(Refaccion existente, RefaccionRequest request) {
+<span class="pc bpc" id="L354" title="1 of 2 branches missed.">        return Objects.equals(existente.getObservaciones(), normalizarOpcional(request.observaciones()))</span>
+<span class="pc bpc" id="L355" title="1 of 2 branches missed.">                &amp;&amp; Objects.equals(</span>
+<span class="fc" id="L356">                        existente.getRegistroFotograficoUrl(),</span>
+<span class="fc" id="L357">                        normalizarOpcional(request.registroFotograficoUrl()));</span>
+    }
+
+    private String hashOperacion(RefaccionRequest request) {
+<span class="fc" id="L361">        String canonical = String.join(&quot;|&quot;,</span>
+<span class="fc" id="L362">                value(request.vehiculoId()),</span>
+<span class="fc" id="L363">                value(request.responsableOperativoId()),</span>
+<span class="fc" id="L364">                value(request.fecha()),</span>
+<span class="fc" id="L365">                value(request.tipoTrabajo()),</span>
+<span class="fc" id="L366">                value(normalizarRequerido(request.descripcion())),</span>
+<span class="fc" id="L367">                value(normalizarMoneda(costo(request.costoRepuestos()))),</span>
+<span class="fc" id="L368">                value(normalizarMoneda(costo(request.costoManoObra()))),</span>
+<span class="fc" id="L369">                value(normalizarMoneda(costo(request.costoServiciosExternos()))),</span>
+<span class="pc bpc" id="L370" title="1 of 2 branches missed.">                value(request.estadoTarea() == null ? EstadoTarea.PENDIENTE : request.estadoTarea()),</span>
+<span class="fc" id="L371">                value(normalizarOpcional(request.observaciones())),</span>
+<span class="fc" id="L372">                value(normalizarOpcional(request.registroFotograficoUrl())));</span>
+        try {
+<span class="fc" id="L374">            MessageDigest digest = MessageDigest.getInstance(&quot;SHA-256&quot;);</span>
+<span class="fc" id="L375">            return HexFormat.of().formatHex(digest.digest(canonical.getBytes(StandardCharsets.UTF_8)));</span>
+<span class="nc" id="L376">        } catch (NoSuchAlgorithmException exception) {</span>
+<span class="nc" id="L377">            throw new IllegalStateException(&quot;SHA-256 no está disponible en la JVM.&quot;, exception);</span>
+        }
+    }
+
+    private String value(Object value) {
+<span class="fc bfc" id="L382" title="All 2 branches covered.">        return value == null ? &quot;&lt;null&gt;&quot; : value.toString();</span>
+    }
+
+    private String normalizarRequerido(String value) {
+<span class="pc bpc" id="L386" title="1 of 2 branches missed.">        return value == null ? null : value.trim();</span>
+    }
+
+    private BigDecimal costo(BigDecimal value) {
+<span class="pc bpc" id="L390" title="1 of 2 branches missed.">        return value == null ? BigDecimal.ZERO : value;</span>
+    }
+
+    private BigDecimal normalizarMoneda(BigDecimal value) {
+<span class="fc" id="L394">        return value.stripTrailingZeros();</span>
+    }
+
+    private boolean compararMoneda(BigDecimal left, BigDecimal right) {
+<span class="pc bpc" id="L398" title="2 of 4 branches missed.">        if (left == null || right == null) {</span>
+<span class="nc bnc" id="L399" title="All 2 branches missed.">            return left == right;</span>
+        }
+<span class="pc bpc" id="L401" title="1 of 2 branches missed.">        return left.compareTo(right) == 0;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

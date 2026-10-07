@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VentaComprobanteListener.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.ventas.event</a> &gt; <span class="el_source">VentaComprobanteListener.java</span></div><h1>VentaComprobanteListener.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.ventas.event;
+
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
+
+import uy.edu.ctc.pamahe.common.util.PdfService;
+import uy.edu.ctc.pamahe.modules.ventas.service.VentaComprobanteService;
+import uy.edu.ctc.pamahe.modules.ventas.service.VentaComprobanteService.ComprobanteVentaSnapshot;
+
+/**
+ * Genera comprobantes fuera de la transacción de venta. El evento acelera el
+ * primer intento, pero el estado persistido y el job de reconciliación evitan
+ * depender de que este evento permanezca en memoria.
+ */
+@Component
+public class VentaComprobanteListener {
+
+<span class="fc" id="L24">    private static final Logger log = LoggerFactory.getLogger(VentaComprobanteListener.class);</span>
+
+    private final PdfService pdfService;
+    private final VentaComprobanteService ventaComprobanteService;
+
+    public VentaComprobanteListener(
+            PdfService pdfService,
+<span class="fc" id="L31">            VentaComprobanteService ventaComprobanteService) {</span>
+<span class="fc" id="L32">        this.pdfService = pdfService;</span>
+<span class="fc" id="L33">        this.ventaComprobanteService = ventaComprobanteService;</span>
+<span class="fc" id="L34">    }</span>
+
+    @Async(&quot;comprobanteExecutor&quot;)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void generarComprobante(VentaComprobanteSolicitadoEvent event) {
+<span class="fc" id="L39">        procesar(event.ventaId());</span>
+<span class="fc" id="L40">    }</span>
+
+    @Async(&quot;comprobanteExecutor&quot;)
+    public void reintentar(Long ventaId) {
+<span class="fc" id="L44">        procesar(ventaId);</span>
+<span class="fc" id="L45">    }</span>
+
+    void procesar(Long ventaId) {
+<span class="fc" id="L48">        var intento = this.ventaComprobanteService.prepararIntento(ventaId);</span>
+<span class="pc bpc" id="L49" title="1 of 2 branches missed.">        if (intento.isEmpty()) {</span>
+<span class="nc" id="L50">            return;</span>
+        }
+
+<span class="fc" id="L53">        ComprobanteVentaSnapshot snapshot = intento.get();</span>
+<span class="fc" id="L54">        String ruta = null;</span>
+
+        try {
+<span class="fc" id="L57">            ruta = this.pdfService.generarComprobante(</span>
+                    &quot;VENTA&quot;,
+<span class="fc" id="L59">                    List.of(</span>
+<span class="fc" id="L60">                            &quot;Venta ID: &quot; + snapshot.ventaId(),</span>
+<span class="fc" id="L61">                            &quot;Vehículo: &quot; + snapshot.vehiculo(),</span>
+<span class="fc" id="L62">                            &quot;Cliente comprador: &quot; + snapshot.clienteComprador(),</span>
+<span class="fc" id="L63">                            &quot;Documento comprador: &quot; + snapshot.documentoComprador(),</span>
+<span class="fc" id="L64">                            &quot;Fecha de venta: &quot; + snapshot.fechaVenta(),</span>
+<span class="fc" id="L65">                            &quot;Precio final: &quot; + snapshot.precioFinal(),</span>
+<span class="fc" id="L66">                            &quot;Vendedor: &quot; + snapshot.vendedor()));</span>
+
+<span class="fc" id="L68">            this.ventaComprobanteService.marcarGenerado(snapshot.ventaId(), ruta);</span>
+<span class="fc" id="L69">        } catch (Exception exception) {</span>
+<span class="fc bfc" id="L70" title="All 2 branches covered.">            if (ruta != null) {</span>
+<span class="fc" id="L71">                this.pdfService.eliminarComprobante(ruta);</span>
+            }
+
+            try {
+<span class="fc" id="L75">                this.ventaComprobanteService.marcarError(snapshot.ventaId(), exception);</span>
+<span class="nc" id="L76">            } catch (Exception stateException) {</span>
+<span class="nc" id="L77">                log.error(</span>
+                        &quot;No se pudo persistir el estado de error del comprobante de la venta {}.&quot;,
+<span class="nc" id="L79">                        snapshot.ventaId(),</span>
+                        stateException);
+<span class="fc" id="L81">            }</span>
+
+<span class="fc" id="L83">            log.error(</span>
+                    &quot;Falló el intento {} de generación del comprobante de la venta {}.&quot;,
+<span class="fc" id="L85">                    snapshot.numeroIntento(),</span>
+<span class="fc" id="L86">                    snapshot.ventaId(),</span>
+                    exception);
+<span class="fc" id="L88">        }</span>
+<span class="fc" id="L89">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

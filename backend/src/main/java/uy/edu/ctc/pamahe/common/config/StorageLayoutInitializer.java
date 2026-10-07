@@ -1,6 +1,5 @@
 package uy.edu.ctc.pamahe.common.config;
 
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -17,13 +16,14 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
 
 /**
- * Prepara el almacenamiento al iniciar la aplicación y migra rutas de versiones anteriores.
- * Se separan el contenido entre público y privado para evitar exponer imagenes o 
- * comprobantes por el servidor de recursos estáticos. 
+ * Prepara el almacenamiento al iniciar la aplicación y migra rutas de versiones
+ * anteriores.
+ * Se separa el contenido público del privado para evitar exponer imágenes o
+ * comprobantes mediante el servidor de recursos estáticos.
  */
 @Component
 public class StorageLayoutInitializer implements ApplicationRunner {
-    
+
     private static final Logger LOGGER = LoggerFactory.getLogger(StorageLayoutInitializer.class);
     private static final String VEHICULOS_SEGMENT = "vehiculos/";
 
@@ -44,9 +44,11 @@ public class StorageLayoutInitializer implements ApplicationRunner {
         Files.createDirectories(root.resolve("private/comprobantes/compras"));
         Files.createDirectories(root.resolve("private/comprobantes/ventas"));
 
-        // La base de datos determina el destino porque conserva la visibilidad actual de cada imagen. 
+        // La base de datos determina el destino porque conserva la visibilidad actual
+        // de cada imagen.
         this.migrarImagenesLegadasSegunBaseDeDatos(root);
-        this.migrarDirectorioSiExiste(root.resolve("comprobantes/compra"), root.resolve("private/comprobantes/compras"));
+        this.migrarDirectorioSiExiste(root.resolve("comprobantes/compra"),
+                root.resolve("private/comprobantes/compras"));
         this.migrarDirectorioSiExiste(root.resolve("comprobantes/venta"), root.resolve("private/comprobantes/ventas"));
     }
 
@@ -57,8 +59,7 @@ public class StorageLayoutInitializer implements ApplicationRunner {
                     "SELECT ruta_archivo FROM imagenes_vehiculo "
                             + "WHERE ruta_archivo LIKE 'public/vehiculos/%' "
                             + "OR ruta_archivo LIKE 'private/vehiculos/%'",
-                    String.class
-            );
+                    String.class);
         } catch (DataAccessException exception) {
             LOGGER.warn("No se pudieron consultar las imágenes legadas para migrar su almacenamiento.", exception);
             return;
@@ -76,7 +77,8 @@ public class StorageLayoutInitializer implements ApplicationRunner {
             String sufijo = rutaRelativa.substring(indice + VEHICULOS_SEGMENT.length());
             Path origen = directorioLegado.resolve(sufijo).normalize();
             Path destino = root.resolve(rutaRelativa).normalize();
-            // La validación de pertenencia impide que una ruta almacenada escape del directorio configurado. 
+            // La validación de pertenencia impide que una ruta almacenada escape del
+            // directorio configurado.
             if (!origen.startsWith(directorioLegado) || !destino.startsWith(root)) {
                 LOGGER.warn("Se omitió una ruta de imagen legado no segura: {}", rutaRelativa);
                 continue;

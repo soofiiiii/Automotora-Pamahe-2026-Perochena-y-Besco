@@ -1,0 +1,334 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ChatbotService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.chatbot.service</a> &gt; <span class="el_source">ChatbotService.java</span></div><h1>ChatbotService.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.chatbot.service;
+
+import java.text.Normalizer;
+import java.util.List;
+import java.util.Locale;
+import java.util.regex.Pattern;
+import org.springframework.stereotype.Service;
+import uy.edu.ctc.pamahe.modules.parametros.repository.ParametroRepository;
+import uy.edu.ctc.pamahe.modules.chatbot.dto.request.ChatbotRequest;
+import uy.edu.ctc.pamahe.modules.chatbot.dto.response.ChatbotResponse;
+import uy.edu.ctc.pamahe.modules.chatbot.model.ChatbotIntent;
+
+/**
+ * Implementa asistencia básica mediante intenciones y respuestas controladas.
+ * Se eligió este enfoque porque mantiene el alcance informativo del catálogo y
+ * evita que el asistente invente precios,
+ * disponibilidad, condiciones comerciales o decisiones que corresponden al
+ * personal de Pamahe.
+ */
+@Service
+public class ChatbotService {
+
+<span class="fc" id="L23">        private static final Pattern DIACRITICOS = Pattern.compile(&quot;\\p{InCombiningDiacriticalMarks}+&quot;);</span>
+
+        private final ParametroRepository parametroRepository;
+
+<span class="fc" id="L27">        public ChatbotService(ParametroRepository parametroRepository) {</span>
+<span class="fc" id="L28">                this.parametroRepository = parametroRepository;</span>
+<span class="fc" id="L29">        }</span>
+
+        public ChatbotResponse responder(ChatbotRequest request) {
+                // La normalización permite comparar expresiones equivalentes sin depender de
+                // tildes o mayúsculas.
+<span class="nc" id="L34">                String preguntaNormalizada = normalizar(request.pregunta());</span>
+<span class="nc" id="L35">                ChatbotIntent intencion = detectarIntencion(preguntaNormalizada);</span>
+
+<span class="nc" id="L37">                return construirRespuesta(intencion);</span>
+        }
+
+        private ChatbotIntent detectarIntencion(String pregunta) {
+
+<span class="nc bnc" id="L42" title="All 2 branches missed.">                if (contiene(pregunta, &quot;gracias&quot;, &quot;muchas gracias&quot;, &quot;te agradezco&quot;)) {</span>
+<span class="nc" id="L43">                        return ChatbotIntent.AGRADECIMIENTO;</span>
+                }
+
+<span class="nc bnc" id="L46" title="All 2 branches missed.">                if (contiene(pregunta, &quot;chau&quot;, &quot;adios&quot;, &quot;hasta luego&quot;, &quot;nos vemos&quot;)) {</span>
+<span class="nc" id="L47">                        return ChatbotIntent.DESPEDIDA;</span>
+                }
+
+<span class="nc bnc" id="L50" title="All 2 branches missed.">                if (contiene(pregunta, &quot;horario&quot;, &quot;horarios&quot;, &quot;abren&quot;, &quot;cierran&quot;, &quot;a que hora&quot;, &quot;sabado&quot;, &quot;domingo&quot;)) {</span>
+<span class="nc" id="L51">                        return ChatbotIntent.HORARIO;</span>
+                }
+
+<span class="nc bnc" id="L54" title="All 2 branches missed.">                if (contiene(pregunta, &quot;ubicacion&quot;, &quot;direccion&quot;, &quot;donde estan&quot;, &quot;donde queda&quot;, &quot;local&quot;, &quot;juan lacaze&quot;,</span>
+                                &quot;colonia&quot;)) {
+<span class="nc" id="L56">                        return ChatbotIntent.UBICACION;</span>
+                }
+
+<span class="nc bnc" id="L59" title="All 2 branches missed.">                if (contiene(pregunta, &quot;contacto&quot;, &quot;whatsapp&quot;, &quot;telefono&quot;, &quot;llamar&quot;, &quot;mensaje&quot;, &quot;correo&quot;, &quot;email&quot;)) {</span>
+<span class="nc" id="L60">                        return ChatbotIntent.CONTACTO;</span>
+                }
+
+<span class="nc bnc" id="L63" title="All 2 branches missed.">                if (contiene(pregunta, &quot;financiacion&quot;, &quot;financiar&quot;, &quot;cuotas&quot;, &quot;credito&quot;, &quot;prestamo&quot;, &quot;entrega&quot;)) {</span>
+<span class="nc" id="L64">                        return ChatbotIntent.FINANCIACION;</span>
+                }
+
+<span class="nc bnc" id="L67" title="All 2 branches missed.">                if (contiene(pregunta, &quot;disponible&quot;, &quot;disponibles&quot;, &quot;stock&quot;, &quot;hay algun&quot;, &quot;tienen algun&quot;,</span>
+                                &quot;queda algun&quot;)) {
+<span class="nc" id="L69">                        return ChatbotIntent.DISPONIBILIDAD;</span>
+                }
+
+<span class="nc bnc" id="L72" title="All 2 branches missed.">                if (contiene(pregunta, &quot;catalogo&quot;, &quot;vehiculos&quot;, &quot;autos&quot;, &quot;camionetas&quot;, &quot;unidades&quot;, &quot;ver autos&quot;,</span>
+                                &quot;ver vehiculos&quot;)) {
+<span class="nc" id="L74">                        return ChatbotIntent.CATALOGO;</span>
+                }
+
+<span class="nc bnc" id="L77" title="All 2 branches missed.">                if (contiene(pregunta, &quot;precio&quot;, &quot;cuanto sale&quot;, &quot;valor&quot;, &quot;costo&quot;, &quot;barato&quot;, &quot;economico&quot;)) {</span>
+<span class="nc" id="L78">                        return ChatbotIntent.PRECIO;</span>
+                }
+
+<span class="nc bnc" id="L81" title="All 2 branches missed.">                if (contiene(pregunta, &quot;kilometros&quot;, &quot;kilometraje&quot;, &quot;marca&quot;, &quot;modelo&quot;, &quot;año&quot;, &quot;ano&quot;, &quot;motor&quot;, &quot;estado&quot;,</span>
+                                &quot;caracteristicas&quot;)) {
+<span class="nc" id="L83">                        return ChatbotIntent.CARACTERISTICAS;</span>
+                }
+
+<span class="nc bnc" id="L86" title="All 2 branches missed.">                if (contiene(pregunta, &quot;vender mi auto&quot;, &quot;vendo mi auto&quot;, &quot;compran autos&quot;, &quot;compran vehiculos&quot;,</span>
+                                &quot;toman vehiculos&quot;, &quot;permuta&quot;)) {
+<span class="nc" id="L88">                        return ChatbotIntent.VENDER_VEHICULO;</span>
+                }
+
+<span class="nc bnc" id="L91" title="All 2 branches missed.">                if (contiene(pregunta, &quot;reservar&quot;, &quot;reserva&quot;, &quot;seña&quot;, &quot;sena&quot;, &quot;apartarlo&quot;, &quot;se puede apartar&quot;)) {</span>
+<span class="nc" id="L92">                        return ChatbotIntent.RESERVA;</span>
+                }
+
+<span class="nc bnc" id="L95" title="All 2 branches missed.">                if (contiene(pregunta, &quot;documentacion&quot;, &quot;documentos&quot;, &quot;comprobante&quot;, &quot;papeles&quot;, &quot;factura&quot;,</span>
+                                &quot;contrato&quot;)) {
+<span class="nc" id="L97">                        return ChatbotIntent.DOCUMENTACION;</span>
+                }
+
+<span class="nc bnc" id="L100" title="All 2 branches missed.">                if (contiene(pregunta, &quot;dgi&quot;, &quot;sucive&quot;, &quot;banco&quot;, &quot;transferencia&quot;, &quot;seguro&quot;, &quot;aseguradora&quot;,</span>
+                                &quot;tramite legal&quot;)) {
+<span class="nc" id="L102">                        return ChatbotIntent.FUERA_DE_ALCANCE;</span>
+                }
+
+<span class="nc bnc" id="L105" title="All 2 branches missed.">                if (contiene(pregunta, &quot;hola&quot;, &quot;buenas&quot;, &quot;buen dia&quot;, &quot;buenas tardes&quot;, &quot;buenas noches&quot;)) {</span>
+<span class="nc" id="L106">                        return ChatbotIntent.SALUDO;</span>
+                }
+
+<span class="nc" id="L109">                return ChatbotIntent.DESCONOCIDA;</span>
+        }
+
+        private ChatbotResponse construirRespuesta(ChatbotIntent intencion) {
+<span class="nc bnc" id="L113" title="All 16 branches missed.">                return switch (intencion) {</span>
+
+<span class="nc" id="L115">                        case SALUDO -&gt; new ChatbotResponse(</span>
+                                        &quot;¡Hola! Soy el asistente virtual de Automotora Pamahe. Puedo ayudarte con consultas sobre vehículos, catálogo, ubicación, horarios y medios de contacto.&quot;,
+<span class="nc" id="L117">                                        intencion.name(),</span>
+<span class="nc" id="L118">                                        List.of(</span>
+                                                        &quot;Ver vehículos disponibles&quot;,
+                                                        &quot;Saber ubicación&quot;));
+
+<span class="nc" id="L122">                        case HORARIO -&gt; new ChatbotResponse(</span>
+<span class="nc" id="L123">                                        obtenerHorario(),</span>
+<span class="nc" id="L124">                                        intencion.name(),</span>
+<span class="nc" id="L125">                                        List.of(</span>
+                                                        &quot;Ver medios de contacto&quot;,
+                                                        &quot;Consultar ubicación&quot;,
+                                                        &quot;Ver catálogo&quot;));
+
+<span class="nc" id="L130">                        case UBICACION -&gt; new ChatbotResponse(</span>
+                                        &quot;Automotora Pamahe se encuentra en Juan Lacaze, departamento de Colonia.&quot;,
+<span class="nc" id="L132">                                        intencion.name(),</span>
+<span class="nc" id="L133">                                        List.of(</span>
+                                                        &quot;Ver medios de contacto&quot;,
+                                                        &quot;Consultar horarios&quot;,
+                                                        &quot;Ver vehículos disponibles&quot;));
+
+                        case CONTACTO -&gt; {
+<span class="nc" id="L139">                                String whatsapp = obtenerWhatsApp();</span>
+<span class="nc" id="L140">                                String telefono = obtenerTelefono();</span>
+
+                                String mensajeContacto;
+
+<span class="nc bnc" id="L144" title="All 4 branches missed.">                                if (!whatsapp.isBlank() &amp;&amp; !telefono.isBlank()) {</span>
+<span class="nc" id="L145">                                        mensajeContacto = &quot;Podés comunicarte con Automotora Pamahe por WhatsApp al &quot;</span>
+                                                        + whatsapp
+                                                        + &quot; o por teléfono al &quot;
+                                                        + telefono
+                                                        + &quot;. Si consultás por un vehículo específico, &quot;
+                                                        + &quot;te recomendamos mencionar la marca, modelo o &quot;
+                                                        + &quot;publicación para que la atención sea más directa.&quot;;
+<span class="nc bnc" id="L152" title="All 2 branches missed.">                                } else if (!whatsapp.isBlank()) {</span>
+<span class="nc" id="L153">                                        mensajeContacto = &quot;Podés comunicarte con Automotora Pamahe por WhatsApp al &quot;</span>
+                                                        + whatsapp
+                                                        + &quot;. Si consultás por un vehículo específico, &quot;
+                                                        + &quot;te recomendamos mencionar la marca, modelo o &quot;
+                                                        + &quot;publicación para que la atención sea más directa.&quot;;
+<span class="nc bnc" id="L158" title="All 2 branches missed.">                                } else if (!telefono.isBlank()) {</span>
+<span class="nc" id="L159">                                        mensajeContacto = &quot;Podés comunicarte con Automotora Pamahe por teléfono al &quot;</span>
+                                                        + telefono
+                                                        + &quot;. Si consultás por un vehículo específico, &quot;
+                                                        + &quot;te recomendamos mencionar la marca, modelo o &quot;
+                                                        + &quot;publicación para que la atención sea más directa.&quot;;
+                                } else {
+<span class="nc" id="L165">                                        mensajeContacto = &quot;Podés comunicarte directamente con Automotora Pamahe &quot;</span>
+                                                        + &quot;para realizar tu consulta.&quot;;
+                                }
+
+                                List&lt;String&gt; sugerencias;
+
+<span class="nc bnc" id="L171" title="All 4 branches missed.">                                if (!whatsapp.isBlank() &amp;&amp; !telefono.isBlank()) {</span>
+<span class="nc" id="L172">                                        sugerencias = List.of(</span>
+                                                        &quot;Enviar WhatsApp al &quot; + whatsapp,
+                                                        &quot;Llamar al &quot; + telefono,
+                                                        &quot;Ver catálogo&quot;);
+<span class="nc bnc" id="L176" title="All 2 branches missed.">                                } else if (!whatsapp.isBlank()) {</span>
+<span class="nc" id="L177">                                        sugerencias = List.of(</span>
+                                                        &quot;Enviar WhatsApp al &quot; + whatsapp,
+                                                        &quot;Ver catálogo&quot;);
+<span class="nc bnc" id="L180" title="All 2 branches missed.">                                } else if (!telefono.isBlank()) {</span>
+<span class="nc" id="L181">                                        sugerencias = List.of(</span>
+                                                        &quot;Llamar al &quot; + telefono,
+                                                        &quot;Ver catálogo&quot;);
+                                } else {
+<span class="nc" id="L185">                                        sugerencias = List.of(</span>
+                                                        &quot;Ver catálogo&quot;);
+                                }
+
+<span class="nc" id="L189">                                yield new ChatbotResponse(</span>
+                                                mensajeContacto,
+<span class="nc" id="L191">                                                intencion.name(),</span>
+                                                sugerencias);
+                        }
+
+<span class="nc" id="L195">                        case FINANCIACION -&gt; new ChatbotResponse(</span>
+                                        &quot;La automotora puede ofrecer modalidades de financiación según cada operación y el vehículo de interés. Como las condiciones pueden variar, te recomendamos consultar directamente por la unidad que te interesa.&quot;,
+<span class="nc" id="L197">                                        intencion.name(),</span>
+<span class="nc" id="L198">                                        List.of(</span>
+                                                        &quot;Ver vehículos disponibles&quot;,
+                                                        &quot;Consultar medios de contacto&quot;,
+                                                        &quot;Preguntar por requisitos&quot;));
+
+<span class="nc" id="L203">                        case CATALOGO -&gt; new ChatbotResponse(</span>
+                                        &quot;Podés consultar el catálogo público para ver los vehículos disponibles. Allí se muestra la información comercial habilitada, como marca, modelo, año, precio, fotografías y medios de contacto.&quot;,
+<span class="nc" id="L205">                                        intencion.name(),</span>
+<span class="nc" id="L206">                                        List.of(</span>
+                                                        &quot;Buscar por marca&quot;,
+                                                        &quot;Buscar por precio&quot;,
+                                                        &quot;Consultar disponibilidad&quot;));
+
+<span class="nc" id="L211">                        case DISPONIBILIDAD -&gt; new ChatbotResponse(</span>
+                                        &quot;Para consultar disponibilidad, revisá el catálogo público de vehículos. En esta primera versión todavía no consulto el stock en tiempo real desde el chatbot, pero puedo orientarte para que encuentres la información correcta.&quot;,
+<span class="nc" id="L213">                                        intencion.name(),</span>
+<span class="nc" id="L214">                                        List.of(</span>
+                                                        &quot;Ver catálogo&quot;,
+                                                        &quot;Consultar por precio&quot;,
+                                                        &quot;Contactar con la automotora&quot;));
+
+<span class="nc" id="L219">                        case PRECIO -&gt; new ChatbotResponse(</span>
+                                        &quot;Los precios se consultan en la ficha de cada vehículo publicado. Si tenés una marca, modelo o rango de precio en mente, podés buscarlo desde el catálogo o comunicarte con la automotora para recibir orientación.&quot;,
+<span class="nc" id="L221">                                        intencion.name(),</span>
+<span class="nc" id="L222">                                        List.of(</span>
+                                                        &quot;Ver vehículos económicos&quot;,
+                                                        &quot;Contactar por un vehículo&quot;));
+
+<span class="nc" id="L226">                        case CARACTERISTICAS -&gt; new ChatbotResponse(</span>
+                                        &quot;En la ficha de cada vehículo se podrá consultar información comercial como marca, modelo, año, fotografías, precio y características principales. Para datos más específicos, conviene consultar directamente por la unidad de interés.&quot;,
+<span class="nc" id="L228">                                        intencion.name(),</span>
+<span class="nc" id="L229">                                        List.of(</span>
+                                                        &quot;Ver ficha del vehículo&quot;,
+                                                        &quot;Consultar disponibilidad&quot;,
+                                                        &quot;Contactar con la automotora&quot;));
+
+<span class="nc" id="L234">                        case VENDER_VEHICULO -&gt; new ChatbotResponse(</span>
+                                        &quot;Si querés vender tu vehículo o consultar si la automotora lo puede tomar como parte de una operación, lo recomendable es comunicarte directamente y brindar datos básicos como marca, modelo, año, estado general y documentación disponible.&quot;,
+<span class="nc" id="L236">                                        intencion.name(),</span>
+<span class="nc" id="L237">                                        List.of(</span>
+                                                        &quot;Ver medios de contacto&quot;,
+                                                        &quot;Consultar documentación&quot;,
+                                                        &quot;Consultar ubicación&quot;));
+
+<span class="nc" id="L242">                        case RESERVA -&gt; new ChatbotResponse(</span>
+                                        &quot;En esta primera versión, el sistema no realiza reservas automáticas ni pagos en línea. Si te interesa un vehículo, podés comunicarte con la automotora para consultar disponibilidad y condiciones.&quot;,
+<span class="nc" id="L244">                                        intencion.name(),</span>
+<span class="nc" id="L245">                                        List.of(</span>
+                                                        &quot;Contactar con la automotora&quot;,
+                                                        &quot;Ver catálogo&quot;));
+
+<span class="nc" id="L249">                        case DOCUMENTACION -&gt; new ChatbotResponse(</span>
+                                        &quot;La documentación necesaria puede variar según la operación. Para compras, ventas o consultas sobre comprobantes, te recomendamos comunicarte directamente con la automotora para recibir orientación específica.&quot;,
+<span class="nc" id="L251">                                        intencion.name(),</span>
+<span class="nc" id="L252">                                        List.of(</span>
+                                                        &quot;Ver medios de contacto&quot;,
+                                                        &quot;Consultar por venta de vehículo&quot;));
+
+<span class="nc" id="L256">                        case AGRADECIMIENTO -&gt; new ChatbotResponse(</span>
+                                        &quot;¡De nada! Si necesitás otra consulta sobre vehículos, ubicación o contacto, estoy para ayudarte.&quot;,
+<span class="nc" id="L258">                                        intencion.name(),</span>
+<span class="nc" id="L259">                                        List.of(</span>
+                                                        &quot;Ver catálogo&quot;,
+                                                        &quot;Consultar ubicación&quot;,
+                                                        &quot;Consultar contacto&quot;));
+
+<span class="nc" id="L264">                        case DESPEDIDA -&gt; new ChatbotResponse(</span>
+                                        &quot;¡Hasta luego! Cuando quieras consultar por vehículos o información de Automotora Pamahe, podés volver a escribirme.&quot;,
+<span class="nc" id="L266">                                        intencion.name(),</span>
+<span class="nc" id="L267">                                        List.of(</span>
+                                                        &quot;Volver al inicio&quot;,
+                                                        &quot;Ver catálogo&quot;));
+
+<span class="nc" id="L271">                        case FUERA_DE_ALCANCE -&gt; new ChatbotResponse(</span>
+                                        &quot;Esa consulta puede depender de organismos, trámites o servicios externos. En esta versión puedo orientarte sobre información comercial básica, catálogo, ubicación y contacto de la automotora.&quot;,
+<span class="nc" id="L273">                                        intencion.name(),</span>
+<span class="nc" id="L274">                                        List.of(</span>
+                                                        &quot;Consultar contacto&quot;,
+                                                        &quot;Ver catálogo&quot;));
+
+<span class="nc" id="L278">                        case DESCONOCIDA -&gt; new ChatbotResponse(</span>
+                                        &quot;No estoy completamente seguro de haber entendido la consulta. Por ahora puedo ayudarte con vehículos disponibles, catálogo, ubicación, horarios y medios de contacto.&quot;,
+<span class="nc" id="L280">                                        intencion.name(),</span>
+<span class="nc" id="L281">                                        List.of(</span>
+                                                        &quot;Ver vehículos disponibles&quot;,
+                                                        &quot;Ver ubicación&quot;,
+                                                        &quot;Contactar con la automotora&quot;));
+                };
+        }
+
+        /**
+         * Obtiene un parámetro de contacto activo desde la tabla de parámetros.
+         * De esta manera, el chatbot no mantiene números telefónicos hardcodeados.
+         */
+        private String obtenerParametroContacto(String clave) {
+<span class="nc" id="L293">                return this.parametroRepository</span>
+<span class="nc" id="L294">                                .findByCategoriaAndClaveAndActivoTrue(&quot;CONTACTO&quot;, clave)</span>
+<span class="nc" id="L295">                                .map(parametro -&gt; parametro.getValor())</span>
+<span class="nc" id="L296">                                .orElse(&quot;&quot;);</span>
+        }
+
+        private String obtenerWhatsApp() {
+<span class="nc" id="L300">                return obtenerParametroContacto(&quot;WHATSAPP&quot;);</span>
+        }
+
+        private String obtenerTelefono() {
+<span class="nc" id="L304">                return obtenerParametroContacto(&quot;TELEFONO&quot;);</span>
+        }
+
+        private String obtenerHorario() {
+<span class="nc" id="L308">                String horario = obtenerParametroContacto(&quot;HORARIO&quot;);</span>
+<span class="nc bnc" id="L309" title="All 2 branches missed.">                return horario.isBlank()</span>
+<span class="nc" id="L310">                ? &quot;Consultá los horarios de atención directamente con Automotora Pamahe.&quot;</span>
+<span class="nc" id="L311">                : horario;</span>
+        }
+
+        private boolean contiene(String texto, String... palabrasClave) {
+<span class="nc bnc" id="L315" title="All 2 branches missed.">                for (String palabra : palabrasClave) {</span>
+<span class="nc bnc" id="L316" title="All 2 branches missed.">                        if (texto.contains(palabra)) {</span>
+<span class="nc" id="L317">                                return true;</span>
+                        }
+                }
+<span class="nc" id="L320">                return false;</span>
+        }
+
+        private String normalizar(String texto) {
+<span class="nc" id="L324">                String textoNormalizado = Normalizer.normalize(texto, Normalizer.Form.NFD);</span>
+
+<span class="nc" id="L326">                return DIACRITICOS.matcher(textoNormalizado)</span>
+<span class="nc" id="L327">                                .replaceAll(&quot;&quot;)</span>
+<span class="nc" id="L328">                                .toLowerCase(Locale.ROOT)</span>
+<span class="nc" id="L329">                                .replaceAll(&quot;[^a-z0-9ñ\\s]&quot;, &quot; &quot;)</span>
+<span class="nc" id="L330">                                .replaceAll(&quot;\\s+&quot;, &quot; &quot;)</span>
+<span class="nc" id="L331">                                .trim();</span>
+        }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

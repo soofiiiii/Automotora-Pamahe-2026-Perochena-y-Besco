@@ -1,6 +1,7 @@
 package uy.edu.ctc.pamahe.modules.parametros.controller;
 
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
@@ -31,6 +32,13 @@ public class ParametroController {
     @GetMapping
     public ApiResponse<List<ParametroResponse>> listar() {
         return ApiResponse.ok("Parámetros obtenidos correctamente.", service.listar());
+    }
+
+
+    @GetMapping("/opciones")
+    public ApiResponse<List<ParametroResponse>> listarOpcionesPorCategoria(@RequestParam String categoria) {
+        return ApiResponse.ok("Opciones de parámetros obtenidas correctamente.",
+                service.listarPorCategoria(categoria));
     }
 
     @PostMapping
