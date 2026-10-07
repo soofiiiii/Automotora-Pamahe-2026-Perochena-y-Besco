@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VentaComprobanteService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.ventas.service</a> &gt; <span class="el_source">VentaComprobanteService.java</span></div><h1>VentaComprobanteService.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.ventas.service;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Optional;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import uy.edu.ctc.pamahe.common.exception.BusinessException;
+import uy.edu.ctc.pamahe.common.exception.ResourceNotFoundException;
+import uy.edu.ctc.pamahe.modules.auditoria.service.AuditoriaService;
+import uy.edu.ctc.pamahe.modules.ventas.model.EstadoComprobanteVenta;
+import uy.edu.ctc.pamahe.modules.ventas.model.Venta;
+import uy.edu.ctc.pamahe.modules.ventas.repository.VentaRepository;
+
+/**
+ * Mantiene el estado durable del comprobante de venta.
+ * La generación del PDF ocurre fuera de estas transacciones; aquí solo se
+ * reserva un intento, se persiste su resultado y se prepara la información
+ * necesaria para reconstruir el documento después de un reinicio.
+ */
+@Service
+public class VentaComprobanteService {
+
+    public static final int MAX_INTENTOS = 5;
+    private static final int LEASE_MINUTES = 5;
+
+    private final VentaRepository ventaRepository;
+    private final AuditoriaService auditoriaService;
+
+    public VentaComprobanteService(
+            VentaRepository ventaRepository,
+<span class="fc" id="L35">            AuditoriaService auditoriaService) {</span>
+<span class="fc" id="L36">        this.ventaRepository = ventaRepository;</span>
+<span class="fc" id="L37">        this.auditoriaService = auditoriaService;</span>
+<span class="fc" id="L38">    }</span>
+
+    @Transactional
+    public Optional&lt;ComprobanteVentaSnapshot&gt; prepararIntento(Long ventaId) {
+<span class="fc" id="L42">        Venta venta = buscarParaActualizar(ventaId);</span>
+<span class="fc" id="L43">        LocalDateTime ahora = LocalDateTime.now();</span>
+
+<span class="fc bfc" id="L45" title="All 2 branches covered.">        if (venta.getEstadoComprobante() == EstadoComprobanteVenta.GENERADO</span>
+<span class="pc bpc" id="L46" title="1 of 2 branches missed.">                || venta.getComprobantePath() != null) {</span>
+<span class="fc" id="L47">            return Optional.empty();</span>
+        }
+
+<span class="fc" id="L50">        int intentos = valorIntentos(venta);</span>
+<span class="pc bpc" id="L51" title="1 of 2 branches missed.">        if (intentos &gt;= MAX_INTENTOS) {</span>
+<span class="nc" id="L52">            return Optional.empty();</span>
+        }
+
+<span class="fc" id="L55">        LocalDateTime proximoIntento = venta.getProximoIntentoComprobante();</span>
+<span class="pc bpc" id="L56" title="2 of 4 branches missed.">        if (proximoIntento != null &amp;&amp; proximoIntento.isAfter(ahora)) {</span>
+<span class="nc" id="L57">            return Optional.empty();</span>
+        }
+
+<span class="fc" id="L60">        int numeroIntento = intentos + 1;</span>
+<span class="fc" id="L61">        venta.setEstadoComprobante(EstadoComprobanteVenta.PENDIENTE);</span>
+<span class="fc" id="L62">        venta.setIntentosComprobante(numeroIntento);</span>
+<span class="fc" id="L63">        venta.setUltimoIntentoComprobante(ahora);</span>
+        // Funciona como lease durable: si el proceso cae después de reservar el
+        // intento, otro worker podrá retomarlo al vencer esta marca.
+<span class="fc" id="L66">        venta.setProximoIntentoComprobante(ahora.plusMinutes(LEASE_MINUTES));</span>
+
+<span class="fc" id="L68">        return Optional.of(snapshot(venta, numeroIntento));</span>
+    }
+
+    @Transactional
+    public void marcarGenerado(Long ventaId, String comprobantePath) {
+<span class="fc" id="L73">        Venta venta = buscarParaActualizar(ventaId);</span>
+<span class="fc" id="L74">        venta.setComprobantePath(comprobantePath);</span>
+<span class="fc" id="L75">        venta.setEstadoComprobante(EstadoComprobanteVenta.GENERADO);</span>
+<span class="fc" id="L76">        venta.setErrorComprobante(null);</span>
+<span class="fc" id="L77">        venta.setProximoIntentoComprobante(null);</span>
+
+<span class="fc" id="L79">        this.auditoriaService.registrar(</span>
+                &quot;COMPROBANTE_GENERADO&quot;,
+                &quot;Venta&quot;,
+                ventaId,
+                &quot;Comprobante PDF de venta generado y asociado correctamente.&quot;);
+<span class="fc" id="L84">    }</span>
+
+    @Transactional
+    public void marcarError(Long ventaId, Throwable error) {
+<span class="fc" id="L88">        Venta venta = buscarParaActualizar(ventaId);</span>
+<span class="fc" id="L89">        LocalDateTime ahora = LocalDateTime.now();</span>
+<span class="fc" id="L90">        int intentos = valorIntentos(venta);</span>
+
+<span class="fc" id="L92">        venta.setEstadoComprobante(EstadoComprobanteVenta.ERROR);</span>
+<span class="fc" id="L93">        venta.setErrorComprobante(mensajeError(error));</span>
+<span class="fc" id="L94">        venta.setProximoIntentoComprobante(</span>
+<span class="fc bfc" id="L95" title="All 2 branches covered.">                intentos &lt; MAX_INTENTOS ? ahora.plusMinutes(minutosBackoff(intentos)) : null);</span>
+
+<span class="fc" id="L97">        this.auditoriaService.registrar(</span>
+                &quot;COMPROBANTE_ERROR&quot;,
+                &quot;Venta&quot;,
+                ventaId,
+<span class="fc bfc" id="L101" title="All 2 branches covered.">                intentos &lt; MAX_INTENTOS</span>
+<span class="fc" id="L102">                        ? &quot;Falló la generación del comprobante; quedó programado un reintento automático.&quot;</span>
+<span class="fc" id="L103">                        : &quot;Falló la generación del comprobante y se agotaron los reintentos automáticos.&quot;);</span>
+<span class="fc" id="L104">    }</span>
+
+    @Transactional
+    public void reprogramar(Long ventaId) {
+<span class="fc" id="L108">        Venta venta = buscarParaActualizar(ventaId);</span>
+<span class="pc bpc" id="L109" title="1 of 2 branches missed.">        if (venta.getEstadoComprobante() == EstadoComprobanteVenta.GENERADO</span>
+<span class="pc bpc" id="L110" title="1 of 2 branches missed.">                || venta.getComprobantePath() != null) {</span>
+<span class="nc" id="L111">            throw new BusinessException(&quot;La venta ya posee un comprobante generado.&quot;);</span>
+        }
+
+<span class="fc" id="L114">        venta.setEstadoComprobante(EstadoComprobanteVenta.PENDIENTE);</span>
+<span class="fc" id="L115">        venta.setIntentosComprobante(0);</span>
+<span class="fc" id="L116">        venta.setUltimoIntentoComprobante(null);</span>
+<span class="fc" id="L117">        venta.setProximoIntentoComprobante(LocalDateTime.now());</span>
+<span class="fc" id="L118">        venta.setErrorComprobante(null);</span>
+
+<span class="fc" id="L120">        this.auditoriaService.registrar(</span>
+                &quot;COMPROBANTE_REPROGRAMADO&quot;,
+                &quot;Venta&quot;,
+                ventaId,
+                &quot;Se habilitó nuevamente la generación del comprobante de venta.&quot;);
+<span class="fc" id="L125">    }</span>
+
+    private Venta buscarParaActualizar(Long ventaId) {
+<span class="fc" id="L128">        Venta venta = this.ventaRepository.findByIdForComprobanteUpdate(ventaId)</span>
+<span class="pc" id="L129">                .orElseThrow(() -&gt; new ResourceNotFoundException(</span>
+                        &quot;No se encontró la venta para procesar su comprobante.&quot;));
+<span class="pc bpc" id="L131" title="1 of 2 branches missed.">        if (!Boolean.TRUE.equals(venta.getActivo())) {</span>
+<span class="nc" id="L132">            throw new ResourceNotFoundException(</span>
+                    &quot;No se encontró una venta activa para procesar su comprobante.&quot;);
+        }
+<span class="fc" id="L135">        return venta;</span>
+    }
+
+    private ComprobanteVentaSnapshot snapshot(Venta venta, int numeroIntento) {
+<span class="fc" id="L139">        String vehiculo = (venta.getVehiculo().getMarca() + &quot; &quot;</span>
+<span class="fc" id="L140">                + venta.getVehiculo().getModelo() + &quot; &quot;</span>
+<span class="fc" id="L141">                + venta.getVehiculo().getAnio()).trim();</span>
+<span class="fc" id="L142">        String comprador = (venta.getClienteComprador().getNombre() + &quot; &quot;</span>
+<span class="fc bfc" id="L143" title="All 2 branches covered.">                + (venta.getClienteComprador().getApellido() == null</span>
+<span class="fc" id="L144">                        ? &quot;&quot;</span>
+<span class="fc" id="L145">                        : venta.getClienteComprador().getApellido())).trim();</span>
+
+<span class="fc" id="L147">        return new ComprobanteVentaSnapshot(</span>
+<span class="fc" id="L148">                venta.getId(),</span>
+                vehiculo,
+                comprador,
+<span class="fc" id="L151">                venta.getClienteComprador().getDocumento(),</span>
+<span class="fc" id="L152">                venta.getFechaVenta(),</span>
+<span class="fc" id="L153">                venta.getPrecioFinal(),</span>
+<span class="fc" id="L154">                venta.getVendedor().getNombre(),</span>
+                numeroIntento);
+    }
+
+    private int valorIntentos(Venta venta) {
+<span class="pc bpc" id="L159" title="1 of 2 branches missed.">        return venta.getIntentosComprobante() == null ? 0 : venta.getIntentosComprobante();</span>
+    }
+
+    private long minutosBackoff(int intento) {
+<span class="fc" id="L163">        return Math.min(30L, 1L &lt;&lt; Math.max(0, intento - 1));</span>
+    }
+
+    private String mensajeError(Throwable error) {
+        // El detalle técnico completo queda en logs. La base y el contrato autorizado
+        // conservan únicamente un motivo operativo saneado para no persistir rutas, SQL
+        // u otros datos internos que una excepción de infraestructura pudiera incluir.
+<span class="pc bpc" id="L170" title="1 of 2 branches missed.">        return error == null</span>
+<span class="nc" id="L171">                ? &quot;No se pudo generar el comprobante PDF.&quot;</span>
+<span class="fc" id="L172">                : &quot;No se pudo generar el comprobante PDF en el último intento.&quot;;</span>
+    }
+
+<span class="fc" id="L175">    public record ComprobanteVentaSnapshot(</span>
+            Long ventaId,
+            String vehiculo,
+            String clienteComprador,
+            String documentoComprador,
+            LocalDate fechaVenta,
+            BigDecimal precioFinal,
+            String vendedor,
+            int numeroIntento) {
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

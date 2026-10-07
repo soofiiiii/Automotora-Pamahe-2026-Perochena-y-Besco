@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Usuario.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.usuarios.model</a> &gt; <span class="el_source">Usuario.java</span></div><h1>Usuario.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.usuarios.model;
+
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.Table;
+import uy.edu.ctc.pamahe.common.model.BaseEntity;
+import uy.edu.ctc.pamahe.modules.roles.model.Rol;
+
+import java.util.HashSet;
+import java.util.Set;
+
+/** Representa una cuenta interna; los clientes comerciales se modelan por separado. */
+@Entity
+@Table(name = &quot;usuarios&quot;)
+<span class="fc" id="L20">public class Usuario extends BaseEntity {</span>
+
+    @Column(nullable = false, unique = true, length = 60)
+    private String username;
+
+    @Column(name = &quot;password_hash&quot;, nullable = false)
+    private String passwordHash;
+
+<span class="fc" id="L28">    @Column(name = &quot;debe_cambiar_password&quot;, nullable = false)</span>
+<span class="fc" id="L29">    private Boolean debeCambiarPassword = false;</span>
+
+    @Column(nullable = false, length = 120)
+    private String nombre;
+
+    @Column(nullable = false, unique = true, length = 120)
+    private String email;
+
+    @Column(length = 40)
+    private String telefono;
+
+    // Los roles se cargan con la cuenta porque son necesarios en cada autenticación y autorización.
+<span class="fc" id="L41">    @ManyToMany(fetch = FetchType.EAGER)</span>
+    @JoinTable(
+            name = &quot;usuarios_roles&quot;,
+            joinColumns = @JoinColumn(name = &quot;usuario_id&quot;),
+            inverseJoinColumns = @JoinColumn(name = &quot;rol_id&quot;)
+    )
+    private Set&lt;Rol&gt; roles = new HashSet&lt;&gt;();
+
+    public String getUsername() {
+<span class="fc" id="L50">        return this.username;</span>
+    }
+
+    public void setUsername(String username) {
+<span class="fc" id="L54">        this.username = username;</span>
+<span class="fc" id="L55">    }</span>
+
+    public String getPasswordHash() {
+<span class="fc" id="L58">        return this.passwordHash;</span>
+    }
+
+    public void setPasswordHash(String passwordHash) {
+<span class="fc" id="L62">        this.passwordHash = passwordHash;</span>
+<span class="fc" id="L63">    }</span>
+
+    public Boolean getDebeCambiarPassword() {
+<span class="fc" id="L66">        return this.debeCambiarPassword;</span>
+    }
+
+    public void setDebeCambiarPassword(Boolean debeCambiarPassword) {
+<span class="fc" id="L70">        this.debeCambiarPassword = debeCambiarPassword;</span>
+<span class="fc" id="L71">    }</span>
+
+    public String getNombre() {
+<span class="fc" id="L74">        return this.nombre;</span>
+    }
+
+    public void setNombre(String nombre) {
+<span class="fc" id="L78">        this.nombre = nombre;</span>
+<span class="fc" id="L79">    }</span>
+
+    public String getEmail() {
+<span class="fc" id="L82">        return this.email;</span>
+    }
+
+    public void setEmail(String email) {
+<span class="fc" id="L86">        this.email = email;</span>
+<span class="fc" id="L87">    }</span>
+
+    public String getTelefono() {
+<span class="fc" id="L90">        return this.telefono;</span>
+    }
+
+    public void setTelefono(String telefono) {
+<span class="fc" id="L94">        this.telefono = telefono;</span>
+<span class="fc" id="L95">    }</span>
+
+    public Set&lt;Rol&gt; getRoles() {
+<span class="fc" id="L98">        return this.roles;</span>
+    }
+
+    public void setRoles(Set&lt;Rol&gt; roles) {
+<span class="fc" id="L102">        this.roles = roles;</span>
+<span class="fc" id="L103">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

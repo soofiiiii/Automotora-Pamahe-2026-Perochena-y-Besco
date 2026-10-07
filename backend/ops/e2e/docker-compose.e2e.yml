@@ -1,0 +1,21 @@
+services:
+  mysql-e2e:
+    image: mysql:8.4
+    container_name: pamahe_mysql_e2e
+    command: --log-bin-trust-function-creators=1
+    environment:
+      MYSQL_DATABASE: pamahe_e2e
+      MYSQL_USER: pamahe_e2e
+      MYSQL_PASSWORD: pamahe_e2e_2026
+      MYSQL_ROOT_PASSWORD: pamahe_e2e_root_2026
+      TZ: America/Montevideo
+    ports:
+      - "13307:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-ppamahe_e2e_root_2026"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 5s
+    tmpfs:
+      - /var/lib/mysql

@@ -1,0 +1,11 @@
+{
+  "runId": "be12-20261006T230513056251Z",
+  "profile": "ventas",
+  "label": "release-final",
+  "generatorPlatform": "Windows-11-10.0.22631-SP0",
+  "scriptSha256": "1c5e87fc497ead2016cbfb5f049cf3ff3152a8337115b5f933176a3086bfd814",
+  "warmupSales": 0,
+  "fixturesSha256": "f3b1edaacbf8c22a5a5742184f812c9c84ef8e17ba0c90664bb227345c3895d2",
+  "k6Version": "k6.exe v2.2.0 (commit/00a9a1b7f5, go1.26.5, windows/amd64)",
+  "exitCode": 0
+}

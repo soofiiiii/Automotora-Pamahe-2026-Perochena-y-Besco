@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RefaccionMapper.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.taller.mapper</a> &gt; <span class="el_source">RefaccionMapper.java</span></div><h1>RefaccionMapper.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.taller.mapper;
+
+import uy.edu.ctc.pamahe.modules.taller.dto.response.RefaccionResponse;
+import uy.edu.ctc.pamahe.modules.taller.model.Refaccion;
+
+
+public final class RefaccionMapper {
+
+    private RefaccionMapper() {
+    }
+
+    public static RefaccionResponse toResponse(Refaccion refaccion) {
+<span class="fc" id="L13">        String vehiculo = refaccion.getVehiculo().getMarca() + &quot; &quot;</span>
+<span class="fc" id="L14">                + refaccion.getVehiculo().getModelo() + &quot; &quot;</span>
+<span class="fc" id="L15">                + refaccion.getVehiculo().getAnio();</span>
+<span class="fc" id="L16">        return new RefaccionResponse(</span>
+<span class="fc" id="L17">                refaccion.getId(),</span>
+<span class="fc" id="L18">                refaccion.getVehiculo().getId(),</span>
+<span class="fc" id="L19">                vehiculo.trim(),</span>
+<span class="fc bfc" id="L20" title="All 2 branches covered.">                refaccion.getResponsableOperativo() == null ? null : refaccion.getResponsableOperativo().getId(),</span>
+<span class="fc bfc" id="L21" title="All 2 branches covered.">                refaccion.getResponsableOperativo() == null ? null : refaccion.getResponsableOperativo().getNombre(),</span>
+<span class="fc" id="L22">                refaccion.getUsuarioQueRegistra().getId(),</span>
+<span class="fc" id="L23">                refaccion.getUsuarioQueRegistra().getNombre(),</span>
+<span class="fc" id="L24">                refaccion.getFecha(),</span>
+<span class="fc" id="L25">                refaccion.getTipoTrabajo(),</span>
+<span class="fc" id="L26">                refaccion.getDescripcion(),</span>
+<span class="fc" id="L27">                refaccion.getCostoRepuestos(),</span>
+<span class="fc" id="L28">                refaccion.getCostoManoObra(),</span>
+<span class="fc" id="L29">                refaccion.getCostoServiciosExternos(),</span>
+<span class="fc" id="L30">                refaccion.costoTotal(),</span>
+<span class="fc" id="L31">                refaccion.getEstadoTarea(),</span>
+<span class="fc" id="L32">                refaccion.getObservaciones(),</span>
+<span class="fc" id="L33">                refaccion.getRegistroFotograficoUrl(),</span>
+<span class="fc" id="L34">                refaccion.getSincronizadoDesdeOffline(),</span>
+<span class="fc" id="L35">                refaccion.getIdOperacionOffline()</span>
+        );
+    }
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

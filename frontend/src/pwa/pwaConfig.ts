@@ -1,0 +1,1 @@
+export const PWA_APP_NAME = "Automotora Pamahe";

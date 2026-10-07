@@ -1,0 +1,96 @@
+@import "tailwindcss";
+@import "@fontsource-variable/schibsted-grotesk";
+
+@import "./global.css" layer(components);
+@import "./responsive.css" layer(components);
+
+@theme {
+  --color-brand: #1d3273;
+  --color-brand-deep: #192959;
+  --color-sun: #f2d22e;
+  --color-ember: #f25d07;
+  --color-signal: #d91e1e;
+  --color-paper: #f5f6f8;
+
+  --font-sans:
+    "Schibsted Grotesk Variable",
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+
+  --shadow-lift:
+    0 14px 34px rgb(25 41 89 / 0.14),
+    0 2px 8px rgb(25 41 89 / 0.06);
+
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --animate-card-in: card-in 420ms var(--ease-out-quint) both;
+  --animate-sheet-up: sheet-up 280ms var(--ease-out-quint) both;
+  --animate-pop: pop 200ms var(--ease-out-quint) both;
+
+  @keyframes card-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes sheet-up {
+    from {
+      transform: translateY(100%);
+    }
+
+    to {
+      transform: none;
+    }
+  }
+
+  @keyframes pop {
+    from {
+      opacity: 0;
+      transform: translateY(6px) scale(0.98);
+    }
+
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+@layer base {
+  ::selection {
+    background: var(--color-sun);
+    color: var(--color-brand-deep);
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+
+  [data-surface="dark"] :focus-visible {
+    outline-color: var(--color-sun);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

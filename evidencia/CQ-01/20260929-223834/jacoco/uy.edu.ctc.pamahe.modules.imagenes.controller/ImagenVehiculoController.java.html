@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ImagenVehiculoController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.imagenes.controller</a> &gt; <span class="el_source">ImagenVehiculoController.java</span></div><h1>ImagenVehiculoController.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.imagenes.controller;
+
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+
+import org.springframework.web.multipart.MultipartFile;
+
+import jakarta.validation.Valid;
+
+import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import uy.edu.ctc.pamahe.common.response.ApiResponse;
+import uy.edu.ctc.pamahe.modules.imagenes.dto.request.ActualizarVisibilidadImagenRequest;
+import uy.edu.ctc.pamahe.modules.imagenes.dto.response.ImagenVehiculoResponse;
+import uy.edu.ctc.pamahe.modules.imagenes.service.FileStorageService;
+import uy.edu.ctc.pamahe.modules.imagenes.service.ImagenVehiculoService;
+
+@RestController
+@RequestMapping(&quot;/imagenes&quot;)
+public class ImagenVehiculoController {
+
+    private final ImagenVehiculoService imagenVehiculoService;
+
+<span class="fc" id="L37">    public ImagenVehiculoController(ImagenVehiculoService imagenVehiculoService) {</span>
+<span class="fc" id="L38">        this.imagenVehiculoService = imagenVehiculoService;</span>
+<span class="fc" id="L39">    }</span>
+
+    @GetMapping(&quot;/vehiculos/{vehiculoId}&quot;)
+    public ApiResponse&lt;List&lt;ImagenVehiculoResponse&gt;&gt; listarPorVehiculo(@PathVariable Long vehiculoId) {
+<span class="nc" id="L43">        return ApiResponse.ok(&quot;Galería del vehículo cargada con éxito.&quot;, this.imagenVehiculoService.listarPorVehiculo(vehiculoId));</span>
+    }
+
+    @PostMapping(value = &quot;/vehiculos/{vehiculoId}&quot;, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse&lt;ImagenVehiculoResponse&gt; subir(@PathVariable Long vehiculoId,
+                                                      @RequestParam(&quot;file&quot;) MultipartFile file,
+                                                      @RequestParam(required = false) String descripcion) {
+<span class="nc" id="L50">        return ApiResponse.ok(</span>
+                &quot;La imagen se guardó correctamente. (Recuerda que estará oculta hasta que decidas publicarla)&quot;,
+<span class="nc" id="L52">                this.imagenVehiculoService.subir(vehiculoId, file, descripcion)</span>
+        );
+    }
+
+    @PatchMapping(&quot;/{id}/visibilidad&quot;)
+    public ApiResponse&lt;ImagenVehiculoResponse&gt; actualizarVisibilidad(
+            @PathVariable Long id,
+            @Valid @RequestBody ActualizarVisibilidadImagenRequest request) {
+<span class="nc" id="L60">        return ApiResponse.ok(</span>
+                &quot;El estado de la imagen se actualizó con éxito.&quot;,
+<span class="nc" id="L62">                this.imagenVehiculoService.actualizarVisibilidad(id, request)</span>
+        );
+    }
+
+    @GetMapping(&quot;/{id}/archivo&quot;)
+    public ResponseEntity&lt;Resource&gt; descargarArchivoInterno(@PathVariable Long id) {
+<span class="nc" id="L68">        FileStorageService.StoredResource archivo = this.imagenVehiculoService.cargarArchivoInterno(id);</span>
+<span class="nc" id="L69">        ContentDisposition disposition = ContentDisposition.inline()</span>
+<span class="nc" id="L70">                .filename(archivo.filename(), StandardCharsets.UTF_8)</span>
+<span class="nc" id="L71">                .build();</span>
+<span class="nc" id="L72">        return ResponseEntity.ok()</span>
+<span class="nc" id="L73">                .contentType(MediaType.parseMediaType(archivo.mediaType()))</span>
+<span class="nc" id="L74">                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())</span>
+<span class="nc" id="L75">                .body(archivo.resource());</span>
+    }
+    
+    @DeleteMapping(&quot;/{id}&quot;)
+    public ApiResponse&lt;Void&gt; eliminarDefinitivamente(@PathVariable Long id) {
+<span class="nc" id="L80">        this.imagenVehiculoService.eliminarDefinitivamente(id);</span>
+<span class="nc" id="L81">        return ApiResponse.ok(&quot;Imagen y archivo eliminados correctamente.&quot;, null);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

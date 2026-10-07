@@ -1,0 +1,510 @@
+{
+  "metadata": {
+    "runId": "2026-10-04T04-31-13.327Z",
+    "baseUrl": "http://127.0.0.1:15173",
+    "apiUrl": "http://127.0.0.1:18080/api",
+    "data": {
+      "fecha": "2026-10-04",
+      "usuarioNuevo": {
+        "username": "martin.ferreira.3328",
+        "nombre": "Martín Ferreira",
+        "email": "martin.ferreira.3328@pamahe.local",
+        "telefono": "099453328",
+        "password": "PamaheManual!2026"
+      },
+      "clienteVendedor": {
+        "nombre": "Lucía",
+        "apellido": "Fernández",
+        "documento": "4568273328",
+        "telefono": "098313328",
+        "email": "lucia.fernandez.3328@correo.uy",
+        "direccion": "Rivera 742, Juan Lacaze, Colonia",
+        "tipo": "VENDEDOR"
+      },
+      "clienteComprador": {
+        "nombre": "Diego",
+        "apellido": "Pereira",
+        "documento": "3987273328",
+        "telefono": "099623328",
+        "email": "diego.pereira.3328@correo.uy",
+        "direccion": "José Enrique Rodó 1185, Juan Lacaze, Colonia",
+        "tipo": "COMPRADOR"
+      },
+      "vehiculo": {
+        "marca": "Toyota",
+        "modelo": "Camry XLE",
+        "tipo": "AUTO",
+        "anio": "2020",
+        "matricula": "SBC3328",
+        "chasis": "4T1G11AK9LU273328",
+        "color": "Gris plata",
+        "kilometraje": "64500",
+        "precioEstimado": "1190000",
+        "descripcion": "Toyota Camry XLE 2020, sedán automático, interior cuidado y excelente nivel de confort.",
+        "observaciones": "Unidad recibida en buen estado general. Revisión preventiva antes de publicación."
+      },
+      "compra": {
+        "costo": "870000",
+        "observaciones": "Compra acordada con documentación revisada y entrega de la unidad en el local."
+      },
+      "refaccion": {
+        "descripcion": "Service preventivo: cambio de aceite y filtros, revisión de frenos y chequeo general.",
+        "repuestos": "18500",
+        "manoObra": "6500",
+        "externos": "0"
+      },
+      "refaccionOffline": {
+        "descripcion": "Limpieza interior final y acondicionamiento previo a la publicación.",
+        "repuestos": "0",
+        "manoObra": "3500",
+        "externos": "0"
+      },
+      "venta": {
+        "precio": "1150000",
+        "observaciones": "Venta concretada luego de prueba de manejo y revisión de documentación."
+      }
+    },
+    "clienteVendedorId": 1,
+    "clienteCompradorId": 2,
+    "vehiculoId": 1,
+    "refaccionId": 1,
+    "refaccionOfflineId": 2,
+    "ventaId": 1,
+    "completedAt": "2026-10-04T04:31:47.784Z",
+    "captureCount": 48
+  },
+  "captures": [
+    {
+      "section": "01-acceso-seguridad",
+      "order": 1,
+      "title": "Inicio público",
+      "description": "Portada pública de Pamahe antes de iniciar sesión.",
+      "file": "01-acceso-seguridad/01-inicio-publico.png",
+      "url": "http://127.0.0.1:15173/",
+      "capturedAt": "2026-10-04T04:31:16.282Z"
+    },
+    {
+      "section": "01-acceso-seguridad",
+      "order": 2,
+      "title": "Pantalla de inicio de sesión",
+      "description": "Formulario de acceso para usuarios internos.",
+      "file": "01-acceso-seguridad/02-pantalla-de-inicio-de-sesion.png",
+      "url": "http://127.0.0.1:15173/login",
+      "capturedAt": "2026-10-04T04:31:16.932Z"
+    },
+    {
+      "section": "01-acceso-seguridad",
+      "order": 3,
+      "title": "Credenciales incorrectas",
+      "description": "Ejemplo del mensaje claro que recibe el usuario cuando las credenciales no son válidas.",
+      "file": "01-acceso-seguridad/03-credenciales-incorrectas.png",
+      "url": "http://127.0.0.1:15173/login",
+      "capturedAt": "2026-10-04T04:31:17.640Z"
+    },
+    {
+      "section": "01-acceso-seguridad",
+      "order": 4,
+      "title": "Acceso correcto",
+      "description": "Pantalla inicial luego de autenticarse correctamente como administrador.",
+      "file": "01-acceso-seguridad/04-acceso-correcto.png",
+      "url": "http://127.0.0.1:15173/app",
+      "capturedAt": "2026-10-04T04:31:18.162Z"
+    },
+    {
+      "section": "02-administracion",
+      "order": 1,
+      "title": "Dashboard gerencial",
+      "description": "Vista general de indicadores y acceso a información de gestión.",
+      "file": "02-administracion/01-dashboard-gerencial.png",
+      "url": "http://127.0.0.1:15173/app/dashboard",
+      "capturedAt": "2026-10-04T04:31:18.948Z"
+    },
+    {
+      "section": "02-administracion",
+      "order": 2,
+      "title": "Listado de usuarios",
+      "description": "Gestión de usuarios internos, roles, edición y restablecimiento de contraseña.",
+      "file": "02-administracion/02-listado-de-usuarios.png",
+      "url": "http://127.0.0.1:15173/app/usuarios",
+      "capturedAt": "2026-10-04T04:31:19.501Z"
+    },
+    {
+      "section": "02-administracion",
+      "order": 3,
+      "title": "Validaciones al crear usuario",
+      "description": "El formulario indica qué campos deben corregirse antes de poder crear una cuenta.",
+      "file": "02-administracion/03-validaciones-al-crear-usuario.png",
+      "url": "http://127.0.0.1:15173/app/usuarios/nuevo",
+      "capturedAt": "2026-10-04T04:31:20.050Z"
+    },
+    {
+      "section": "02-administracion",
+      "order": 4,
+      "title": "Usuario creado",
+      "description": "Cuenta realista creada para Martín Ferreira con rol VENDEDOR.",
+      "file": "02-administracion/04-usuario-creado.png",
+      "url": "http://127.0.0.1:15173/app/usuarios",
+      "capturedAt": "2026-10-04T04:31:20.847Z"
+    },
+    {
+      "section": "02-administracion",
+      "order": 5,
+      "title": "Parámetros del sistema",
+      "description": "Pantalla de administración de valores configurables utilizados por el sistema.",
+      "file": "02-administracion/05-parametros-del-sistema.png",
+      "url": "http://127.0.0.1:15173/app/parametros",
+      "capturedAt": "2026-10-04T04:31:21.408Z"
+    },
+    {
+      "section": "02-administracion",
+      "order": 6,
+      "title": "Formulario de parámetro",
+      "description": "Formulario modal utilizado para crear un parámetro de configuración.",
+      "file": "02-administracion/06-formulario-de-parametro.png",
+      "url": "http://127.0.0.1:15173/app/parametros",
+      "capturedAt": "2026-10-04T04:31:21.775Z"
+    },
+    {
+      "section": "02-administracion",
+      "order": 7,
+      "title": "Parámetro creado correctamente",
+      "description": "Confirmación de una configuración guardada correctamente.",
+      "file": "02-administracion/07-parametro-creado-correctamente.png",
+      "url": "http://127.0.0.1:15173/app/parametros",
+      "capturedAt": "2026-10-04T04:31:22.323Z"
+    },
+    {
+      "section": "03-clientes-vehiculos",
+      "order": 1,
+      "title": "Listado de clientes",
+      "description": "Pantalla para buscar, consultar, editar o desactivar clientes.",
+      "file": "03-clientes-vehiculos/01-listado-de-clientes.png",
+      "url": "http://127.0.0.1:15173/app/clientes",
+      "capturedAt": "2026-10-04T04:31:22.853Z"
+    },
+    {
+      "section": "03-clientes-vehiculos",
+      "order": 2,
+      "title": "Validaciones de cliente",
+      "description": "Ejemplo de validación antes de registrar información incompleta.",
+      "file": "03-clientes-vehiculos/02-validaciones-de-cliente.png",
+      "url": "http://127.0.0.1:15173/app/clientes/nuevo",
+      "capturedAt": "2026-10-04T04:31:23.377Z"
+    },
+    {
+      "section": "03-clientes-vehiculos",
+      "order": 3,
+      "title": "Cliente vendedor registrado",
+      "description": "Registro de Lucía Fernández como cliente vendedor.",
+      "file": "03-clientes-vehiculos/03-cliente-vendedor-registrado.png",
+      "url": "http://127.0.0.1:15173/app/clientes",
+      "capturedAt": "2026-10-04T04:31:23.890Z"
+    },
+    {
+      "section": "03-clientes-vehiculos",
+      "order": 4,
+      "title": "Cliente comprador registrado",
+      "description": "Registro de Diego Pereira como cliente comprador.",
+      "file": "03-clientes-vehiculos/04-cliente-comprador-registrado.png",
+      "url": "http://127.0.0.1:15173/app/clientes",
+      "capturedAt": "2026-10-04T04:31:24.572Z"
+    },
+    {
+      "section": "03-clientes-vehiculos",
+      "order": 5,
+      "title": "Inventario de vehículos",
+      "description": "Vista central del stock con filtros, estados operativos y acciones disponibles.",
+      "file": "03-clientes-vehiculos/05-inventario-de-vehiculos.png",
+      "url": "http://127.0.0.1:15173/app/vehiculos",
+      "capturedAt": "2026-10-04T04:31:25.140Z"
+    },
+    {
+      "section": "03-clientes-vehiculos",
+      "order": 6,
+      "title": "Validaciones de vehículo",
+      "description": "El sistema evita registrar una unidad sin sus datos principales.",
+      "file": "03-clientes-vehiculos/06-validaciones-de-vehiculo.png",
+      "url": "http://127.0.0.1:15173/app/vehiculos/nuevo",
+      "capturedAt": "2026-10-04T04:31:25.712Z"
+    },
+    {
+      "section": "03-clientes-vehiculos",
+      "order": 7,
+      "title": "Alta de Toyota Camry",
+      "description": "Formulario completo con datos realistas antes de registrar una unidad.",
+      "file": "03-clientes-vehiculos/07-alta-de-toyota-camry.png",
+      "url": "http://127.0.0.1:15173/app/vehiculos/nuevo",
+      "capturedAt": "2026-10-04T04:31:26.118Z"
+    },
+    {
+      "section": "03-clientes-vehiculos",
+      "order": 8,
+      "title": "Detalle del vehículo",
+      "description": "Ficha del vehículo con información técnica, estado, historial, imágenes y resumen económico.",
+      "file": "03-clientes-vehiculos/08-detalle-del-vehiculo.png",
+      "url": "http://127.0.0.1:15173/app/vehiculos/1",
+      "capturedAt": "2026-10-04T04:31:27.107Z"
+    },
+    {
+      "section": "03-clientes-vehiculos",
+      "order": 9,
+      "title": "Imagen privada cargada",
+      "description": "Las fotografías nuevas quedan privadas hasta que un perfil autorizado decida publicarlas.",
+      "file": "03-clientes-vehiculos/09-imagen-privada-cargada.png",
+      "url": "http://127.0.0.1:15173/app/vehiculos/1",
+      "capturedAt": "2026-10-04T04:31:27.903Z"
+    },
+    {
+      "section": "03-clientes-vehiculos",
+      "order": 10,
+      "title": "Imagen publicada",
+      "description": "Cambio explícito de visibilidad de una imagen para el catálogo público.",
+      "file": "03-clientes-vehiculos/10-imagen-publicada.png",
+      "url": "http://127.0.0.1:15173/app/vehiculos/1",
+      "capturedAt": "2026-10-04T04:31:28.487Z"
+    },
+    {
+      "section": "04-compra-taller",
+      "order": 1,
+      "title": "Registro de compra",
+      "description": "Compra de la unidad asociada al cliente vendedor y al costo de adquisición.",
+      "file": "04-compra-taller/01-registro-de-compra.png",
+      "url": "http://127.0.0.1:15173/app/compras/nueva",
+      "capturedAt": "2026-10-04T04:31:29.174Z"
+    },
+    {
+      "section": "04-compra-taller",
+      "order": 2,
+      "title": "Compra registrada y comprobante",
+      "description": "Confirmación de compra con acceso al comprobante PDF interno.",
+      "file": "04-compra-taller/02-compra-registrada-y-comprobante.png",
+      "url": "http://127.0.0.1:15173/app/compras/nueva",
+      "capturedAt": "2026-10-04T04:31:29.909Z"
+    },
+    {
+      "section": "04-compra-taller",
+      "order": 3,
+      "title": "Historial de compras",
+      "description": "Listado administrativo de operaciones de compra registradas.",
+      "file": "04-compra-taller/03-historial-de-compras.png",
+      "url": "http://127.0.0.1:15173/app/compras",
+      "capturedAt": "2026-10-04T04:31:30.439Z"
+    },
+    {
+      "section": "04-compra-taller",
+      "order": 4,
+      "title": "Vehículo enviado a taller",
+      "description": "Cambio de estado operativo del vehículo antes de registrar trabajos.",
+      "file": "04-compra-taller/04-vehiculo-enviado-a-taller.png",
+      "url": "http://127.0.0.1:15173/app/vehiculos/1",
+      "capturedAt": "2026-10-04T04:31:31.265Z"
+    },
+    {
+      "section": "04-compra-taller",
+      "order": 5,
+      "title": "Inicio del perfil de taller",
+      "description": "Pantalla inicial adaptada a las tareas habilitadas para el encargado de taller.",
+      "file": "04-compra-taller/05-inicio-del-perfil-de-taller.png",
+      "url": "http://127.0.0.1:15173/app",
+      "capturedAt": "2026-10-04T04:31:31.969Z"
+    },
+    {
+      "section": "04-compra-taller",
+      "order": 6,
+      "title": "Panel de taller",
+      "description": "Listado de trabajos y acceso al registro de nuevas refacciones.",
+      "file": "04-compra-taller/06-panel-de-taller.png",
+      "url": "http://127.0.0.1:15173/app/taller",
+      "capturedAt": "2026-10-04T04:31:32.632Z"
+    },
+    {
+      "section": "04-compra-taller",
+      "order": 7,
+      "title": "Registro de refacción",
+      "description": "Carga de un service realista diferenciando repuestos, mano de obra y servicios externos.",
+      "file": "04-compra-taller/07-registro-de-refaccion.png",
+      "url": "http://127.0.0.1:15173/app/taller/nueva",
+      "capturedAt": "2026-10-04T04:31:33.189Z"
+    },
+    {
+      "section": "04-compra-taller",
+      "order": 8,
+      "title": "Refacción registrada",
+      "description": "Trabajo guardado correctamente y confirmado en el servidor.",
+      "file": "04-compra-taller/08-refaccion-registrada.png",
+      "url": "http://127.0.0.1:15173/app/taller/1?vehiculoId=1",
+      "capturedAt": "2026-10-04T04:31:33.910Z"
+    },
+    {
+      "section": "04-compra-taller",
+      "order": 9,
+      "title": "Trabajo sin conexión",
+      "description": "El formulario informa claramente que la operación se guardará localmente cuando no hay conexión.",
+      "file": "04-compra-taller/09-trabajo-sin-conexion.png",
+      "url": "http://127.0.0.1:15173/app/taller/nueva",
+      "capturedAt": "2026-10-04T04:31:34.879Z"
+    },
+    {
+      "section": "04-compra-taller",
+      "order": 10,
+      "title": "Operación sincronizada",
+      "description": "La operación quedó persistida localmente y ya fue confirmada por el servidor.",
+      "file": "04-compra-taller/10-operacion-sincronizada.png",
+      "url": "http://127.0.0.1:15173/app/taller/offline",
+      "capturedAt": "2026-10-04T04:31:35.396Z"
+    },
+    {
+      "section": "04-compra-taller",
+      "order": 11,
+      "title": "Sincronización recuperada",
+      "description": "La operación guardada localmente quedó confirmada por el servidor al recuperar conectividad.",
+      "file": "04-compra-taller/11-sincronizacion-recuperada.png",
+      "url": "http://127.0.0.1:15173/app/taller/offline",
+      "capturedAt": "2026-10-04T04:31:36.540Z"
+    },
+    {
+      "section": "04-compra-taller",
+      "order": 12,
+      "title": "Vehículo disponible",
+      "description": "Unidad habilitada para continuar con el proceso comercial luego de finalizar los trabajos.",
+      "file": "04-compra-taller/12-vehiculo-disponible.png",
+      "url": "http://127.0.0.1:15173/app/vehiculos/1",
+      "capturedAt": "2026-10-04T04:31:37.385Z"
+    },
+    {
+      "section": "05-venta-catalogo",
+      "order": 1,
+      "title": "Inicio del perfil vendedor",
+      "description": "Accesos principales disponibles para un usuario comercial.",
+      "file": "05-venta-catalogo/01-inicio-del-perfil-vendedor.png",
+      "url": "http://127.0.0.1:15173/app",
+      "capturedAt": "2026-10-04T04:31:38.106Z"
+    },
+    {
+      "section": "05-venta-catalogo",
+      "order": 2,
+      "title": "Publicación del vehículo",
+      "description": "Acción que habilita una unidad disponible para aparecer en el catálogo público.",
+      "file": "05-venta-catalogo/02-publicacion-del-vehiculo.png",
+      "url": "http://127.0.0.1:15173/app/vehiculos/1",
+      "capturedAt": "2026-10-04T04:31:38.943Z"
+    },
+    {
+      "section": "05-venta-catalogo",
+      "order": 3,
+      "title": "Catálogo público",
+      "description": "Vista pública del stock disponible con filtros y ordenamiento.",
+      "file": "05-venta-catalogo/03-catalogo-publico.png",
+      "url": "http://127.0.0.1:15173/catalogo",
+      "capturedAt": "2026-10-04T04:31:39.862Z"
+    },
+    {
+      "section": "05-venta-catalogo",
+      "order": 4,
+      "title": "Detalle público del Toyota Camry",
+      "description": "Ficha comercial pública sin exponer datos internos de costos o clientes.",
+      "file": "05-venta-catalogo/04-detalle-publico-del-toyota-camry.png",
+      "url": "http://127.0.0.1:15173/catalogo/1",
+      "capturedAt": "2026-10-04T04:31:40.565Z"
+    },
+    {
+      "section": "05-venta-catalogo",
+      "order": 5,
+      "title": "Asistente de consultas",
+      "description": "Ejemplo de consulta general realizada desde el catálogo público.",
+      "file": "05-venta-catalogo/05-asistente-de-consultas.png",
+      "url": "http://127.0.0.1:15173/catalogo/1",
+      "capturedAt": "2026-10-04T04:31:41.254Z"
+    },
+    {
+      "section": "05-venta-catalogo",
+      "order": 6,
+      "title": "Registro de venta",
+      "description": "Venta asociada al cliente comprador, vehículo y precio final acordado.",
+      "file": "05-venta-catalogo/06-registro-de-venta.png",
+      "url": "http://127.0.0.1:15173/app/ventas/nueva",
+      "capturedAt": "2026-10-04T04:31:42.103Z"
+    },
+    {
+      "section": "05-venta-catalogo",
+      "order": 7,
+      "title": "Venta registrada",
+      "description": "Detalle final de la venta con rentabilidad y acceso al comprobante.",
+      "file": "05-venta-catalogo/07-venta-registrada.png",
+      "url": "http://127.0.0.1:15173/app/ventas/1",
+      "capturedAt": "2026-10-04T04:31:42.705Z"
+    },
+    {
+      "section": "05-venta-catalogo",
+      "order": 8,
+      "title": "Historial de ventas",
+      "description": "Listado de ventas registradas y acceso a sus detalles.",
+      "file": "05-venta-catalogo/08-historial-de-ventas.png",
+      "url": "http://127.0.0.1:15173/app/ventas",
+      "capturedAt": "2026-10-04T04:31:43.249Z"
+    },
+    {
+      "section": "06-gestion-reportes",
+      "order": 1,
+      "title": "Costos y rentabilidad",
+      "description": "Resumen económico por vehículo utilizando compra, refacciones y venta registrada.",
+      "file": "06-gestion-reportes/01-costos-y-rentabilidad.png",
+      "url": "http://127.0.0.1:15173/app/costos",
+      "capturedAt": "2026-10-04T04:31:44.119Z"
+    },
+    {
+      "section": "06-gestion-reportes",
+      "order": 2,
+      "title": "Reporte de ventas por período",
+      "description": "Consulta acotada por fechas con indicadores y detalle de operaciones.",
+      "file": "06-gestion-reportes/02-reporte-de-ventas-por-periodo.png",
+      "url": "http://127.0.0.1:15173/app/reportes",
+      "capturedAt": "2026-10-04T04:31:44.823Z"
+    },
+    {
+      "section": "06-gestion-reportes",
+      "order": 3,
+      "title": "Reporte de rentabilidad",
+      "description": "Reporte gerencial de rentabilidad calculada sobre las operaciones del período.",
+      "file": "06-gestion-reportes/03-reporte-de-rentabilidad.png",
+      "url": "http://127.0.0.1:15173/app/reportes",
+      "capturedAt": "2026-10-04T04:31:45.224Z"
+    },
+    {
+      "section": "06-gestion-reportes",
+      "order": 4,
+      "title": "Auditoría",
+      "description": "Registro de acciones relevantes para conocer qué ocurrió, cuándo y sobre qué entidad.",
+      "file": "06-gestion-reportes/04-auditoria.png",
+      "url": "http://127.0.0.1:15173/app/auditoria",
+      "capturedAt": "2026-10-04T04:31:45.785Z"
+    },
+    {
+      "section": "06-gestion-reportes",
+      "order": 5,
+      "title": "Dashboard luego del ciclo completo",
+      "description": "Indicadores gerenciales luego de completar compra, taller, publicación y venta de la unidad.",
+      "file": "06-gestion-reportes/05-dashboard-luego-del-ciclo-completo.png",
+      "url": "http://127.0.0.1:15173/app/dashboard",
+      "capturedAt": "2026-10-04T04:31:46.378Z"
+    },
+    {
+      "section": "07-permisos-sesion",
+      "order": 1,
+      "title": "Acceso restringido por rol",
+      "description": "Un perfil de taller no puede acceder a reportes gerenciales y es redirigido a su área habilitada.",
+      "file": "07-permisos-sesion/01-acceso-restringido-por-rol.png",
+      "url": "http://127.0.0.1:15173/app",
+      "capturedAt": "2026-10-04T04:31:47.264Z"
+    },
+    {
+      "section": "07-permisos-sesion",
+      "order": 2,
+      "title": "Cambio de contraseña",
+      "description": "Pantalla de autoservicio para actualizar la contraseña de la cuenta autenticada.",
+      "file": "07-permisos-sesion/02-cambio-de-contrasena.png",
+      "url": "http://127.0.0.1:15173/app/mi-cuenta/password",
+      "capturedAt": "2026-10-04T04:31:47.784Z"
+    }
+  ]
+}

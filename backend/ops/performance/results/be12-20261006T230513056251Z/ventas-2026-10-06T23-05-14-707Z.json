@@ -1,0 +1,276 @@
+{
+  "profile": "ventas-50-vus",
+  "runId": "be12-20261006T230513056251Z",
+  "warmupSales": 0,
+  "measuredVus": 50,
+  "results": {
+    "state": {
+      "isStdErrTTY": false,
+      "testRunDurationMs": 1352.7728,
+      "isStdOutTTY": false
+    },
+    "metrics": {
+      "vus": {
+        "type": "gauge",
+        "contains": "default",
+        "values": {
+          "value": 39,
+          "min": 39,
+          "max": 39
+        }
+      },
+      "checks": {
+        "type": "rate",
+        "contains": "default",
+        "values": {
+          "rate": 1,
+          "passes": 50,
+          "fails": 0
+        }
+      },
+      "http_req_duration{endpoint:venta-crear}": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "avg": 1105.9986759999997,
+          "min": 888.8955,
+          "med": 1107.5408499999999,
+          "max": 1337.8239,
+          "p(90)": 1319.3186400000002,
+          "p(95)": 1323.640325
+        },
+        "thresholds": {
+          "p(95)<1500": {
+            "ok": true
+          }
+        }
+      },
+      "http_req_duration{expected_response:true}": {
+        "values": {
+          "p(90)": 1319.3186400000002,
+          "p(95)": 1323.640325,
+          "avg": 1105.9986759999997,
+          "min": 888.8955,
+          "med": 1107.5408499999999,
+          "max": 1337.8239
+        },
+        "type": "trend",
+        "contains": "time"
+      },
+      "http_req_failed{phase:measure}": {
+        "type": "rate",
+        "contains": "default",
+        "values": {
+          "rate": 0,
+          "passes": 0,
+          "fails": 50
+        },
+        "thresholds": {
+          "rate<0.01": {
+            "ok": true
+          }
+        }
+      },
+      "iterations": {
+        "type": "counter",
+        "contains": "default",
+        "values": {
+          "count": 50,
+          "rate": 36.961121631067684
+        }
+      },
+      "vus_max": {
+        "type": "gauge",
+        "contains": "default",
+        "values": {
+          "min": 50,
+          "max": 50,
+          "value": 50
+        }
+      },
+      "http_reqs{endpoint:venta-crear}": {
+        "type": "counter",
+        "contains": "default",
+        "values": {
+          "rate": 36.961121631067684,
+          "count": 50
+        },
+        "thresholds": {
+          "count==50": {
+            "ok": true
+          }
+        }
+      },
+      "http_req_connecting": {
+        "values": {
+          "avg": 1.9177779999999995,
+          "min": 0.5119,
+          "med": 2.1172,
+          "max": 3.7859,
+          "p(90)": 2.7051200000000004,
+          "p(95)": 3.194509999999998
+        },
+        "type": "trend",
+        "contains": "time"
+      },
+      "http_req_receiving": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "avg": 0.453518,
+          "min": 0,
+          "med": 0.1522,
+          "max": 1.8354,
+          "p(90)": 1.50503,
+          "p(95)": 1.6579699999999997
+        }
+      },
+      "http_reqs": {
+        "type": "counter",
+        "contains": "default",
+        "values": {
+          "count": 50,
+          "rate": 36.961121631067684
+        }
+      },
+      "data_received": {
+        "type": "counter",
+        "contains": "data",
+        "values": {
+          "count": 61393,
+          "rate": 45383.082805922764
+        }
+      },
+      "http_req_sending": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "med": 0,
+          "max": 1.0286,
+          "p(90)": 0.5651,
+          "p(95)": 0.7044149999999993,
+          "avg": 0.14625200000000002,
+          "min": 0
+        }
+      },
+      "http_req_waiting": {
+        "contains": "time",
+        "values": {
+          "min": 888.8955,
+          "med": 1107.5408499999999,
+          "max": 1337.8239,
+          "p(90)": 1318.23657,
+          "p(95)": 1322.5611549999999,
+          "avg": 1105.3989060000001
+        },
+        "type": "trend"
+      },
+      "http_req_tls_handshaking": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "avg": 0,
+          "min": 0,
+          "med": 0,
+          "max": 0,
+          "p(90)": 0,
+          "p(95)": 0
+        }
+      },
+      "http_req_failed": {
+        "type": "rate",
+        "contains": "default",
+        "values": {
+          "rate": 0,
+          "passes": 0,
+          "fails": 50
+        }
+      },
+      "http_req_blocked": {
+        "contains": "time",
+        "values": {
+          "avg": 13.063393999999995,
+          "min": 11.6243,
+          "med": 13.218,
+          "max": 14.8259,
+          "p(90)": 13.7998,
+          "p(95)": 14.117204999999998
+        },
+        "type": "trend"
+      },
+      "checks{phase:measure}": {
+        "type": "rate",
+        "contains": "default",
+        "values": {
+          "fails": 0,
+          "rate": 1,
+          "passes": 50
+        },
+        "thresholds": {
+          "rate>0.99": {
+            "ok": true
+          }
+        }
+      },
+      "iteration_duration": {
+        "values": {
+          "avg": 1119.9791180000002,
+          "min": 903.7749,
+          "med": 1121.45185,
+          "max": 1351.1596,
+          "p(90)": 1333.13127,
+          "p(95)": 1337.75249
+        },
+        "type": "trend",
+        "contains": "time"
+      },
+      "http_req_duration": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "avg": 1105.9986759999997,
+          "min": 888.8955,
+          "med": 1107.5408499999999,
+          "max": 1337.8239,
+          "p(90)": 1319.3186400000002,
+          "p(95)": 1323.640325
+        }
+      },
+      "data_sent": {
+        "type": "counter",
+        "contains": "data",
+        "values": {
+          "count": 40341,
+          "rate": 29820.97215437803
+        }
+      }
+    },
+    "root_group": {
+      "name": "",
+      "path": "",
+      "id": "d41d8cd98f00b204e9800998ecf8427e",
+      "groups": [],
+      "checks": [
+          {
+            "passes": 50,
+            "fails": 0,
+            "name": "venta confirmada",
+            "path": "::venta confirmada",
+            "id": "7a1ed2e9bc8156f767dda1f1650d7147"
+          }
+        ]
+    },
+    "options": {
+      "summaryTrendStats": [
+        "avg",
+        "min",
+        "med",
+        "max",
+        "p(90)",
+        "p(95)"
+      ],
+      "summaryTimeUnit": "",
+      "noColor": false
+    }
+  }
+}

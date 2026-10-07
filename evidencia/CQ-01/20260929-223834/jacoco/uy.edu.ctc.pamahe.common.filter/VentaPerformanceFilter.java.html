@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VentaPerformanceFilter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.common.filter</a> &gt; <span class="el_source">VentaPerformanceFilter.java</span></div><h1>VentaPerformanceFilter.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.common.filter;
+
+import java.io.IOException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import uy.edu.ctc.pamahe.common.performance.VentaTiming;
+
+/** Instrumenta los tiempos de la operación de venta bajo el perfil de rendimiento. */
+@Component
+@Profile(&quot;perf&quot;)
+@Order(Ordered.HIGHEST_PRECEDENCE + 10)
+<span class="nc" id="L21">public class VentaPerformanceFilter extends OncePerRequestFilter {</span>
+<span class="nc" id="L22">    private static final Logger log = LoggerFactory.getLogger(VentaPerformanceFilter.class);</span>
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+<span class="nc bnc" id="L26" title="All 2 branches missed.">        return !&quot;POST&quot;.equals(request.getMethod())</span>
+<span class="nc bnc" id="L27" title="All 2 branches missed.">                || !&quot;/ventas&quot;.equals(request.getServletPath());</span>
+    }
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+            FilterChain chain) throws ServletException, IOException {
+<span class="nc" id="L33">        try (VentaTiming timing = VentaTiming.start()) {</span>
+<span class="nc" id="L34">            boolean completed = false;</span>
+            try {
+<span class="nc" id="L36">                chain.doFilter(request, response);</span>
+<span class="nc" id="L37">                completed = true;</span>
+            } finally {
+                // Incluye commit/flush, entrega del evento AFTER_COMMIT y serialización HTTP.
+                // Ante un error incluye el segmento interrumpido; consultar status y correlationId.
+<span class="nc" id="L41">                VentaTiming.mark(&quot;salida_commit_serializacion&quot;);</span>
+<span class="nc" id="L42">                log.info(&quot;BE12 venta status={} total_ms={} etapas_ms={}&quot;,</span>
+<span class="nc bnc" id="L43" title="All 2 branches missed.">                        completed ? response.getStatus() : 500, timing.totalMillis(), timing.stageMillis());</span>
+            }
+        }
+<span class="nc" id="L46">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

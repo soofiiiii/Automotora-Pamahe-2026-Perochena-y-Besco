@@ -1,0 +1,15 @@
+# Copiar a configuración privada y completar un receptor real antes de habilitar.
+global:
+  resolve_timeout: 5m
+route:
+  receiver: operaciones
+  group_by: [alertname, job]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+receivers:
+  - name: operaciones
+    webhook_configs:
+      - url_file: /etc/pamahe-monitoring/alert-webhook-url
+        send_resolved: true
+        timeout: 10s

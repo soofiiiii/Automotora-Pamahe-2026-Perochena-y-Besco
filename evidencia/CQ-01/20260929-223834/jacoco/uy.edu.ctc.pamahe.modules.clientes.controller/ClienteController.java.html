@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ClienteController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.clientes.controller</a> &gt; <span class="el_source">ClienteController.java</span></div><h1>ClienteController.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.clientes.controller;
+
+import java.util.List;
+import uy.edu.ctc.pamahe.modules.clientes.model.TipoCliente;
+
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import jakarta.validation.Valid;
+import uy.edu.ctc.pamahe.common.response.ApiResponse;
+import uy.edu.ctc.pamahe.common.response.PageResponse;
+import uy.edu.ctc.pamahe.modules.clientes.dto.request.ClienteRequest;
+import uy.edu.ctc.pamahe.modules.clientes.dto.response.ClienteResponse;
+import uy.edu.ctc.pamahe.modules.clientes.service.ClienteService;
+
+@RestController
+@RequestMapping(&quot;/clientes&quot;)
+public class ClienteController {
+
+    private final ClienteService clienteService;
+
+<span class="fc" id="L29">    public ClienteController(ClienteService clienteService) {</span>
+<span class="fc" id="L30">        this.clienteService = clienteService;</span>
+<span class="fc" id="L31">    }</span>
+
+    @GetMapping
+    public ApiResponse&lt;List&lt;ClienteResponse&gt;&gt; listar() {
+<span class="nc" id="L35">        return ApiResponse.ok(&quot;Clientes obtenidos correctamente.&quot;, this.clienteService.listar());</span>
+    }
+
+    @GetMapping(&quot;/paginado&quot;)
+    public ApiResponse&lt;PageResponse&lt;ClienteResponse&gt;&gt; listarPaginado(
+            @RequestParam(defaultValue = &quot;0&quot;) int page,
+            @RequestParam(defaultValue = &quot;20&quot;) int size,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) TipoCliente tipoCliente) {
+<span class="fc" id="L44">        return ApiResponse.ok(&quot;Clientes paginados obtenidos correctamente.&quot;, this.clienteService.listarPaginado(page, size, q, tipoCliente));</span>
+    }
+
+    @GetMapping(&quot;/{id}&quot;)
+    public ApiResponse&lt;ClienteResponse&gt; obtener(@PathVariable Long id) {
+<span class="nc" id="L49">        return ApiResponse.ok(&quot;Cliente obtenido correctamente.&quot;, this.clienteService.obtener(id));</span>
+    }
+
+    @PostMapping
+    public ApiResponse&lt;ClienteResponse&gt; crear(@Valid @RequestBody ClienteRequest request) {
+<span class="nc" id="L54">        return ApiResponse.ok(&quot;Cliente creado correctamente.&quot;, this.clienteService.crear(request));</span>
+    }
+
+    @PutMapping(&quot;/{id}&quot;)
+    public ApiResponse&lt;ClienteResponse&gt; actualizar(@PathVariable Long id,
+                                                    @Valid @RequestBody ClienteRequest request) {
+<span class="nc" id="L60">        return ApiResponse.ok(&quot;Cliente actualizado correctamente.&quot;, this.clienteService.actualizar(id, request));</span>
+    }
+
+    @DeleteMapping(&quot;/{id}&quot;)
+    public ApiResponse&lt;Void&gt; desactivar(@PathVariable Long id) {
+<span class="nc" id="L65">        this.clienteService.desactivar(id);</span>
+<span class="nc" id="L66">        return ApiResponse.ok(&quot;Cliente desactivado correctamente.&quot;, null);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

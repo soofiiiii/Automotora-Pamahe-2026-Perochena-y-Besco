@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AdminBootstrapService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.common.config</a> &gt; <span class="el_source">AdminBootstrapService.java</span></div><h1>AdminBootstrapService.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.common.config;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.annotation.Profile;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import uy.edu.ctc.pamahe.modules.usuarios.model.Usuario;
+import uy.edu.ctc.pamahe.modules.usuarios.repository.UsuarioRepository;
+
+/**
+ * Inicializa de forma segura la credencial de la cuenta administrativa en producción.
+ * La contraseña se toma exclusivamente de configuración externa y solo se aplica mientras la
+ * cuenta tenga pendiente la rotación obligatoria. Después del primer cambio real, el secreto de
+ * bootstrap puede retirarse del entorno sin impedir futuros arranques de la aplicación.
+ */
+@Component 
+@Profile(&quot;prod&quot;)
+public class AdminBootstrapService implements ApplicationRunner {
+    
+<span class="fc" id="L26">    private static final Logger LOGGER = LoggerFactory.getLogger(AdminBootstrapService.class);</span>
+    private static final int MIN_PASSWORD_LENGTH = 12;
+
+    private final UsuarioRepository usuarioRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final String username;
+    private final String bootstrapPassword;
+
+    public AdminBootstrapService(
+            UsuarioRepository usuarioRepository,
+            PasswordEncoder passwordEncoder,
+            @Value(&quot;${app.bootstrap-admin.username:admin}&quot;) String username,
+<span class="fc" id="L38">            @Value(&quot;${app.bootstrap-admin.password:}&quot;) String bootstrapPassword) {</span>
+<span class="fc" id="L39">        this.usuarioRepository = usuarioRepository;</span>
+<span class="fc" id="L40">        this.passwordEncoder = passwordEncoder;</span>
+<span class="fc" id="L41">        this.username = normalizarUsername(username);</span>
+<span class="fc" id="L42">        this.bootstrapPassword = bootstrapPassword;</span>
+<span class="fc" id="L43">    }</span>
+
+    @Override
+    @Transactional
+    public void run(ApplicationArguments args) {
+<span class="fc" id="L48">        Usuario usuario = this.usuarioRepository.findByUsernameAndActivoTrue(this.username)</span>
+<span class="pc" id="L49">                .orElseThrow(() -&gt; new IllegalStateException(</span>
+                        &quot;La cuenta bootstrap administrativa configurada no existe o está inactiva.&quot;));
+
+<span class="fc" id="L52">        boolean administrador = usuario.getRoles().stream()</span>
+<span class="fc" id="L53">                .anyMatch(rol -&gt; &quot;ADMINISTRADOR&quot;.equals(rol.getNombre()));</span>
+<span class="fc bfc" id="L54" title="All 2 branches covered.">        if (!administrador) {</span>
+<span class="fc" id="L55">            throw new IllegalStateException(&quot;La cuenta bootstrap debe tener rol administrador.&quot;);</span>
+        }
+
+<span class="fc bfc" id="L58" title="All 2 branches covered.">        if (!Boolean.TRUE.equals(usuario.getDebeCambiarPassword())) {</span>
+<span class="fc" id="L59">            LOGGER.info(&quot;Bootstrap administrativo omitido: la cuenta {} ya completó la rotación inicial.&quot;, this.username);</span>
+<span class="fc" id="L60">            return;</span>
+        }
+
+<span class="fc" id="L63">        validarPasswordBootstrap(this.bootstrapPassword, this.username);</span>
+<span class="fc" id="L64">        usuario.setPasswordHash(this.passwordEncoder.encode(this.bootstrapPassword));</span>
+<span class="fc" id="L65">        usuario.setDebeCambiarPassword(true);</span>
+<span class="fc" id="L66">        this.usuarioRepository.save(usuario);</span>
+<span class="fc" id="L67">        LOGGER.info(&quot;Credencial bootstrap actualizada para la cuenta administrativa {}. Se mantiene la rotación obligatoria.&quot;,</span>
+                this.username);
+<span class="fc" id="L69">    }</span>
+
+    private static String normalizarUsername(String value) {
+<span class="pc bpc" id="L72" title="2 of 4 branches missed.">        if (value == null || value.isBlank()) {</span>
+<span class="nc" id="L73">            throw new IllegalStateException(&quot;BOOTSTRAP_ADMIN_USERNAME es obligatorio en producción.&quot;);</span>
+        }
+<span class="fc" id="L75">        return value.trim().toLowerCase(java.util.Locale.ROOT);</span>
+    }
+
+    private static void validarPasswordBootstrap(String password, String username) {
+<span class="pc bpc" id="L79" title="1 of 4 branches missed.">        if (password == null || password.isBlank()) {</span>
+<span class="fc" id="L80">            throw new IllegalStateException(</span>
+                    &quot;BOOTSTRAP_ADMIN_PASSWORD es obligatorio mientras la cuenta inicial tenga rotación pendiente.&quot;);
+        }
+<span class="pc bpc" id="L83" title="2 of 4 branches missed.">        if (password.length() &lt; MIN_PASSWORD_LENGTH || password.length() &gt; 72) {</span>
+<span class="nc" id="L84">            throw new IllegalStateException(</span>
+                    &quot;BOOTSTRAP_ADMIN_PASSWORD debe tener entre 12 y 72 caracteres.&quot;);
+        }
+<span class="pc bpc" id="L87" title="1 of 2 branches missed.">        if (password.equalsIgnoreCase(username)) {</span>
+<span class="nc" id="L88">            throw new IllegalStateException(&quot;BOOTSTRAP_ADMIN_PASSWORD no puede coincidir con el nombre de usuario.&quot;);</span>
+        }
+<span class="fc" id="L90">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

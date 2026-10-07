@@ -1,0 +1,5 @@
+# Preferir los timers systemd de ops/systemd, que cargan EnvironmentFile.
+# Si se usa cron, las variables deben estar en un wrapper propio protegido.
+# No instalar este ejemplo sin configurar ese wrapper; cron no lee EnvironmentFile.
+# 30 2 * * * /ruta/protegida/run-pamahe-backup
+# 0 4 * * 0 /ruta/protegida/run-pamahe-verify

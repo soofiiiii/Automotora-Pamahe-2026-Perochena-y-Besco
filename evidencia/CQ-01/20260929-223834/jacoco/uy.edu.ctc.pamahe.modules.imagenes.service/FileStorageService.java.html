@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FileStorageService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.imagenes.service</a> &gt; <span class="el_source">FileStorageService.java</span></div><h1>FileStorageService.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.imagenes.service;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.Iterator;
+import java.util.Locale;
+import java.util.UUID;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+
+import java.awt.image.BufferedImage;
+
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.multipart.MultipartFile;
+
+import uy.edu.ctc.pamahe.common.exception.BusinessException;
+import uy.edu.ctc.pamahe.common.exception.ResourceNotFoundException;
+
+/**
+ * Gestiona archivos de imágenes fuera de la base de datos con validación defensiva.
+ * Cada carga se decodifica y se vuelve a codificar para no confiar en nombre, extensión o MIME
+ * provistos por el cliente, y se coordina con la transacción que registra sus metadatos.
+ */
+@Service
+<span class="fc" id="L39">public class FileStorageService {</span>
+
+    @Value(&quot;${app.storage.root}&quot;)
+    private String storageRoot;
+
+    @Value(&quot;${app.storage.images.max-bytes:12582912}&quot;)
+    private long maxBytes;
+
+    @Value(&quot;${app.storage.images.max-width:8000}&quot;)
+    private int maxWidth;
+
+    @Value(&quot;${app.storage.images.max-height:8000}&quot;)
+    private int maxHeight;
+
+    @Value(&quot;${app.storage.images.max-output-dimension:1920}&quot;)
+    private int maxOutputDimension;
+
+    @Value(&quot;${app.storage.images.max-pixels:24000000}&quot;)
+    private long maxPixels;
+
+   public StoredImage guardarImagenPrivada(Long vehiculoId, MultipartFile file) {
+<span class="fc bfc" id="L60" title="All 4 branches covered.">        if (file == null || file.isEmpty()) {</span>
+<span class="fc" id="L61">            throw new BusinessException(&quot;Debe seleccionar una imagen.&quot;);</span>
+        }
+<span class="fc bfc" id="L63" title="All 2 branches covered.">        if (file.getSize() &gt; this.maxBytes) {</span>
+<span class="fc" id="L64">            throw new BusinessException(&quot;La imagen supera el tamaño máximo permitido.&quot;);</span>
+        }
+
+        try {
+<span class="fc" id="L68">            byte[] contenido = file.getBytes();</span>
+            // La firma y la decodificación real se validan antes de aceptar el archivo como imagen.
+<span class="fc" id="L70">            DetectedFormat formato = this.detectarFormato(contenido);</span>
+<span class="fc" id="L71">            BufferedImage original = this.leerImagenValidada(contenido);</span>
+
+            // WebP y PNG se normalizan a PNG; JPEG conserva un formato sin canal alfa.
+<span class="fc bfc" id="L74" title="All 2 branches covered.">            OutputFormat salida = formato == DetectedFormat.JPEG ? OutputFormat.JPEG : OutputFormat.PNG;</span>
+<span class="fc" id="L75">            BufferedImage procesada = this.redimensionar(original, salida);</span>
+<span class="fc" id="L76">            String nombreArchivo = UUID.randomUUID() + salida.extension;</span>
+<span class="fc" id="L77">            String rutaRelativa = &quot;private/vehiculos/&quot; + vehiculoId + &quot;/&quot; + nombreArchivo;</span>
+<span class="fc" id="L78">            Path destino = this.resolverRutaSegura(rutaRelativa);</span>
+<span class="fc" id="L79">            Files.createDirectories(destino.getParent());</span>
+
+            // La escritura temporal evita dejar una imagen parcial con el nombre definitivo.
+<span class="fc" id="L82">            Path temporal = Files.createTempFile(destino.getParent(), &quot;.upload-&quot;, &quot;.tmp&quot;);</span>
+            try {
+<span class="fc" id="L84">                boolean escrita = ImageIO.write(procesada, salida.imageIoFormat, temporal.toFile());</span>
+<span class="pc bpc" id="L85" title="1 of 2 branches missed.">                if (!escrita) {</span>
+<span class="nc" id="L86">                    throw new BusinessException(&quot;No se pudo reprocesar la imagen en un formato seguro.&quot;);</span>
+                }
+<span class="fc" id="L88">                this.moverReemplazando(temporal, destino);</span>
+            } finally {
+<span class="fc" id="L90">                Files.deleteIfExists(temporal);</span>
+            }
+
+<span class="fc" id="L93">            this.eliminarSiRollback(destino);</span>
+<span class="fc" id="L94">            return new StoredImage(rutaRelativa, salida.mediaType);</span>
+<span class="fc" id="L95">        } catch (BusinessException exception) {</span>
+<span class="fc" id="L96">            throw exception;</span>
+<span class="fc" id="L97">        } catch (IOException exception) {</span>
+<span class="fc" id="L98">            throw new BusinessException(&quot;No se pudo guardar la imagen del vehículo.&quot;);</span>
+        }
+    }
+
+    // Mueve el archivo porque la visibilidad también debe cumplirse a nivel físico, no solo en la tabla.
+    public String moverVisibilidad(String rutaActual, Long vehiculoId, boolean publica) {
+<span class="fc" id="L104">        Path origen = this.resolverRutaSegura(rutaActual);</span>
+<span class="fc bfc" id="L105" title="All 2 branches covered.">        if (!Files.isRegularFile(origen)) {</span>
+<span class="fc" id="L106">            throw new ResourceNotFoundException(&quot;No se encontró el archivo de la imagen.&quot;);</span>
+        }
+<span class="fc" id="L108">        String nombre = origen.getFileName().toString();</span>
+<span class="fc bfc" id="L109" title="All 2 branches covered.">        String nuevaRuta = (publica ? &quot;public&quot; : &quot;private&quot;) + &quot;/vehiculos/&quot; + vehiculoId + &quot;/&quot; + nombre;</span>
+<span class="fc" id="L110">        Path destino = this.resolverRutaSegura(nuevaRuta);</span>
+<span class="fc bfc" id="L111" title="All 2 branches covered.">        if (origen.equals(destino)) {</span>
+<span class="fc" id="L112">            return rutaActual;</span>
+        }
+        try {
+<span class="fc" id="L115">            Files.createDirectories(destino.getParent());</span>
+<span class="fc" id="L116">            this.moverReemplazando(origen, destino);</span>
+<span class="fc" id="L117">            this.revertirMovimientoSiRollback(origen, destino);</span>
+<span class="fc" id="L118">            return nuevaRuta;</span>
+<span class="nc" id="L119">        } catch (IOException exception) {</span>
+<span class="nc" id="L120">            throw new BusinessException(&quot;No se pudo cambiar la visibilidad física de la imagen.&quot;);</span>
+        }
+    }
+
+    public StoredResource cargar(String rutaRelativa) {
+<span class="fc" id="L125">        Path archivo = this.resolverRutaSegura(rutaRelativa);</span>
+<span class="fc bfc" id="L126" title="All 2 branches covered.">        if (!Files.isRegularFile(archivo)) {</span>
+<span class="fc" id="L127">            throw new ResourceNotFoundException(&quot;No se encontró el archivo de la imagen.&quot;);</span>
+        }
+<span class="fc" id="L129">        return new StoredResource(</span>
+                new FileSystemResource(archivo),
+<span class="fc" id="L131">                archivo.getFileName().toString(),</span>
+<span class="fc" id="L132">                this.mediaTypePorExtension(archivo.getFileName().toString())</span>
+        );
+    }
+
+    // El archivo se elimina después del commit para no perderlo si la eliminación de metadatos se revierte.
+    public void eliminarTrasCommit(String rutaRelativa) {
+<span class="fc" id="L138">        Path archivo = this.resolverRutaSegura(rutaRelativa);</span>
+<span class="fc bfc" id="L139" title="All 2 branches covered.">        if (!TransactionSynchronizationManager.isSynchronizationActive()) {</span>
+<span class="fc" id="L140">            this.eliminarSilenciosamente(archivo);</span>
+<span class="fc" id="L141">            return;</span>
+        }
+<span class="fc" id="L143">        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {</span>
+            @Override
+            public void afterCommit() {
+<span class="fc" id="L146">                eliminarSilenciosamente(archivo);</span>
+<span class="fc" id="L147">            }</span>
+        });
+<span class="fc" id="L149">    }</span>
+
+    private BufferedImage leerImagenValidada(byte[] contenido) throws IOException {
+<span class="fc" id="L152">        try (ImageInputStream input = ImageIO.createImageInputStream(new ByteArrayInputStream(contenido))) {</span>
+<span class="pc bpc" id="L153" title="1 of 2 branches missed.">            if (input == null) {</span>
+<span class="nc" id="L154">                throw new BusinessException(&quot;El archivo no contiene una imagen válida.&quot;);</span>
+            }
+<span class="fc" id="L156">            Iterator&lt;ImageReader&gt; lectores = ImageIO.getImageReaders(input);</span>
+<span class="pc bpc" id="L157" title="1 of 2 branches missed.">            if (!lectores.hasNext()) {</span>
+<span class="nc" id="L158">                throw new BusinessException(&quot;El archivo no contiene una imagen JPEG, PNG o WebP decodificable.&quot;);</span>
+            }
+
+<span class="fc" id="L161">            ImageReader lector = lectores.next();</span>
+            try {
+<span class="fc" id="L163">                lector.setInput(input, true, true);</span>
+<span class="fc" id="L164">                int ancho = lector.getWidth(0);</span>
+<span class="fc" id="L165">                int alto = lector.getHeight(0);</span>
+                // El límite de píxeles reduce el riesgo de archivos pequeños
+                // que se expanden excesivamente al decodificar.
+<span class="fc" id="L168">                long pixeles = (long) ancho * alto;</span>
+<span class="pc bpc" id="L169" title="2 of 10 branches missed.">                if (ancho &lt;= 0 || alto &lt;= 0</span>
+                        || ancho &gt; this.maxWidth || alto &gt; this.maxHeight
+                        || pixeles &gt; this.maxPixels) {
+<span class="fc" id="L172">                    throw new BusinessException(&quot;Las dimensiones de la imagen no están permitidas.&quot;);</span>
+                }
+<span class="fc" id="L174">                BufferedImage imagen = lector.read(0);</span>
+<span class="pc bpc" id="L175" title="1 of 2 branches missed.">                if (imagen == null) {</span>
+<span class="nc" id="L176">                    throw new BusinessException(&quot;El archivo no contiene una imagen válida.&quot;);</span>
+                }
+<span class="fc" id="L178">                return imagen;</span>
+            } finally {
+<span class="fc" id="L180">                lector.dispose();</span>
+            }
+        }
+    }
+
+    private void moverReemplazando(Path origen, Path destino) throws IOException {
+        try {
+<span class="fc" id="L187">            Files.move(origen, destino, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);</span>
+<span class="nc" id="L188">        } catch (AtomicMoveNotSupportedException exception) {</span>
+<span class="nc" id="L189">            Files.move(origen, destino, StandardCopyOption.REPLACE_EXISTING);</span>
+<span class="fc" id="L190">        }</span>
+<span class="fc" id="L191">    }</span>
+
+    private DetectedFormat detectarFormato(byte[] contenido) {
+<span class="pc bpc" id="L194" title="8 of 18 branches missed.">        if (contenido.length &gt;= 8</span>
+                &amp;&amp; (contenido[0] &amp; 0xFF) == 0x89
+                &amp;&amp; contenido[1] == 0x50 &amp;&amp; contenido[2] == 0x4E &amp;&amp; contenido[3] == 0x47
+                &amp;&amp; contenido[4] == 0x0D &amp;&amp; contenido[5] == 0x0A &amp;&amp; contenido[6] == 0x1A &amp;&amp; contenido[7] == 0x0A) {
+<span class="fc" id="L198">            return DetectedFormat.PNG;</span>
+        }
+<span class="pc bpc" id="L200" title="3 of 8 branches missed.">        if (contenido.length &gt;= 3</span>
+                &amp;&amp; (contenido[0] &amp; 0xFF) == 0xFF
+                &amp;&amp; (contenido[1] &amp; 0xFF) == 0xD8
+                &amp;&amp; (contenido[2] &amp; 0xFF) == 0xFF) {
+<span class="fc" id="L204">            return DetectedFormat.JPEG;</span>
+        }
+<span class="pc bpc" id="L206" title="16 of 18 branches missed.">        if (contenido.length &gt;= 12</span>
+                &amp;&amp; contenido[0] == 'R' &amp;&amp; contenido[1] == 'I' &amp;&amp; contenido[2] == 'F' &amp;&amp; contenido[3] == 'F'
+                &amp;&amp; contenido[8] == 'W' &amp;&amp; contenido[9] == 'E' &amp;&amp; contenido[10] == 'B' &amp;&amp; contenido[11] == 'P') {
+<span class="nc" id="L209">            return DetectedFormat.WEBP;</span>
+        }
+<span class="fc" id="L211">        throw new BusinessException(&quot;Solo se permiten imágenes JPEG, PNG o WebP válidas.&quot;);</span>
+    }
+
+    private BufferedImage redimensionar(BufferedImage original, OutputFormat salida) {
+<span class="fc" id="L215">        int ancho = original.getWidth();</span>
+<span class="fc" id="L216">        int alto = original.getHeight();</span>
+<span class="fc" id="L217">        double escala = Math.min(1.0, (double) this.maxOutputDimension / Math.max(ancho, alto));</span>
+<span class="fc" id="L218">        int nuevoAncho = Math.max(1, (int) Math.round(ancho * escala));</span>
+<span class="fc" id="L219">        int nuevoAlto = Math.max(1, (int) Math.round(alto * escala));</span>
+<span class="fc bfc" id="L220" title="All 2 branches covered.">        int tipo = salida == OutputFormat.JPEG ? BufferedImage.TYPE_INT_RGB : BufferedImage.TYPE_INT_ARGB;</span>
+<span class="fc" id="L221">        BufferedImage destino = new BufferedImage(nuevoAncho, nuevoAlto, tipo);</span>
+<span class="fc" id="L222">        Graphics2D graphics = destino.createGraphics();</span>
+        try {
+<span class="fc bfc" id="L224" title="All 2 branches covered.">            if (salida == OutputFormat.JPEG) {</span>
+<span class="fc" id="L225">                graphics.setColor(Color.WHITE);</span>
+<span class="fc" id="L226">                graphics.fillRect(0, 0, nuevoAncho, nuevoAlto);</span>
+            }
+<span class="fc" id="L228">            graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);</span>
+<span class="fc" id="L229">            graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);</span>
+<span class="fc" id="L230">            graphics.drawImage(original, 0, 0, nuevoAncho, nuevoAlto, null);</span>
+        } finally {
+<span class="fc" id="L232">            graphics.dispose();</span>
+        }
+<span class="fc" id="L234">        return destino;</span>
+    }
+
+    // Restringe todas las operaciones al directorio raíz y bloquea intentos de path traversal.
+    private Path resolverRutaSegura(String rutaRelativa) {
+<span class="pc bpc" id="L239" title="1 of 4 branches missed.">        if (rutaRelativa == null || rutaRelativa.isBlank()) {</span>
+<span class="fc" id="L240">            throw new BusinessException(&quot;La ruta del archivo no es válida.&quot;);</span>
+        }
+<span class="fc" id="L242">        Path base = Path.of(this.storageRoot).toAbsolutePath().normalize();</span>
+<span class="fc" id="L243">        Path archivo = base.resolve(rutaRelativa).normalize();</span>
+<span class="fc bfc" id="L244" title="All 2 branches covered.">        if (!archivo.startsWith(base)) {</span>
+<span class="fc" id="L245">            throw new BusinessException(&quot;La ruta del archivo no es válida.&quot;);</span>
+        }
+<span class="fc" id="L247">        return archivo;</span>
+    }
+
+    private String mediaTypePorExtension(String nombre) {
+<span class="fc" id="L251">        String lower = nombre.toLowerCase(Locale.ROOT);</span>
+<span class="pc bpc" id="L252" title="1 of 4 branches missed.">        if (lower.endsWith(&quot;.jpg&quot;) || lower.endsWith(&quot;.jpeg&quot;)) {</span>
+<span class="fc" id="L253">            return &quot;image/jpeg&quot;;</span>
+        }
+<span class="pc bpc" id="L255" title="1 of 2 branches missed.">        if (lower.endsWith(&quot;.png&quot;)) {</span>
+<span class="fc" id="L256">            return &quot;image/png&quot;;</span>
+        }
+<span class="nc bnc" id="L258" title="All 2 branches missed.">        if (lower.endsWith(&quot;.webp&quot;)) {</span>
+<span class="nc" id="L259">            return &quot;image/webp&quot;;</span>
+        }
+<span class="nc" id="L261">        return &quot;application/octet-stream&quot;;</span>
+    }
+
+    private void eliminarSiRollback(Path archivo) {
+<span class="fc bfc" id="L265" title="All 2 branches covered.">        if (!TransactionSynchronizationManager.isSynchronizationActive()) {</span>
+<span class="fc" id="L266">            return;</span>
+        }
+<span class="fc" id="L268">        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {</span>
+            @Override
+            public void afterCompletion(int status) {
+<span class="fc bfc" id="L271" title="All 2 branches covered.">                if (status == STATUS_ROLLED_BACK) {</span>
+<span class="fc" id="L272">                    eliminarSilenciosamente(archivo);</span>
+                }
+<span class="fc" id="L274">            }</span>
+        });
+<span class="fc" id="L276">    }</span>
+
+    private void revertirMovimientoSiRollback(Path origen, Path destino) {
+<span class="fc bfc" id="L279" title="All 2 branches covered.">        if (!TransactionSynchronizationManager.isSynchronizationActive()) {</span>
+<span class="fc" id="L280">            return;</span>
+        }
+<span class="fc" id="L282">        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {</span>
+            @Override
+            public void afterCompletion(int status) {
+<span class="pc bpc" id="L285" title="2 of 4 branches missed.">                if (status == STATUS_ROLLED_BACK &amp;&amp; Files.exists(destino)) {</span>
+                    try {
+<span class="fc" id="L287">                        Files.createDirectories(origen.getParent());</span>
+<span class="fc" id="L288">                        Files.move(destino, origen, StandardCopyOption.REPLACE_EXISTING);</span>
+<span class="nc" id="L289">                    } catch (IOException ignored) {</span>
+                        // El fallo se deja registrado por la operación principal.
+<span class="fc" id="L291">                    }</span>
+                }
+<span class="fc" id="L293">            }</span>
+        });
+<span class="fc" id="L295">    }</span>
+
+    private void eliminarSilenciosamente(Path archivo) {
+        try {
+<span class="fc" id="L299">            Files.deleteIfExists(archivo);</span>
+<span class="nc" id="L300">        } catch (IOException ignored) {</span>
+            // La eliminación física no debe reemplazar el resultado de la transacción.
+<span class="fc" id="L302">        }</span>
+<span class="fc" id="L303">    }</span>
+
+<span class="fc" id="L305">    private enum DetectedFormat { JPEG, PNG, WEBP }</span>
+
+<span class="fc" id="L307">    private enum OutputFormat {</span>
+<span class="fc" id="L308">        JPEG(&quot;.jpg&quot;, &quot;jpeg&quot;, &quot;image/jpeg&quot;),</span>
+<span class="fc" id="L309">        PNG(&quot;.png&quot;, &quot;png&quot;, &quot;image/png&quot;);</span>
+
+        private final String extension;
+        private final String imageIoFormat;
+        private final String mediaType;
+
+<span class="fc" id="L315">        OutputFormat(String extension, String imageIoFormat, String mediaType) {</span>
+<span class="fc" id="L316">            this.extension = extension;</span>
+<span class="fc" id="L317">            this.imageIoFormat = imageIoFormat;</span>
+<span class="fc" id="L318">            this.mediaType = mediaType;</span>
+<span class="fc" id="L319">        }</span>
+    }
+
+<span class="fc" id="L322">    public record StoredImage(String relativePath, String mediaType) {</span>
+    }
+
+<span class="fc" id="L325">    public record StoredResource(Resource resource, String filename, String mediaType) {</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

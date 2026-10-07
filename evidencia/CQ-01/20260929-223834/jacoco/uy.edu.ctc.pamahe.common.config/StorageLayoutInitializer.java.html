@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StorageLayoutInitializer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.common.config</a> &gt; <span class="el_source">StorageLayoutInitializer.java</span></div><h1>StorageLayoutInitializer.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.common.config;
+
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.List;
+import org.slf4j.Logger;
+
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.dao.DataAccessException;
+import org.springframework.stereotype.Component;
+
+/**
+ * Prepara el almacenamiento al iniciar la aplicación y migra rutas de versiones anteriores.
+ * Se separan el contenido entre público y privado para evitar exponer imagenes o 
+ * comprobantes por el servidor de recursos estáticos. 
+ */
+@Component
+public class StorageLayoutInitializer implements ApplicationRunner {
+    
+<span class="fc" id="L27">    private static final Logger LOGGER = LoggerFactory.getLogger(StorageLayoutInitializer.class);</span>
+    private static final String VEHICULOS_SEGMENT = &quot;vehiculos/&quot;;
+
+    private final JdbcTemplate jdbcTemplate;
+
+    @Value(&quot;${app.storage.root}&quot;)
+    private String storageRoot;
+
+<span class="fc" id="L35">    public StorageLayoutInitializer(JdbcTemplate jdbcTemplate) {</span>
+<span class="fc" id="L36">        this.jdbcTemplate = jdbcTemplate;</span>
+<span class="fc" id="L37">    }</span>
+
+    @Override
+    public void run(ApplicationArguments args) throws IOException {
+<span class="fc" id="L41">        Path root = Path.of(this.storageRoot).toAbsolutePath().normalize();</span>
+<span class="fc" id="L42">        Files.createDirectories(root.resolve(&quot;public/vehiculos&quot;));</span>
+<span class="fc" id="L43">        Files.createDirectories(root.resolve(&quot;private/vehiculos&quot;));</span>
+<span class="fc" id="L44">        Files.createDirectories(root.resolve(&quot;private/comprobantes/compras&quot;));</span>
+<span class="fc" id="L45">        Files.createDirectories(root.resolve(&quot;private/comprobantes/ventas&quot;));</span>
+
+        // La base de datos determina el destino porque conserva la visibilidad actual de cada imagen. 
+<span class="fc" id="L48">        this.migrarImagenesLegadasSegunBaseDeDatos(root);</span>
+<span class="fc" id="L49">        this.migrarDirectorioSiExiste(root.resolve(&quot;comprobantes/compra&quot;), root.resolve(&quot;private/comprobantes/compras&quot;));</span>
+<span class="fc" id="L50">        this.migrarDirectorioSiExiste(root.resolve(&quot;comprobantes/venta&quot;), root.resolve(&quot;private/comprobantes/ventas&quot;));</span>
+<span class="fc" id="L51">    }</span>
+
+    private void migrarImagenesLegadasSegunBaseDeDatos(Path root) {
+        List&lt;String&gt; rutas;
+        try {
+<span class="fc" id="L56">            rutas = this.jdbcTemplate.queryForList(</span>
+                    &quot;SELECT ruta_archivo FROM imagenes_vehiculo &quot;
+                            + &quot;WHERE ruta_archivo LIKE 'public/vehiculos/%' &quot;
+                            + &quot;OR ruta_archivo LIKE 'private/vehiculos/%'&quot;,
+                    String.class
+            );
+<span class="nc" id="L62">        } catch (DataAccessException exception) {</span>
+<span class="nc" id="L63">            LOGGER.warn(&quot;No se pudieron consultar las imágenes legadas para migrar su almacenamiento.&quot;, exception);</span>
+<span class="nc" id="L64">            return;</span>
+<span class="fc" id="L65">        }</span>
+
+<span class="fc" id="L67">        Path directorioLegado = root.resolve(&quot;vehiculos&quot;).normalize();</span>
+<span class="pc bpc" id="L68" title="1 of 2 branches missed.">        for (String rutaRelativa : rutas) {</span>
+<span class="nc bnc" id="L69" title="All 2 branches missed.">            if (rutaRelativa == null) {</span>
+<span class="nc" id="L70">                continue;</span>
+            }
+<span class="nc" id="L72">            int indice = rutaRelativa.indexOf(VEHICULOS_SEGMENT);</span>
+<span class="nc bnc" id="L73" title="All 2 branches missed.">            if (indice &lt; 0) {</span>
+<span class="nc" id="L74">                continue;</span>
+            }
+<span class="nc" id="L76">            String sufijo = rutaRelativa.substring(indice + VEHICULOS_SEGMENT.length());</span>
+<span class="nc" id="L77">            Path origen = directorioLegado.resolve(sufijo).normalize();</span>
+<span class="nc" id="L78">            Path destino = root.resolve(rutaRelativa).normalize();</span>
+            // La validación de pertenencia impide que una ruta almacenada escape del directorio configurado. 
+<span class="nc bnc" id="L80" title="All 4 branches missed.">            if (!origen.startsWith(directorioLegado) || !destino.startsWith(root)) {</span>
+<span class="nc" id="L81">                LOGGER.warn(&quot;Se omitió una ruta de imagen legado no segura: {}&quot;, rutaRelativa);</span>
+<span class="nc" id="L82">                continue;</span>
+            }
+<span class="nc" id="L84">            this.moverArchivoSiExiste(origen, destino);</span>
+<span class="nc" id="L85">        }</span>
+<span class="fc" id="L86">    }</span>
+
+    private void moverArchivoSiExiste(Path origen, Path destino) {
+<span class="nc bnc" id="L89" title="All 2 branches missed.">        if (!Files.isRegularFile(origen)) {</span>
+<span class="nc" id="L90">            return;</span>
+        }
+        try {
+<span class="nc" id="L93">            Files.createDirectories(destino.getParent());</span>
+<span class="nc bnc" id="L94" title="All 2 branches missed.">            if (!Files.exists(destino)) {</span>
+<span class="nc" id="L95">                Files.move(origen, destino, StandardCopyOption.REPLACE_EXISTING);</span>
+            }
+<span class="nc" id="L97">        } catch (IOException exception) {</span>
+<span class="nc" id="L98">            LOGGER.warn(&quot;No se pudo migrar el archivo legado {}&quot;, origen, exception);</span>
+<span class="nc" id="L99">        }</span>
+<span class="nc" id="L100">    }</span>
+
+    private void migrarDirectorioSiExiste(Path origen, Path destino) throws IOException {
+<span class="pc bpc" id="L103" title="1 of 2 branches missed.">        if (!Files.isDirectory(origen)) {</span>
+<span class="fc" id="L104">            return;</span>
+        }
+<span class="nc" id="L106">        try (var archivos = Files.walk(origen)) {</span>
+<span class="nc" id="L107">            archivos.filter(Files::isRegularFile).forEach(archivo -&gt; {</span>
+<span class="nc" id="L108">                Path relativo = origen.relativize(archivo);</span>
+<span class="nc" id="L109">                this.moverArchivoSiExiste(archivo, destino.resolve(relativo).normalize());</span>
+<span class="nc" id="L110">            });</span>
+        }
+<span class="nc" id="L112">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

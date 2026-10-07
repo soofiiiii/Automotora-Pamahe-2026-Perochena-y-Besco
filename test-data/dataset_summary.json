@@ -1,0 +1,14 @@
+{
+  "roles": 4,
+  "usuarios": 8,
+  "clientes": 26,
+  "vehiculos": 32,
+  "publicados": 16,
+  "compras": 32,
+  "refacciones": 20,
+  "ventas": 6,
+  "solicitudes": 4,
+  "notificaciones": 7,
+  "auditoria": 15,
+  "cotizacion_usd_uyu": "41.00"
+}

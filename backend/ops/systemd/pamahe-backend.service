@@ -1,0 +1,26 @@
+[Unit]
+Description=Automotora Pamahe API
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=pamahe
+Group=pamahe
+WorkingDirectory=/opt/pamahe/backend
+EnvironmentFile=/etc/pamahe/backend.env
+ExecStart=/usr/bin/java -jar /opt/pamahe/backend/pamahe-backend.jar
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=40
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+StateDirectory=pamahe
+LogsDirectory=pamahe
+ReadWritePaths=/var/lib/pamahe /var/log/pamahe
+
+[Install]
+WantedBy=multi-user.target

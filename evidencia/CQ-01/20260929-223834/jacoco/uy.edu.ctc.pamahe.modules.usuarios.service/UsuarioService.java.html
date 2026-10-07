@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UsuarioService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.usuarios.service</a> &gt; <span class="el_source">UsuarioService.java</span></div><h1>UsuarioService.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.usuarios.service;
+
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import uy.edu.ctc.pamahe.common.exception.BusinessException;
+import uy.edu.ctc.pamahe.common.exception.ResourceNotFoundException;
+import uy.edu.ctc.pamahe.modules.auditoria.service.AuditoriaService;
+import uy.edu.ctc.pamahe.modules.roles.model.Rol;
+import uy.edu.ctc.pamahe.modules.roles.repository.RolRepository;
+import uy.edu.ctc.pamahe.modules.usuarios.dto.request.RestablecerPasswordRequest;
+import uy.edu.ctc.pamahe.modules.usuarios.dto.request.UsuarioRequest;
+import uy.edu.ctc.pamahe.modules.usuarios.dto.request.UsuarioUpdateRequest;
+import uy.edu.ctc.pamahe.modules.usuarios.dto.response.UsuarioResponse;
+import uy.edu.ctc.pamahe.modules.usuarios.mapper.UsuarioMapper;
+import uy.edu.ctc.pamahe.modules.usuarios.model.Usuario;
+import uy.edu.ctc.pamahe.modules.usuarios.repository.UsuarioRepository;
+
+/**
+ * Administra cuentas internas, sus roles y reglas de continuidad
+ * administrativa.
+ */
+@Service
+public class UsuarioService {
+
+    private static final String ROL_ADMIN = &quot;ADMINISTRADOR&quot;;
+
+    private final UsuarioRepository usuarioRepository;
+    private final RolRepository rolRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final AuditoriaService auditoriaService;
+    private final UsuarioActualService usuarioActualService;
+
+    public UsuarioService(UsuarioRepository usuarioRepository,
+            RolRepository rolRepository,
+            PasswordEncoder passwordEncoder,
+            AuditoriaService auditoriaService,
+<span class="fc" id="L44">            UsuarioActualService usuarioActualService) {</span>
+<span class="fc" id="L45">        this.usuarioRepository = usuarioRepository;</span>
+<span class="fc" id="L46">        this.rolRepository = rolRepository;</span>
+<span class="fc" id="L47">        this.passwordEncoder = passwordEncoder;</span>
+<span class="fc" id="L48">        this.auditoriaService = auditoriaService;</span>
+<span class="fc" id="L49">        this.usuarioActualService = usuarioActualService;</span>
+<span class="fc" id="L50">    }</span>
+
+    @Transactional(readOnly = true)
+    public List&lt;UsuarioResponse&gt; listar() {
+<span class="nc" id="L54">        return this.usuarioRepository.findByActivoTrueOrderByNombreAsc().stream()</span>
+<span class="nc" id="L55">                .map(UsuarioMapper::toResponse)</span>
+<span class="nc" id="L56">                .toList();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public UsuarioResponse obtener(Long id) {
+<span class="nc" id="L61">        return UsuarioMapper.toResponse(this.buscarPorId(id));</span>
+    }
+
+    @Transactional
+    public UsuarioResponse crear(UsuarioRequest request) {
+<span class="fc" id="L66">        String username = normalizarIdentificador(request.username());</span>
+<span class="fc" id="L67">        String email = normalizarIdentificador(request.email());</span>
+
+<span class="pc bpc" id="L69" title="1 of 2 branches missed.">        if (this.usuarioRepository.existsByUsername(username)) {</span>
+<span class="nc" id="L70">            throw new BusinessException(&quot;Ya existe un usuario con ese nombre de usuario.&quot;);</span>
+        }
+
+<span class="pc bpc" id="L73" title="1 of 2 branches missed.">        if (this.usuarioRepository.existsByEmail(email)) {</span>
+<span class="nc" id="L74">            throw new BusinessException(&quot;Ya existe un usuario con ese correo electrónico.&quot;);</span>
+        }
+
+<span class="fc" id="L77">        Usuario usuario = new Usuario();</span>
+<span class="fc" id="L78">        usuario.setUsername(username);</span>
+<span class="fc" id="L79">        usuario.setPasswordHash(this.passwordEncoder.encode(request.password()));</span>
+<span class="fc" id="L80">        usuario.setDebeCambiarPassword(true);</span>
+<span class="fc" id="L81">        usuario.setNombre(request.nombre().trim());</span>
+<span class="fc" id="L82">        usuario.setEmail(email);</span>
+<span class="fc" id="L83">        usuario.setTelefono(normalizarOpcional(request.telefono()));</span>
+<span class="fc" id="L84">        usuario.setRoles(this.obtenerRoles(request.roles()));</span>
+
+<span class="fc" id="L86">        Usuario guardado = this.usuarioRepository.save(usuario);</span>
+
+<span class="fc" id="L88">        this.auditoriaService.registrar(&quot;ALTA&quot;, &quot;Usuario&quot;, guardado.getId(), &quot;Creación de usuario interno&quot;);</span>
+
+<span class="fc" id="L90">        return UsuarioMapper.toResponse(guardado);</span>
+    }
+
+    @Transactional
+    public UsuarioResponse actualizar(Long id, UsuarioUpdateRequest request) {
+<span class="nc" id="L95">        Usuario usuario = this.buscarPorId(id);</span>
+<span class="nc" id="L96">        Usuario actual = this.usuarioActualService.obtenerActivo();</span>
+<span class="nc" id="L97">        String email = normalizarIdentificador(request.email());</span>
+
+<span class="nc bnc" id="L99" title="All 2 branches missed.">        if (this.usuarioRepository.existsByEmailAndIdNot(email, id)) {</span>
+<span class="nc" id="L100">            throw new BusinessException(</span>
+                    &quot;Ya existe otro usuario con ese correo electrónico.&quot;);
+        }
+
+<span class="nc" id="L104">        Set&lt;Rol&gt; rolesNuevos = this.obtenerRoles(request.roles());</span>
+<span class="nc bnc" id="L105" title="All 4 branches missed.">        boolean quedaraActivo = request.activo() == null || request.activo();</span>
+<span class="nc" id="L106">        this.validarContinuidadAdministrativa(usuario, actual, quedaraActivo, rolesNuevos);</span>
+
+<span class="nc" id="L108">        usuario.setNombre(request.nombre().trim());</span>
+<span class="nc" id="L109">        usuario.setEmail(email);</span>
+<span class="nc" id="L110">        usuario.setTelefono(normalizarOpcional(request.telefono()));</span>
+<span class="nc" id="L111">        usuario.setRoles(rolesNuevos);</span>
+<span class="nc" id="L112">        usuario.setActivo(quedaraActivo);</span>
+
+<span class="nc" id="L114">        Usuario guardado = this.usuarioRepository.save(usuario);</span>
+
+<span class="nc" id="L116">        this.auditoriaService.registrar(&quot;MODIFICACION&quot;, &quot;Usuario&quot;, guardado.getId(),</span>
+                &quot;Actualización de usuario interno&quot;);
+
+<span class="nc" id="L119">        return UsuarioMapper.toResponse(guardado);</span>
+    }
+
+    @Transactional
+    public void desactivar(Long id) {
+<span class="fc" id="L124">        Usuario usuario = this.buscarPorId(id);</span>
+<span class="fc" id="L125">        Usuario actual = this.usuarioActualService.obtenerActivo();</span>
+<span class="nc" id="L126">        this.validarContinuidadAdministrativa(usuario, actual, false, usuario.getRoles());</span>
+
+<span class="nc" id="L128">        usuario.setActivo(false);</span>
+<span class="nc" id="L129">        this.usuarioRepository.save(usuario);</span>
+<span class="nc" id="L130">        this.auditoriaService.registrar(&quot;BAJA_LOGICA&quot;, &quot;Usuario&quot;, usuario.getId(), &quot;Desactivación de usuario interno&quot;);</span>
+<span class="nc" id="L131">    }</span>
+
+    @Transactional
+    public void restablecerPassword(Long id, RestablecerPasswordRequest request) {
+<span class="nc" id="L135">        Usuario usuario = this.buscarPorId(id);</span>
+<span class="nc" id="L136">        usuario.setPasswordHash(this.passwordEncoder.encode(request.nuevaPassword()));</span>
+<span class="nc" id="L137">        usuario.setDebeCambiarPassword(true);</span>
+<span class="nc" id="L138">        this.usuarioRepository.save(usuario);</span>
+<span class="nc" id="L139">        this.auditoriaService.registrar(&quot;RESET_PASSWORD&quot;, &quot;Usuario&quot;, usuario.getId(),</span>
+                &quot;Restablecimiento administrativo de contraseña&quot;);
+<span class="nc" id="L141">    }</span>
+
+    private void validarContinuidadAdministrativa(Usuario objetivo,
+                                                   Usuario usuarioActual,
+                                                   boolean quedaraActivo,
+                                                   Set&lt;Rol&gt; rolesNuevos) {
+<span class="pc bpc" id="L147" title="1 of 4 branches missed.">        if (objetivo.getId().equals(usuarioActual.getId()) &amp;&amp; !quedaraActivo) {</span>
+<span class="fc" id="L148">            throw new BusinessException(&quot;No podés desactivar tu propia cuenta mientras estás autenticado.&quot;);</span>
+        }
+
+<span class="fc" id="L151">        boolean eraAdmin = tieneRol(objetivo, ROL_ADMIN);</span>
+<span class="fc" id="L152">        boolean seguiraAdmin = rolesNuevos.stream().anyMatch(r -&gt; ROL_ADMIN.equals(r.getNombre()));</span>
+<span class="pc bpc" id="L153" title="4 of 6 branches missed.">        if (eraAdmin &amp;&amp; (!quedaraActivo || !seguiraAdmin)</span>
+<span class="pc bpc" id="L154" title="1 of 2 branches missed.">                &amp;&amp; this.usuarioRepository.contarAdministradoresActivos() &lt;= 1) {</span>
+<span class="fc" id="L155">            throw new BusinessException(&quot;No se puede desactivar ni quitar el rol al único administrador activo del sistema.&quot;);</span>
+        }
+<span class="nc" id="L157">    }</span>
+
+    private boolean tieneRol(Usuario usuario, String rol) {
+<span class="fc" id="L160">        return usuario.getRoles().stream().anyMatch(r -&gt; rol.equals(r.getNombre()));</span>
+    }
+
+    private Usuario buscarPorId(Long id) {
+<span class="fc" id="L164">        return this.usuarioRepository.findById(id)</span>
+<span class="pc" id="L165">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;No se encontró el usuario solicitado.&quot;));</span>
+    }
+
+    private Set&lt;Rol&gt; obtenerRoles(Set&lt;String&gt; nombresRoles) {
+<span class="fc" id="L169">        return nombresRoles.stream()</span>
+<span class="fc" id="L170">                .map(this::normalizarRol)</span>
+<span class="fc" id="L171">                .map(nombre -&gt; this.rolRepository.findByNombre(nombre)</span>
+<span class="pc" id="L172">                        .orElseThrow(() -&gt; new BusinessException(&quot;El rol &quot; + nombre + &quot; no existe.&quot;)))</span>
+<span class="fc" id="L173">                .collect(Collectors.toSet());</span>
+    }
+
+    private String normalizarIdentificador(String valor) {
+<span class="fc" id="L177">        return valor.trim().toLowerCase(Locale.ROOT);</span>
+    }
+
+    private String normalizarRol(String valor) {
+<span class="fc" id="L181">        return valor.trim().toUpperCase(Locale.ROOT);</span>
+    }
+
+    private String normalizarOpcional(String valor) {
+<span class="pc bpc" id="L185" title="1 of 2 branches missed.">        if (valor == null) return null;</span>
+<span class="nc" id="L186">        String limpio = valor.trim();</span>
+<span class="nc bnc" id="L187" title="All 2 branches missed.">        return limpio.isEmpty() ? null : limpio;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

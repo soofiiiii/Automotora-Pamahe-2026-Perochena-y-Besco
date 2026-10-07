@@ -1,0 +1,302 @@
+[
+  {
+    "vehiculoId": 30036,
+    "clienteCompradorId": 20121,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 30100
+  },
+  {
+    "vehiculoId": 30037,
+    "clienteCompradorId": 20122,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 30200
+  },
+  {
+    "vehiculoId": 30038,
+    "clienteCompradorId": 20123,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 30300
+  },
+  {
+    "vehiculoId": 30039,
+    "clienteCompradorId": 20124,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 30400
+  },
+  {
+    "vehiculoId": 30040,
+    "clienteCompradorId": 20125,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 30500
+  },
+  {
+    "vehiculoId": 30041,
+    "clienteCompradorId": 20126,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 30600
+  },
+  {
+    "vehiculoId": 30042,
+    "clienteCompradorId": 20127,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 30700
+  },
+  {
+    "vehiculoId": 30043,
+    "clienteCompradorId": 20128,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 30800
+  },
+  {
+    "vehiculoId": 30044,
+    "clienteCompradorId": 20129,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 30900
+  },
+  {
+    "vehiculoId": 30045,
+    "clienteCompradorId": 20130,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 31000
+  },
+  {
+    "vehiculoId": 30046,
+    "clienteCompradorId": 20131,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 31100
+  },
+  {
+    "vehiculoId": 30047,
+    "clienteCompradorId": 20132,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 31200
+  },
+  {
+    "vehiculoId": 30048,
+    "clienteCompradorId": 20133,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 31300
+  },
+  {
+    "vehiculoId": 30049,
+    "clienteCompradorId": 20134,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 31400
+  },
+  {
+    "vehiculoId": 30050,
+    "clienteCompradorId": 20135,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 31500
+  },
+  {
+    "vehiculoId": 30051,
+    "clienteCompradorId": 20136,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 31600
+  },
+  {
+    "vehiculoId": 30052,
+    "clienteCompradorId": 20137,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 31700
+  },
+  {
+    "vehiculoId": 30053,
+    "clienteCompradorId": 20138,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 31800
+  },
+  {
+    "vehiculoId": 30054,
+    "clienteCompradorId": 20139,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 31900
+  },
+  {
+    "vehiculoId": 30055,
+    "clienteCompradorId": 20140,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 32000
+  },
+  {
+    "vehiculoId": 30056,
+    "clienteCompradorId": 20141,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 32100
+  },
+  {
+    "vehiculoId": 30057,
+    "clienteCompradorId": 20142,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 32200
+  },
+  {
+    "vehiculoId": 30058,
+    "clienteCompradorId": 20143,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 32300
+  },
+  {
+    "vehiculoId": 30059,
+    "clienteCompradorId": 20144,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 32400
+  },
+  {
+    "vehiculoId": 30060,
+    "clienteCompradorId": 20145,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 32500
+  },
+  {
+    "vehiculoId": 30061,
+    "clienteCompradorId": 20146,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 32600
+  },
+  {
+    "vehiculoId": 30062,
+    "clienteCompradorId": 20147,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 32700
+  },
+  {
+    "vehiculoId": 30063,
+    "clienteCompradorId": 20148,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 32800
+  },
+  {
+    "vehiculoId": 30064,
+    "clienteCompradorId": 20149,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 32900
+  },
+  {
+    "vehiculoId": 30065,
+    "clienteCompradorId": 20150,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 33000
+  },
+  {
+    "vehiculoId": 30066,
+    "clienteCompradorId": 20151,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 33100
+  },
+  {
+    "vehiculoId": 30067,
+    "clienteCompradorId": 20152,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 33200
+  },
+  {
+    "vehiculoId": 30068,
+    "clienteCompradorId": 20153,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 33300
+  },
+  {
+    "vehiculoId": 30069,
+    "clienteCompradorId": 20154,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 33400
+  },
+  {
+    "vehiculoId": 30070,
+    "clienteCompradorId": 20155,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 33500
+  },
+  {
+    "vehiculoId": 30071,
+    "clienteCompradorId": 20156,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 33600
+  },
+  {
+    "vehiculoId": 30072,
+    "clienteCompradorId": 20157,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 33700
+  },
+  {
+    "vehiculoId": 30073,
+    "clienteCompradorId": 20158,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 33800
+  },
+  {
+    "vehiculoId": 30074,
+    "clienteCompradorId": 20159,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 33900
+  },
+  {
+    "vehiculoId": 30075,
+    "clienteCompradorId": 20160,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 34000
+  },
+  {
+    "vehiculoId": 30076,
+    "clienteCompradorId": 20161,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 34100
+  },
+  {
+    "vehiculoId": 30077,
+    "clienteCompradorId": 20162,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 34200
+  },
+  {
+    "vehiculoId": 30078,
+    "clienteCompradorId": 20163,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 34300
+  },
+  {
+    "vehiculoId": 30079,
+    "clienteCompradorId": 20164,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 34400
+  },
+  {
+    "vehiculoId": 30080,
+    "clienteCompradorId": 20165,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 34500
+  },
+  {
+    "vehiculoId": 30081,
+    "clienteCompradorId": 20166,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 34600
+  },
+  {
+    "vehiculoId": 30082,
+    "clienteCompradorId": 20167,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 34700
+  },
+  {
+    "vehiculoId": 30083,
+    "clienteCompradorId": 20168,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 34800
+  },
+  {
+    "vehiculoId": 30084,
+    "clienteCompradorId": 20169,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 34900
+  },
+  {
+    "vehiculoId": 30085,
+    "clienteCompradorId": 20170,
+    "fechaVenta": "2026-09-24",
+    "precioFinal": 35000
+  }
+]

@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VehiculoController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.vehiculos.controller</a> &gt; <span class="el_source">VehiculoController.java</span></div><h1>VehiculoController.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.vehiculos.controller;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import uy.edu.ctc.pamahe.common.response.ApiResponse;
+import uy.edu.ctc.pamahe.common.response.PageResponse;
+import uy.edu.ctc.pamahe.modules.vehiculos.dto.request.CambiarEstadoVehiculoRequest;
+import uy.edu.ctc.pamahe.modules.vehiculos.dto.request.CambiarPublicacionVehiculoRequest;
+import uy.edu.ctc.pamahe.modules.vehiculos.dto.request.VehiculoRequest;
+import uy.edu.ctc.pamahe.modules.vehiculos.model.EstadoVehiculo;
+import uy.edu.ctc.pamahe.modules.vehiculos.service.VehiculoService;
+
+@RestController
+@RequestMapping(&quot;/vehiculos&quot;)
+public class VehiculoController {
+
+    private final VehiculoService vehiculoService;
+
+<span class="fc" id="L32">    public VehiculoController(VehiculoService vehiculoService) {</span>
+<span class="fc" id="L33">        this.vehiculoService = vehiculoService;</span>
+<span class="fc" id="L34">    }</span>
+
+    @GetMapping
+    public ApiResponse&lt;List&lt;?&gt;&gt; listar(
+            @RequestParam(required = false) EstadoVehiculo estado,
+            @RequestParam(required = false) String marca,
+            @RequestParam(required = false) String modelo,
+            @RequestParam(required = false) String tipoVehiculo,
+            @RequestParam(required = false) Integer anioDesde,
+            @RequestParam(required = false) Integer anioHasta,
+            @RequestParam(required = false) BigDecimal precioMin,
+            @RequestParam(required = false) BigDecimal precioMax,
+            @RequestParam(required = false) Boolean publicado,
+            @RequestParam(required = false) Boolean disponibleComercial
+    ) {
+<span class="fc" id="L49">        return ApiResponse.ok(</span>
+                &quot;Vehículos obtenidos correctamente.&quot;,
+<span class="fc" id="L51">                this.vehiculoService.listar(</span>
+                       estado, marca, modelo, tipoVehiculo, anioDesde, anioHasta,
+                        precioMin, precioMax, publicado, disponibleComercial));
+    }
+
+    /**
+     * Variante paginada que no rompe el contrato histórico de GET /vehiculos.
+     */
+    @GetMapping(&quot;/paginado&quot;)
+    public ApiResponse&lt;PageResponse&lt;?&gt;&gt; listarPaginado(
+            @RequestParam(required = false) EstadoVehiculo estado,
+            @RequestParam(required = false) String marca,
+            @RequestParam(required = false) String modelo,
+            @RequestParam(required = false) String tipoVehiculo,
+            @RequestParam(required = false) Integer anioDesde,
+            @RequestParam(required = false) Integer anioHasta,
+            @RequestParam(required = false) BigDecimal precioMin,
+            @RequestParam(required = false) BigDecimal precioMax,
+            @RequestParam(required = false) Boolean publicado,
+            @RequestParam(required = false) Boolean disponibleComercial,
+            @RequestParam(defaultValue = &quot;0&quot;) int page,
+            @RequestParam(defaultValue = &quot;20&quot;) int size) {
+<span class="fc" id="L73">        return ApiResponse.ok(</span>
+                &quot;Vehículos paginados obtenidos correctamente.&quot;,
+<span class="fc" id="L75">                this.vehiculoService.listarPaginado(</span>
+                        estado, marca, modelo, tipoVehiculo, anioDesde, anioHasta,
+                        precioMin, precioMax, publicado, disponibleComercial, page, size));
+    }
+
+    @GetMapping(&quot;/{id}/historial&quot;)
+    public ApiResponse&lt;?&gt; historial(@PathVariable Long id) {
+<span class="nc" id="L82">        return ApiResponse.ok(&quot;Historial del vehículo obtenido correctamente.&quot;, this.vehiculoService.historial(id));</span>
+    }
+
+    @GetMapping(&quot;/{id}&quot;)
+    public ApiResponse&lt;?&gt; obtener(@PathVariable Long id) {
+<span class="nc" id="L87">        return ApiResponse.ok(&quot;Vehículo obtenido correctamente.&quot;, this.vehiculoService.obtener(id));</span>
+    }
+
+    @PostMapping
+    public ApiResponse&lt;?&gt; crear(@Valid @RequestBody VehiculoRequest request) {
+<span class="nc" id="L92">        return ApiResponse.ok(&quot;Vehículo creado correctamente.&quot;, this.vehiculoService.crear(request));</span>
+    }
+
+    @PutMapping(&quot;/{id}&quot;)
+    public ApiResponse&lt;?&gt; actualizar(@PathVariable Long id,
+                                                    @Valid @RequestBody VehiculoRequest request) {
+<span class="nc" id="L98">        return ApiResponse.ok(&quot;Vehículo actualizado correctamente.&quot;, this.vehiculoService.actualizar(id, request));</span>
+    }
+
+    @PatchMapping(&quot;/{id}/estado&quot;)
+    public ApiResponse&lt;?&gt; cambiarEstado(@PathVariable Long id,
+                                                       @Valid @RequestBody CambiarEstadoVehiculoRequest request) {
+<span class="nc" id="L104">        return ApiResponse.ok(&quot;Estado del vehículo actualizado correctamente.&quot;, this.vehiculoService.cambiarEstado(id, request));</span>
+    }
+
+    @PatchMapping(&quot;/{id}/publicacion&quot;)
+    public ApiResponse&lt;?&gt; cambiarPublicacion(@PathVariable Long id,
+                                                            @Valid @RequestBody CambiarPublicacionVehiculoRequest request) {
+<span class="nc" id="L110">        return ApiResponse.ok(&quot;Publicación del vehículo actualizada correctamente.&quot;, this.vehiculoService.cambiarPublicacion(id, request));</span>
+    }
+
+    @DeleteMapping(&quot;/{id}&quot;)
+    public ApiResponse&lt;Void&gt; desactivar(@PathVariable Long id) {
+<span class="nc" id="L115">        this.vehiculoService.desactivar(id);</span>
+<span class="nc" id="L116">        return ApiResponse.ok(&quot;Vehículo desactivado correctamente.&quot;, null);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

@@ -1,0 +1,876 @@
+{
+  "generatedAt": "2026-10-05T21:39:23.877Z",
+  "viewports": [
+    {
+      "name": "movil-360",
+      "width": 360,
+      "height": 800
+    },
+    {
+      "name": "tablet-768",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "name": "escritorio-1440",
+      "width": 1440,
+      "height": 900
+    }
+  ],
+  "routes": [
+    {
+      "name": "inicio-publico",
+      "path": "/"
+    },
+    {
+      "name": "catalogo",
+      "path": "/catalogo"
+    },
+    {
+      "name": "detalle-catalogo",
+      "path": "/catalogo/12"
+    },
+    {
+      "name": "acceso",
+      "path": "/login"
+    },
+    {
+      "name": "inicio-interno",
+      "path": "/app"
+    },
+    {
+      "name": "vehiculos",
+      "path": "/app/vehiculos"
+    },
+    {
+      "name": "clientes",
+      "path": "/app/clientes"
+    },
+    {
+      "name": "taller",
+      "path": "/app/taller"
+    },
+    {
+      "name": "dashboard",
+      "path": "/app/dashboard"
+    }
+  ],
+  "checks": 27,
+  "passed": 27,
+  "failed": 0,
+  "results": [
+    {
+      "viewport": {
+        "name": "movil-360",
+        "width": 360,
+        "height": 800
+      },
+      "route": {
+        "name": "inicio-publico",
+        "path": "/",
+        "selector": "#home-search-value"
+      },
+      "result": {
+        "pathname": "/",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "horizontalOverflow": 0,
+        "privateRoute": false,
+        "publicRoute": true,
+        "menuButtonDisplay": null,
+        "publicMenuButtonDisplay": "grid",
+        "sidebarRect": null,
+        "dashboardFields": [],
+        "tableWraps": []
+      },
+      "status": "OK"
+    },
+    {
+      "viewport": {
+        "name": "movil-360",
+        "width": 360,
+        "height": 800
+      },
+      "route": {
+        "name": "catalogo",
+        "path": "/catalogo",
+        "selector": "#catalogo-titulo",
+        "expectedText": "Toyota Corolla"
+      },
+      "result": {
+        "pathname": "/catalogo",
+        "title": "Vehículos usados disponibles | Automotora Pamahe",
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "horizontalOverflow": 0,
+        "privateRoute": false,
+        "publicRoute": true,
+        "menuButtonDisplay": null,
+        "publicMenuButtonDisplay": "grid",
+        "sidebarRect": null,
+        "dashboardFields": [],
+        "tableWraps": []
+      },
+      "status": "OK"
+    },
+    {
+      "viewport": {
+        "name": "movil-360",
+        "width": 360,
+        "height": 800
+      },
+      "route": {
+        "name": "detalle-catalogo",
+        "path": "/catalogo/12",
+        "selector": "#vehicle-title",
+        "expectedText": "Toyota Corolla"
+      },
+      "result": {
+        "pathname": "/catalogo/12",
+        "title": "Toyota Corolla 2022 | Automotora Pamahe",
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "horizontalOverflow": 0,
+        "privateRoute": false,
+        "publicRoute": true,
+        "menuButtonDisplay": null,
+        "publicMenuButtonDisplay": "grid",
+        "sidebarRect": null,
+        "dashboardFields": [],
+        "tableWraps": []
+      },
+      "status": "OK"
+    },
+    {
+      "viewport": {
+        "name": "movil-360",
+        "width": 360,
+        "height": 800
+      },
+      "route": {
+        "name": "acceso",
+        "path": "/login",
+        "selector": "input[autocomplete=\"username\"]"
+      },
+      "result": {
+        "pathname": "/login",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "horizontalOverflow": 0,
+        "privateRoute": false,
+        "publicRoute": false,
+        "menuButtonDisplay": null,
+        "publicMenuButtonDisplay": null,
+        "sidebarRect": null,
+        "dashboardFields": [],
+        "tableWraps": []
+      },
+      "status": "OK"
+    },
+    {
+      "viewport": {
+        "name": "movil-360",
+        "width": 360,
+        "height": 800
+      },
+      "route": {
+        "name": "inicio-interno",
+        "path": "/app",
+        "expectedText": "Hola, Administrador"
+      },
+      "result": {
+        "pathname": "/app",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "horizontalOverflow": 0,
+        "privateRoute": true,
+        "publicRoute": false,
+        "menuButtonDisplay": "grid",
+        "publicMenuButtonDisplay": null,
+        "sidebarRect": {
+          "left": -304,
+          "right": 0,
+          "width": 304
+        },
+        "dashboardFields": [],
+        "tableWraps": []
+      },
+      "status": "OK"
+    },
+    {
+      "viewport": {
+        "name": "movil-360",
+        "width": 360,
+        "height": 800
+      },
+      "route": {
+        "name": "vehiculos",
+        "path": "/app/vehiculos",
+        "expectedText": "Inventario central"
+      },
+      "result": {
+        "pathname": "/app/vehiculos",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "horizontalOverflow": 0,
+        "privateRoute": true,
+        "publicRoute": false,
+        "menuButtonDisplay": "grid",
+        "publicMenuButtonDisplay": null,
+        "sidebarRect": {
+          "left": -304,
+          "right": 0,
+          "width": 304
+        },
+        "dashboardFields": [],
+        "tableWraps": []
+      },
+      "status": "OK"
+    },
+    {
+      "viewport": {
+        "name": "movil-360",
+        "width": 360,
+        "height": 800
+      },
+      "route": {
+        "name": "clientes",
+        "path": "/app/clientes",
+        "expectedText": "Compradores, vendedores"
+      },
+      "result": {
+        "pathname": "/app/clientes",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "horizontalOverflow": 0,
+        "privateRoute": true,
+        "publicRoute": false,
+        "menuButtonDisplay": "grid",
+        "publicMenuButtonDisplay": null,
+        "sidebarRect": {
+          "left": -304,
+          "right": 0,
+          "width": 304
+        },
+        "dashboardFields": [],
+        "tableWraps": []
+      },
+      "status": "OK"
+    },
+    {
+      "viewport": {
+        "name": "movil-360",
+        "width": 360,
+        "height": 800
+      },
+      "route": {
+        "name": "taller",
+        "path": "/app/taller",
+        "expectedText": "Cambio de aceite y filtros"
+      },
+      "result": {
+        "pathname": "/app/taller",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "horizontalOverflow": 0,
+        "privateRoute": true,
+        "publicRoute": false,
+        "menuButtonDisplay": "grid",
+        "publicMenuButtonDisplay": null,
+        "sidebarRect": {
+          "left": -304,
+          "right": 0,
+          "width": 304
+        },
+        "dashboardFields": [],
+        "tableWraps": []
+      },
+      "status": "OK"
+    },
+    {
+      "viewport": {
+        "name": "movil-360",
+        "width": 360,
+        "height": 800
+      },
+      "route": {
+        "name": "dashboard",
+        "path": "/app/dashboard",
+        "expectedText": "Dashboard gerencial"
+      },
+      "result": {
+        "pathname": "/app/dashboard",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "horizontalOverflow": 0,
+        "privateRoute": true,
+        "publicRoute": false,
+        "menuButtonDisplay": "grid",
+        "publicMenuButtonDisplay": null,
+        "sidebarRect": {
+          "left": -304,
+          "right": 0,
+          "width": 304
+        },
+        "dashboardFields": [
+          {
+            "left": 33,
+            "right": 327,
+            "width": 294
+          }
+        ],
+        "tableWraps": []
+      },
+      "status": "OK"
+    },
+    {
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024
+      },
+      "route": {
+        "name": "inicio-publico",
+        "path": "/",
+        "selector": "#home-search-value"
+      },
+      "result": {
+        "pathname": "/",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "viewportWidth": 768,
+        "documentWidth": 768,
+        "horizontalOverflow": 0,
+        "privateRoute": false,
+        "publicRoute": true,
+        "menuButtonDisplay": null,
+        "publicMenuButtonDisplay": "none",
+        "sidebarRect": null,
+        "dashboardFields": [],
+        "tableWraps": []
+      },
+      "status": "OK"
+    },
+    {
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024
+      },
+      "route": {
+        "name": "catalogo",
+        "path": "/catalogo",
+        "selector": "#catalogo-titulo",
+        "expectedText": "Toyota Corolla"
+      },
+      "result": {
+        "pathname": "/catalogo",
+        "title": "Vehículos usados disponibles | Automotora Pamahe",
+        "viewportWidth": 768,
+        "documentWidth": 768,
+        "horizontalOverflow": 0,
+        "privateRoute": false,
+        "publicRoute": true,
+        "menuButtonDisplay": null,
+        "publicMenuButtonDisplay": "none",
+        "sidebarRect": null,
+        "dashboardFields": [],
+        "tableWraps": []
+      },
+      "status": "OK"
+    },
+    {
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024
+      },
+      "route": {
+        "name": "detalle-catalogo",
+        "path": "/catalogo/12",
+        "selector": "#vehicle-title",
+        "expectedText": "Toyota Corolla"
+      },
+      "result": {
+        "pathname": "/catalogo/12",
+        "title": "Toyota Corolla 2022 | Automotora Pamahe",
+        "viewportWidth": 768,
+        "documentWidth": 768,
+        "horizontalOverflow": 0,
+        "privateRoute": false,
+        "publicRoute": true,
+        "menuButtonDisplay": null,
+        "publicMenuButtonDisplay": "none",
+        "sidebarRect": null,
+        "dashboardFields": [],
+        "tableWraps": []
+      },
+      "status": "OK"
+    },
+    {
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024
+      },
+      "route": {
+        "name": "acceso",
+        "path": "/login",
+        "selector": "input[autocomplete=\"username\"]"
+      },
+      "result": {
+        "pathname": "/login",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "viewportWidth": 768,
+        "documentWidth": 768,
+        "horizontalOverflow": 0,
+        "privateRoute": false,
+        "publicRoute": false,
+        "menuButtonDisplay": null,
+        "publicMenuButtonDisplay": null,
+        "sidebarRect": null,
+        "dashboardFields": [],
+        "tableWraps": []
+      },
+      "status": "OK"
+    },
+    {
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024
+      },
+      "route": {
+        "name": "inicio-interno",
+        "path": "/app",
+        "expectedText": "Hola, Administrador"
+      },
+      "result": {
+        "pathname": "/app",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "viewportWidth": 768,
+        "documentWidth": 768,
+        "horizontalOverflow": 0,
+        "privateRoute": true,
+        "publicRoute": false,
+        "menuButtonDisplay": "grid",
+        "publicMenuButtonDisplay": null,
+        "sidebarRect": {
+          "left": -304,
+          "right": 0,
+          "width": 304
+        },
+        "dashboardFields": [],
+        "tableWraps": []
+      },
+      "status": "OK"
+    },
+    {
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024
+      },
+      "route": {
+        "name": "vehiculos",
+        "path": "/app/vehiculos",
+        "expectedText": "Inventario central"
+      },
+      "result": {
+        "pathname": "/app/vehiculos",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "viewportWidth": 768,
+        "documentWidth": 768,
+        "horizontalOverflow": 0,
+        "privateRoute": true,
+        "publicRoute": false,
+        "menuButtonDisplay": "grid",
+        "publicMenuButtonDisplay": null,
+        "sidebarRect": {
+          "left": -304,
+          "right": 0,
+          "width": 304
+        },
+        "dashboardFields": [],
+        "tableWraps": []
+      },
+      "status": "OK"
+    },
+    {
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024
+      },
+      "route": {
+        "name": "clientes",
+        "path": "/app/clientes",
+        "expectedText": "Compradores, vendedores"
+      },
+      "result": {
+        "pathname": "/app/clientes",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "viewportWidth": 768,
+        "documentWidth": 768,
+        "horizontalOverflow": 0,
+        "privateRoute": true,
+        "publicRoute": false,
+        "menuButtonDisplay": "grid",
+        "publicMenuButtonDisplay": null,
+        "sidebarRect": {
+          "left": -304,
+          "right": 0,
+          "width": 304
+        },
+        "dashboardFields": [],
+        "tableWraps": []
+      },
+      "status": "OK"
+    },
+    {
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024
+      },
+      "route": {
+        "name": "taller",
+        "path": "/app/taller",
+        "expectedText": "Cambio de aceite y filtros"
+      },
+      "result": {
+        "pathname": "/app/taller",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "viewportWidth": 768,
+        "documentWidth": 768,
+        "horizontalOverflow": 0,
+        "privateRoute": true,
+        "publicRoute": false,
+        "menuButtonDisplay": "grid",
+        "publicMenuButtonDisplay": null,
+        "sidebarRect": {
+          "left": -304,
+          "right": 0,
+          "width": 304
+        },
+        "dashboardFields": [],
+        "tableWraps": []
+      },
+      "status": "OK"
+    },
+    {
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024
+      },
+      "route": {
+        "name": "dashboard",
+        "path": "/app/dashboard",
+        "expectedText": "Dashboard gerencial"
+      },
+      "result": {
+        "pathname": "/app/dashboard",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "viewportWidth": 768,
+        "documentWidth": 768,
+        "horizontalOverflow": 0,
+        "privateRoute": true,
+        "publicRoute": false,
+        "menuButtonDisplay": "grid",
+        "publicMenuButtonDisplay": null,
+        "sidebarRect": {
+          "left": -304,
+          "right": 0,
+          "width": 304
+        },
+        "dashboardFields": [
+          {
+            "left": 41,
+            "right": 727,
+            "width": 686
+          }
+        ],
+        "tableWraps": []
+      },
+      "status": "OK"
+    },
+    {
+      "viewport": {
+        "name": "escritorio-1440",
+        "width": 1440,
+        "height": 900
+      },
+      "route": {
+        "name": "inicio-publico",
+        "path": "/",
+        "selector": "#home-search-value"
+      },
+      "result": {
+        "pathname": "/",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "horizontalOverflow": 0,
+        "privateRoute": false,
+        "publicRoute": true,
+        "menuButtonDisplay": null,
+        "publicMenuButtonDisplay": "none",
+        "sidebarRect": null,
+        "dashboardFields": [],
+        "tableWraps": []
+      },
+      "status": "OK"
+    },
+    {
+      "viewport": {
+        "name": "escritorio-1440",
+        "width": 1440,
+        "height": 900
+      },
+      "route": {
+        "name": "catalogo",
+        "path": "/catalogo",
+        "selector": "#catalogo-titulo",
+        "expectedText": "Toyota Corolla"
+      },
+      "result": {
+        "pathname": "/catalogo",
+        "title": "Vehículos usados disponibles | Automotora Pamahe",
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "horizontalOverflow": 0,
+        "privateRoute": false,
+        "publicRoute": true,
+        "menuButtonDisplay": null,
+        "publicMenuButtonDisplay": "none",
+        "sidebarRect": null,
+        "dashboardFields": [],
+        "tableWraps": []
+      },
+      "status": "OK"
+    },
+    {
+      "viewport": {
+        "name": "escritorio-1440",
+        "width": 1440,
+        "height": 900
+      },
+      "route": {
+        "name": "detalle-catalogo",
+        "path": "/catalogo/12",
+        "selector": "#vehicle-title",
+        "expectedText": "Toyota Corolla"
+      },
+      "result": {
+        "pathname": "/catalogo/12",
+        "title": "Toyota Corolla 2022 | Automotora Pamahe",
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "horizontalOverflow": 0,
+        "privateRoute": false,
+        "publicRoute": true,
+        "menuButtonDisplay": null,
+        "publicMenuButtonDisplay": "none",
+        "sidebarRect": null,
+        "dashboardFields": [],
+        "tableWraps": []
+      },
+      "status": "OK"
+    },
+    {
+      "viewport": {
+        "name": "escritorio-1440",
+        "width": 1440,
+        "height": 900
+      },
+      "route": {
+        "name": "acceso",
+        "path": "/login",
+        "selector": "input[autocomplete=\"username\"]"
+      },
+      "result": {
+        "pathname": "/login",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "horizontalOverflow": 0,
+        "privateRoute": false,
+        "publicRoute": false,
+        "menuButtonDisplay": null,
+        "publicMenuButtonDisplay": null,
+        "sidebarRect": null,
+        "dashboardFields": [],
+        "tableWraps": []
+      },
+      "status": "OK"
+    },
+    {
+      "viewport": {
+        "name": "escritorio-1440",
+        "width": 1440,
+        "height": 900
+      },
+      "route": {
+        "name": "inicio-interno",
+        "path": "/app",
+        "expectedText": "Hola, Administrador"
+      },
+      "result": {
+        "pathname": "/app",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "horizontalOverflow": 0,
+        "privateRoute": true,
+        "publicRoute": false,
+        "menuButtonDisplay": "none",
+        "publicMenuButtonDisplay": null,
+        "sidebarRect": {
+          "left": 0,
+          "right": 304,
+          "width": 304
+        },
+        "dashboardFields": [],
+        "tableWraps": []
+      },
+      "status": "OK"
+    },
+    {
+      "viewport": {
+        "name": "escritorio-1440",
+        "width": 1440,
+        "height": 900
+      },
+      "route": {
+        "name": "vehiculos",
+        "path": "/app/vehiculos",
+        "expectedText": "Inventario central"
+      },
+      "result": {
+        "pathname": "/app/vehiculos",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "horizontalOverflow": 0,
+        "privateRoute": true,
+        "publicRoute": false,
+        "menuButtonDisplay": "none",
+        "publicMenuButtonDisplay": null,
+        "sidebarRect": {
+          "left": 0,
+          "right": 304,
+          "width": 304
+        },
+        "dashboardFields": [],
+        "tableWraps": []
+      },
+      "status": "OK"
+    },
+    {
+      "viewport": {
+        "name": "escritorio-1440",
+        "width": 1440,
+        "height": 900
+      },
+      "route": {
+        "name": "clientes",
+        "path": "/app/clientes",
+        "expectedText": "Compradores, vendedores"
+      },
+      "result": {
+        "pathname": "/app/clientes",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "horizontalOverflow": 0,
+        "privateRoute": true,
+        "publicRoute": false,
+        "menuButtonDisplay": "none",
+        "publicMenuButtonDisplay": null,
+        "sidebarRect": {
+          "left": 0,
+          "right": 304,
+          "width": 304
+        },
+        "dashboardFields": [],
+        "tableWraps": []
+      },
+      "status": "OK"
+    },
+    {
+      "viewport": {
+        "name": "escritorio-1440",
+        "width": 1440,
+        "height": 900
+      },
+      "route": {
+        "name": "taller",
+        "path": "/app/taller",
+        "expectedText": "Cambio de aceite y filtros"
+      },
+      "result": {
+        "pathname": "/app/taller",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "horizontalOverflow": 0,
+        "privateRoute": true,
+        "publicRoute": false,
+        "menuButtonDisplay": "none",
+        "publicMenuButtonDisplay": null,
+        "sidebarRect": {
+          "left": 0,
+          "right": 304,
+          "width": 304
+        },
+        "dashboardFields": [],
+        "tableWraps": []
+      },
+      "status": "OK"
+    },
+    {
+      "viewport": {
+        "name": "escritorio-1440",
+        "width": 1440,
+        "height": 900
+      },
+      "route": {
+        "name": "dashboard",
+        "path": "/app/dashboard",
+        "expectedText": "Dashboard gerencial"
+      },
+      "result": {
+        "pathname": "/app/dashboard",
+        "title": "Automotora Pamahe | Vehículos usados en Juan Lacaze",
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "horizontalOverflow": 0,
+        "privateRoute": true,
+        "publicRoute": false,
+        "menuButtonDisplay": "none",
+        "publicMenuButtonDisplay": null,
+        "sidebarRect": {
+          "left": 0,
+          "right": 304,
+          "width": 304
+        },
+        "dashboardFields": [
+          {
+            "left": 1130.609375,
+            "right": 1379,
+            "width": 248.390625
+          }
+        ],
+        "tableWraps": []
+      },
+      "status": "OK"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+    "id": "REEMPLAZAR_POR_ID_DE_LA_COPIA_DE_ENSAYO",
+    "counts": {
+        "vehiculos": 0,
+        "clientes": 0,
+        "compras": 0,
+        "ventas": 0,
+        "refacciones": 0,
+        "auditoria": 0,
+        "catalogo_publicado": 0
+    },
+    "notes": "Completar con dataset-counts.sql antes de ejecutar; este archivo NO contiene mediciones"
+}

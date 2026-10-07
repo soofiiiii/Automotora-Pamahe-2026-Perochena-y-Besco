@@ -1,0 +1,35 @@
+server:
+  servlet:
+    context-path: /api
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:pamahe_test;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+  flyway:
+    enabled: false
+
+security:
+  jwt:
+    issuer: pamahe-api-test
+    secret: cGFtYWhlLXRlc3Qtc2VjcmV0LWtleS0zMi1ieXRlcy1taW5pbXVtLTIwMjY=
+    expiration-minutes: 15
+
+app:
+  cors:
+    allowed-origins: http://localhost:5173
+  storage:
+    root: target/test-storage
+    images:
+      max-bytes: 1048576
+      max-width: 2000
+      max-height: 2000
+      max-pixels: 4000000
+      max-output-dimension: 1200

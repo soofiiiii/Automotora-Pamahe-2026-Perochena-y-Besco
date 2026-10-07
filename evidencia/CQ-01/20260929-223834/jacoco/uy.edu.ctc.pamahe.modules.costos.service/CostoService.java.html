@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CostoService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pamahe-backend</a> &gt; <a href="index.source.html" class="el_package">uy.edu.ctc.pamahe.modules.costos.service</a> &gt; <span class="el_source">CostoService.java</span></div><h1>CostoService.java</h1><pre class="source lang-java linenums">package uy.edu.ctc.pamahe.modules.costos.service;
+
+import java.math.BigDecimal;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import uy.edu.ctc.pamahe.common.exception.BusinessException;
+import uy.edu.ctc.pamahe.modules.compras.model.Compra;
+import uy.edu.ctc.pamahe.modules.compras.repository.CompraRepository;
+import uy.edu.ctc.pamahe.modules.costos.dto.response.CostoVehiculoResponse;
+import uy.edu.ctc.pamahe.modules.taller.model.EstadoTarea;
+import uy.edu.ctc.pamahe.modules.taller.model.Refaccion;
+import uy.edu.ctc.pamahe.modules.taller.repository.RefaccionRepository;
+import uy.edu.ctc.pamahe.modules.vehiculos.model.Vehiculo;
+import uy.edu.ctc.pamahe.modules.vehiculos.service.VehiculoService;
+import uy.edu.ctc.pamahe.modules.ventas.model.Venta;
+import uy.edu.ctc.pamahe.modules.ventas.repository.VentaRepository;
+
+/**
+ * Centraliza la fórmula económica usada por ventas, consultas y reportes.
+ * Antes de vender calcula sobre datos vigentes; después de vender devuelve la
+ * fotografía histórica
+ * guardada en la venta para que cambios posteriores no alteren el resultado
+ * cerrado.
+ */
+@Service
+public class CostoService {
+        private final VehiculoService vehiculoService;
+        private final CompraRepository compraRepository;
+        private final RefaccionRepository refaccionRepository;
+        private final VentaRepository ventaRepository;
+
+        public CostoService(VehiculoService vehiculoService,
+                        CompraRepository compraRepository,
+                        RefaccionRepository refaccionRepository,
+<span class="fc" id="L37">                        VentaRepository ventaRepository) {</span>
+<span class="fc" id="L38">                this.vehiculoService = vehiculoService;</span>
+<span class="fc" id="L39">                this.compraRepository = compraRepository;</span>
+<span class="fc" id="L40">                this.refaccionRepository = refaccionRepository;</span>
+<span class="fc" id="L41">                this.ventaRepository = ventaRepository;</span>
+<span class="fc" id="L42">        }</span>
+
+        @Transactional(readOnly = true)
+        public CostoVehiculoResponse calcular(Long vehiculoId) {
+<span class="fc" id="L46">                Vehiculo vehiculo = this.vehiculoService.buscarActivoPorId(vehiculoId);</span>
+                // Una venta cerrada prevalece sobre el cálculo dinámico para conservar el valor
+                // conocido al vender.
+<span class="fc" id="L49">                return this.ventaRepository.findByVehiculoAndActivoTrue(vehiculo)</span>
+<span class="fc" id="L50">                                .map(this::respuestaHistorica)</span>
+<span class="fc" id="L51">                                .orElseGet(() -&gt; {</span>
+<span class="fc" id="L52">                                        CostoSnapshot snapshot = this.calcularActualParaVenta(vehiculo);</span>
+<span class="fc" id="L53">                                        return new CostoVehiculoResponse(</span>
+                                                        vehiculoId,
+<span class="fc" id="L55">                                                        snapshot.costoCompra(),</span>
+<span class="fc" id="L56">                                                        snapshot.costoRefacciones(),</span>
+<span class="fc" id="L57">                                                        snapshot.costoTotal(),</span>
+                                                        null,
+                                                        null,
+                                                        false);
+                                });
+        }
+
+        @Transactional(readOnly = true)
+        public CostoSnapshot calcularActualParaVenta(Vehiculo vehiculo) {
+<span class="fc" id="L66">                Compra compra = this.compraRepository.findByVehiculoAndActivoTrue(vehiculo)</span>
+<span class="fc" id="L67">                                .orElseThrow(() -&gt; new BusinessException(</span>
+                                                &quot;El vehículo no posee una compra activa registrada.&quot;));
+<span class="fc" id="L69">                BigDecimal costoRefacciones = this.refaccionRepository</span>
+                                // Las tareas canceladas no representan inversión efectiva y se excluyen del
+                                // costo acumulado.
+<span class="fc" id="L72">                                .findByVehiculoAndActivoTrueAndEstadoTareaNotOrderByFechaDesc(</span>
+                                                vehiculo,
+                                                EstadoTarea.CANCELADA)
+<span class="fc" id="L75">                                .stream()</span>
+<span class="fc" id="L76">                                .map(Refaccion::costoTotal)</span>
+<span class="fc" id="L77">                                .reduce(BigDecimal.ZERO, BigDecimal::add);</span>
+<span class="fc" id="L78">                BigDecimal costoCompra = compra.getCostoAdquisicion();</span>
+<span class="fc" id="L79">                return new CostoSnapshot(costoCompra, costoRefacciones, costoCompra.add(costoRefacciones));</span>
+        }
+
+        @Transactional(readOnly = true)
+        public CostoSnapshot calcularActualParaVenta(
+                        Vehiculo vehiculo,
+                        Compra compra) {
+
+                // La compra ya se validó y el vehículo sigue bloqueado en la transacción de venta.
+<span class="fc" id="L88">                BigDecimal costoRefacciones = this.refaccionRepository</span>
+<span class="fc" id="L89">                                .sumarCostoActivo(vehiculo, EstadoTarea.CANCELADA);</span>
+
+<span class="fc" id="L91">                BigDecimal costoCompra = compra.getCostoAdquisicion();</span>
+
+<span class="fc" id="L93">                return new CostoSnapshot(</span>
+                                costoCompra,
+                                costoRefacciones,
+<span class="fc" id="L96">                                costoCompra.add(costoRefacciones));</span>
+        }
+
+        private CostoVehiculoResponse respuestaHistorica(Venta venta) {
+<span class="fc" id="L100">                return new CostoVehiculoResponse(</span>
+<span class="fc" id="L101">                                venta.getVehiculo().getId(),</span>
+<span class="fc" id="L102">                                venta.getCostoCompraAlVender(),</span>
+<span class="fc" id="L103">                                venta.getCostoRefaccionesAlVender(),</span>
+<span class="fc" id="L104">                                venta.getCostoTotalAlVender(),</span>
+<span class="fc" id="L105">                                venta.getPrecioFinal(),</span>
+<span class="fc" id="L106">                                venta.getRentabilidadCalculada(),</span>
+                                true);
+        }
+
+<span class="fc" id="L110">        public record CostoSnapshot(</span>
+                        BigDecimal costoCompra,
+                        BigDecimal costoRefacciones,
+                        BigDecimal costoTotal) {
+        }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

@@ -1,0 +1,26 @@
+[
+  {
+    "name": "inicio",
+    "route": "/",
+    "score": 1,
+    "lighthouseVersion": "13.5.0"
+  },
+  {
+    "name": "catalogo",
+    "route": "/catalogo",
+    "score": 1,
+    "lighthouseVersion": "13.5.0"
+  },
+  {
+    "name": "login",
+    "route": "/login",
+    "score": 1,
+    "lighthouseVersion": "13.5.0"
+  },
+  {
+    "name": "detalle-publico",
+    "route": "/catalogo/1",
+    "score": 1,
+    "lighthouseVersion": "13.5.0"
+  }
+]
